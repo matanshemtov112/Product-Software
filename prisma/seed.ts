@@ -162,6 +162,44 @@ const DEMO_BASKET: [string, number, number][] = [
   ["קופסת אלומיניום לטייק-אווי", 1000, 0.95],
 ];
 
+/** עסקים מומצאים נוספים שכותבים ביקורות ופניות, בלי חשבון משתמש */
+const DEMO_BUSINESSES = [
+  { businessName: "קפה דמו", businessType: "בית קפה", city: "רמת גן" },
+  { businessName: "פיצריה דמו", businessType: "פיצריה", city: "חולון" },
+  { businessName: "מטבח קייטרינג דמו", businessType: "קייטרינג", city: "ראשון לציון" },
+  { businessName: "ביסטרו דמו", businessType: "מסעדה", city: "תל אביב" },
+  { businessName: "מאפיית דמו", businessType: "מאפייה", city: "בת ים" },
+  { businessName: "דיינר דמו", businessType: "מסעדה", city: "הרצליה" },
+];
+
+/** ביקורות לפי מספר ספק: [עסק, כוכבים, הערה]; שאר הנושאים נגזרים מהכוכבים */
+const DEMO_REVIEWS: Record<number, [number, number, string | null][]> = {
+  0: [
+    [0, 5, "בשר איכותי ומגיע תמיד בזמן. הנהג אדיב."],
+    [1, 4, "מחירים טובים, פעם אחת הייתה החלפה במוצר בלי לעדכן."],
+    [2, 5, "עובדים איתם שנתיים, אמינים מאוד."],
+    [3, 4, null],
+    [4, 3, "האיכות טובה אבל קשה להשיג אותם בטלפון."],
+    [5, 5, "שירות מעולה, מתקנים טעויות מהר."],
+  ],
+  1: [
+    [0, 4, "ירקות טריים, לפעמים מאחרים בבוקר."],
+    [3, 5, "הכי טריים שעבדנו איתם."],
+    [5, 3, null],
+  ],
+  2: [
+    [1, 4, "נוח לקבל הכל מספק אחד."],
+    [2, 3, "מגוון גדול, האיכות משתנה בין מוצרים."],
+    [3, 4, null],
+    [4, 4, "מחירים הוגנים ומשלוח חינם."],
+    [5, 3, "חסרו מוצרים פעמיים בחודש האחרון."],
+  ],
+  3: [
+    [0, 5, "מוצרי חלב טריים תמיד."],
+    [4, 5, null],
+  ],
+};
+
 const DEMO_PASSWORD = "demo1234";
 
 async function main() {
@@ -199,6 +237,11 @@ async function main() {
 
   const passwordHash = await hashPassword(DEMO_PASSWORD);
 
+  const businesses = [];
+  for (const b of DEMO_BUSINESSES) {
+    businesses.push(await db.customer.create({ data: { ...b, regionId: regions.get("מרכז")! } }));
+  }
+
   for (const [i, s] of SUPPLIERS.entries()) {
     const supplier = await db.supplier.create({
       data: {
@@ -235,6 +278,26 @@ async function main() {
               unitPriceAgorot: ils(basePrice * Math.pow(0.97, t)),
             })),
           },
+        },
+      });
+    }
+    for (const [k, [business, stars, text]] of (DEMO_REVIEWS[i] ?? []).entries()) {
+      const near = (d: number) => Math.max(1, Math.min(5, stars + d));
+      await db.review.create({
+        data: {
+          customerId: businesses[business].id,
+          supplierId: supplier.id,
+          overall: stars,
+          quality: near(k % 2 ? 0 : 1),
+          price: near(-1 + (k % 2)),
+          reliability: near(0),
+          service: near(k % 3 ? 0 : -1),
+          responsiveness: near(-(k % 2)),
+          accuracy: near(0),
+          resolution: near(k % 3 ? -1 : 0),
+          text,
+          status: "PUBLISHED",
+          createdAt: new Date(Date.now() - (k + 1) * 9 * 86_400_000),
         },
       });
     }
@@ -276,6 +339,31 @@ async function main() {
     data: { email: "customer@demo.local", name: "לקוח דמו", role: "CUSTOMER", passwordHash, customerId: customer.id },
   });
   await db.user.create({ data: { email: "admin@demo.local", name: "אדמין", role: "ADMIN", passwordHash } });
+
+  // פנייה לדוגמה אצל ספק הבשר: בית קפה שמעדיף אותו למרות פער קטן
+  const meat = await db.supplier.findUniqueOrThrow({ where: { companyNumber: "510000001" } });
+  const quoteLines = [
+    { productName: "חזה עוף טרי", unit: "KG", quantity: 40, billedQuantity: 40, unitPrice: 31.9 },
+    { productName: "שוקיים עוף", unit: "KG", quantity: 20, billedQuantity: 20, unitPrice: 21.5 },
+  ];
+  const lines = quoteLines.map(({ unitPrice, ...l }) => ({
+    ...l,
+    unitPriceAgorot: ils(unitPrice),
+    lineTotalAgorot: Math.round(ils(unitPrice) * l.billedQuantity),
+  }));
+  const productsAgorot = lines.reduce((sum, l) => sum + l.lineTotalAgorot, 0);
+  await db.negotiationRequest.create({
+    data: {
+      customerId: businesses[0].id,
+      supplierId: meat.id,
+      gapAgorot: ils(64),
+      totalAgorot: productsAgorot,
+      quote: { tierName: "רגיל", lines, productsAgorot, deliveryAgorot: 0, totalAgorot: productsAgorot, missingProducts: [] },
+      message:
+        "שלום, אנחנו קפה דמו ומעוניינים לעבוד איתכם. קיבלנו דרך המערכת את ההצעה שלכם, אבל יש פער של ₪64 בחודש מול ספק מתחרה. נשמח לשמוע אם תוכלו להתאים את המחיר.",
+      createdAt: new Date(Date.now() - 2 * 3_600_000),
+    },
+  });
 
   console.log(
     `Seeded ${REGIONS.length} regions, ${CATEGORIES.length} categories, ${PRODUCTS.length} products, ${SUPPLIERS.length} suppliers. Demo password: ${DEMO_PASSWORD}`,

@@ -279,21 +279,31 @@ model Review {
   text           String?
   status         ReviewStatus @default(PENDING)
   createdAt      DateTime     @default(now())
+
+  @@index([supplierId, status])
 }
 
 model NegotiationRequest {
-  id         String            @id @default(cuid())
-  customerId String
-  customer   Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId String
-  supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  runId      String?
-  run        OptimizationRun?  @relation(fields: [runId], references: [id])
-  gapAgorot  Int // פער מול החלופה הזולה; בלי שם המתחרה
-  message    String
-  status     NegotiationStatus @default(SENT)
-  reply      String?
-  createdAt  DateTime          @default(now())
+  id          String            @id @default(cuid())
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId  String
+  supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId       String?
+  run         OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot   Int // פער מול החלופה הזולה; בלי שם המתחרה
+  /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
+  quote       Json?
+  /// סה"כ ההצעה של הספק, כולל משלוח
+  totalAgorot Int               @default(0)
+  message     String
+  status      NegotiationStatus @default(SENT)
+  reply       String?
+  repliedAt   DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@index([supplierId, createdAt])
+  @@index([customerId, createdAt])
 }
 
 model PriceAlert {

@@ -6,9 +6,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 export function SupplierSidebar({
   categories,
   total,
+  newInquiries,
+  rating,
 }: {
   categories: { id: string; name: string; count: number }[];
   total: number;
+  newInquiries: number;
+  rating: { average: number; count: number } | null;
 }) {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -45,6 +49,31 @@ export function SupplierSidebar({
               </Link>
             </li>
           ))}
+        </ul>
+      </div>
+      <div>
+        <p className="px-3 pb-1 text-xs font-medium text-muted">לקוחות</p>
+        <ul className="flex flex-col gap-0.5">
+          <li>
+            <Link href="/supplier/inquiries" className={item(pathname.startsWith("/supplier/inquiries"))}>
+              <span>פניות</span>
+              {newInquiries > 0 && (
+                <span className="rounded-full bg-accent px-2 text-xs font-medium text-white" aria-label={`${newInquiries} חדשות`}>
+                  {newInquiries}
+                </span>
+              )}
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/reviews" className={item(pathname === "/supplier/reviews")}>
+              <span>דירוגים</span>
+              {rating && (
+                <span className="text-xs text-muted" aria-label={`ממוצע ${rating.average.toFixed(1)}`}>
+                  ★ {rating.average.toFixed(1)}
+                </span>
+              )}
+            </Link>
+          </li>
         </ul>
       </div>
       <div>

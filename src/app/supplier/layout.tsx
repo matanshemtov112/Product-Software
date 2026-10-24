@@ -36,7 +36,16 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     );
   }
 
-  const categories = await categoryCounts(supplier.id);
+  const [categories, newInquiries, ratingAgg] = await Promise.all([
+    categoryCounts(supplier.id),
+    db.negotiationRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
+    db.review.aggregate({
+      where: { supplierId: supplier.id, status: "PUBLISHED" },
+      _avg: { overall: true },
+      _count: true,
+    }),
+  ]);
+  const rating = ratingAgg._count ? { average: ratingAgg._avg.overall ?? 0, count: ratingAgg._count } : null;
   const total = categories.reduce((s, c) => s + c.count, 0);
   const note = STATUS_NOTE[supplier.status];
 
@@ -44,7 +53,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     <div className="flex flex-col gap-6 md:flex-row md:items-start">
       <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:w-56 md:shrink-0">
         <Suspense>
-          <SupplierSidebar categories={categories} total={total} />
+          <SupplierSidebar categories={categories} total={total} newInquiries={newInquiries} rating={rating} />
         </Suspense>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">

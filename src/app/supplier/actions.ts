@@ -190,3 +190,24 @@ export async function saveDomains(_: FormState, form: FormData): Promise<FormSta
   if (firstTime) redirect("/supplier");
   return { saved: true };
 }
+
+const replySchema = z.object({
+  inquiryId: z.string().min(1),
+  reply: z.string().trim().min(2, "נא לכתוב תשובה ללקוח").max(1000, "התשובה ארוכה מדי (עד 1,000 תווים)"),
+  status: z.enum(["OFFERED", "CLOSED"]),
+});
+
+/** תשובת הספק לפנייה של לקוח; הלקוח רואה אותה ברשימת הפניות שלו */
+export async function replyInquiry(_: FormState, form: FormData): Promise<FormState> {
+  const supplier = await currentSupplier();
+  const parsed = replySchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
+  const { inquiryId, reply, status } = parsed.data;
+  const { count } = await db.negotiationRequest.updateMany({
+    where: { id: inquiryId, supplierId: supplier.id },
+    data: { reply, status, repliedAt: new Date() },
+  });
+  if (!count) return { error: "הפנייה לא נמצאה" };
+  revalidatePath("/supplier", "layout");
+  redirect(`/supplier/inquiries/${inquiryId}`);
+}
