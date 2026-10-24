@@ -1,0 +1,304 @@
+// מודל הנתונים של ה-MVP. כל הסכומים נשמרים באגורות (Int), ללא מע״מ.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  SUPPLIER
+  ADMIN
+}
+
+enum PricePreference {
+  PRICE
+  BALANCED
+  SERVICE
+}
+
+enum Unit {
+  KG
+  LITER
+  UNIT
+}
+
+enum SupplierStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PriceKind {
+  REGULAR
+  PROMOTION
+}
+
+enum PriceChangeStatus {
+  LIVE
+  PENDING_APPROVAL
+  REJECTED
+}
+
+enum NegotiationStatus {
+  SENT
+  READ
+  OFFERED
+  CLOSED
+}
+
+enum AlertKind {
+  PRICE_DROP
+  CHEAPER_SUPPLIER
+  PRICE_INCREASE
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  phone        String?
+  passwordHash String
+  role         Role
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  supplierId   String?
+  supplier     Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model Region {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  customers     Customer[]
+  deliveryZones DeliveryZone[]
+}
+
+model Customer {
+  id                  String               @id @default(cuid())
+  businessName        String
+  businessType        String
+  city                String
+  regionId            String
+  region              Region               @relation(fields: [regionId], references: [id])
+  monthlyBudgetAgorot Int?
+  preference          PricePreference      @default(BALANCED)
+  users               User[]
+  baskets             Basket[]
+  reviews             Review[]
+  negotiations        NegotiationRequest[]
+  alerts              PriceAlert[]
+  createdAt           DateTime             @default(now())
+}
+
+model Supplier {
+  id               String               @id @default(cuid())
+  companyName      String
+  companyNumber    String               @unique // ח.פ.
+  status           SupplierStatus       @default(PENDING)
+  minOrderAgorot   Int                  @default(0)
+  paymentTermsDays Int                  @default(30) // שוטף + X
+  reliability      Float                @default(0.9) // 0 עד 1
+  contactPhone     String?
+  contactEmail     String?
+  users            User[]
+  categories       SupplierCategory[]
+  deliveryZones    DeliveryZone[]
+  priceTiers       PriceTier[]
+  offers           SupplierOffer[]
+  reviews          Review[]
+  negotiations     NegotiationRequest[]
+  createdAt        DateTime             @default(now())
+}
+
+model DeliveryZone {
+  id              String   @id @default(cuid())
+  supplierId      String
+  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  regionId        String
+  region          Region   @relation(fields: [regionId], references: [id])
+  feeAgorot       Int
+  freeAboveAgorot Int? // סף למשלוח חינם
+  deliveryDays    String // למשל "א,ג,ה"
+
+  @@unique([supplierId, regionId])
+}
+
+model Category {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  parentId  String?
+  parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[]         @relation("CategoryTree")
+  products  Product[]
+  suppliers SupplierCategory[]
+}
+
+model SupplierCategory {
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([supplierId, categoryId])
+}
+
+// מוצר קנוני: מה שהלקוח מחפש ושם בסל. הצעות הספקים ממופות אליו.
+model Product {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  categoryId  String
+  category    Category        @relation(fields: [categoryId], references: [id])
+  unit        Unit
+  spec        String?
+  offers      SupplierOffer[]
+  basketItems BasketItem[]
+  alerts      PriceAlert[]
+}
+
+model SupplierOffer {
+  id          String       @id @default(cuid())
+  supplierId  String
+  supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product      @relation(fields: [productId], references: [id])
+  supplierSku String?
+  brand       String?
+  packSize    Float // ביחידות בסיס, למשל 10 ק״ג
+  minQuantity Float        @default(0)
+  available   Boolean      @default(true)
+  prices      OfferPrice[]
+
+  @@unique([supplierId, productId])
+}
+
+// מדרגת מחיר לפי היקף חודשי אצל אותו ספק.
+model PriceTier {
+  id               String       @id @default(cuid())
+  supplierId       String
+  supplier         Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name             String
+  minMonthlyAgorot Int
+  prices           OfferPrice[]
+
+  @@unique([supplierId, minMonthlyAgorot])
+}
+
+// כל שינוי מחיר הוא שורה חדשה; ההיסטוריה נשמרת במלואה.
+model OfferPrice {
+  id              String            @id @default(cuid())
+  offerId         String
+  offer           SupplierOffer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  tierId          String
+  tier            PriceTier         @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  unitPriceAgorot Int // ליחידת בסיס, ללא מע״מ
+  kind            PriceKind         @default(REGULAR)
+  status          PriceChangeStatus @default(LIVE)
+  validFrom       DateTime          @default(now())
+  validTo         DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([offerId, tierId, validFrom])
+}
+
+model Basket {
+  id                 String            @id @default(cuid())
+  customerId         String
+  customer           Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name               String
+  deliveriesPerMonth Int               @default(4)
+  items              BasketItem[]
+  runs               OptimizationRun[]
+  createdAt          DateTime          @default(now())
+}
+
+model BasketItem {
+  id                     String   @id @default(cuid())
+  basketId               String
+  basket                 Basket   @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  productId              String
+  product                Product  @relation(fields: [productId], references: [id])
+  monthlyQuantity        Float
+  currentSupplierName    String?
+  currentUnitPriceAgorot Int?
+  excludedSupplierIds    String[] @default([])
+}
+
+model OptimizationRun {
+  id             String               @id @default(cuid())
+  basketId       String
+  basket         Basket               @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  preference     PricePreference
+  result         Json
+  bestCostAgorot Int
+  savingsAgorot  Int?
+  negotiations   NegotiationRequest[]
+  createdAt      DateTime             @default(now())
+}
+
+model Review {
+  id             String       @id @default(cuid())
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId     String
+  supplier       Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  overall        Int
+  quality        Int
+  price          Int
+  reliability    Int
+  service        Int
+  responsiveness Int
+  accuracy       Int
+  resolution     Int
+  text           String?
+  status         ReviewStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+}
+
+model NegotiationRequest {
+  id         String            @id @default(cuid())
+  customerId String
+  customer   Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId      String?
+  run        OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot  Int // פער מול החלופה הזולה; בלי שם המתחרה
+  message    String
+  status     NegotiationStatus @default(SENT)
+  reply      String?
+  createdAt  DateTime          @default(now())
+}
+
+model PriceAlert {
+  id            String    @id @default(cuid())
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  kind          AlertKind
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id])
+  message       String
+  savingsAgorot Int?
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+}
+
+model Subscription {
+  id          String    @id @default(cuid())
+  customerId  String?
+  supplierId  String?
+  plan        String // Basic / Pro / Enterprise
+  priceAgorot Int       @default(0) // הפיילוט חינמי
+  renewsAt    DateTime?
+  createdAt   DateTime  @default(now())
+}
