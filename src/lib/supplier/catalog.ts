@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 
-export const UNIT_LABEL = { KG: "ק״ג", LITER: "ליטר", UNIT: "יחידה" } as const;
+export { UNIT_LABEL } from "@/lib/format";
 
 /** הספק של המשתמש המחובר, או שגיאה אם המשתמש אינו מקושר לספק */
 export async function supplierForUser(userId: string) {

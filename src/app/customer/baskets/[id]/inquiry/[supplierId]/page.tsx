@@ -3,19 +3,19 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { QuoteTable } from "@/components/quote-table";
 import { requireRole } from "@/lib/auth/current";
-import { basketQuotes, customerForUser } from "@/lib/customer/quotes";
+import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL, OPEN_INQUIRY } from "@/lib/inquiries";
 import { InquiryForm } from "./inquiry-form";
 
-export default async function InquiryPage({ params }: { params: Promise<{ supplierId: string }> }) {
-  const { supplierId } = await params;
+export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
+  const { id, supplierId } = await params;
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
-  const basket = customer.baskets[0];
+  const basket = await getBasket(customer.id, id);
   if (!basket) notFound();
-  const row = (await basketQuotes(basket.id)).rows.find((r) => r.supplierId === supplierId);
+  const row = (await analyzeBasket(basket.id)).rows.find((r) => r.supplierId === supplierId);
   if (!row) notFound();
   const open = await db.negotiationRequest.findFirst({
     where: { customerId: customer.id, supplierId, status: { in: OPEN_INQUIRY } },
@@ -30,7 +30,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ suppli
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <Link href="/customer" className="text-sm text-muted hover:text-foreground">
+        <Link href={`/customer/baskets/${basket.id}`} className="text-sm text-muted hover:text-foreground">
           → חזרה להשוואה
         </Link>
         <h1 className="text-2xl font-bold">פנייה ל{row.supplierName}</h1>
@@ -70,7 +70,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ suppli
             {INQUIRY_STATUS_LABEL[open.status]}). אפשר לשלוח פנייה חדשה אחרי שהספק יענה.
           </p>
         ) : (
-          <InquiryForm supplierId={supplierId} defaultMessage={defaultMessage} />
+          <InquiryForm basketId={basket.id} supplierId={supplierId} defaultMessage={defaultMessage} />
         )}
       </Card>
     </div>

@@ -5,3 +5,5 @@ export function shekels(agorot: number, fractionDigits = 0): string {
     maximumFractionDigits: fractionDigits,
   })}`;
 }
+
+export const UNIT_LABEL = { KG: "ק״ג", LITER: "ליטר", UNIT: "יחידה" } as const;

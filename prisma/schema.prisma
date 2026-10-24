@@ -33,6 +33,12 @@ enum SupplierStatus {
   REJECTED
 }
 
+enum BasketSource {
+  MANUAL // הלקוח בחר מוצרים מהקטלוג
+  CURRENT_SUPPLIER // מוצרים מהקטלוג של הספק שהלקוח עובד איתו היום
+  TEMPLATE // רשימה סטנדרטית לפי סוג המסעדה
+}
+
 enum PriceKind {
   REGULAR
   PROMOTION
@@ -93,6 +99,8 @@ model Customer {
   region              Region               @relation(fields: [regionId], references: [id])
   monthlyBudgetAgorot Int?
   preference          PricePreference      @default(BALANCED)
+  /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
+  cuisine             String?
   users               User[]
   baskets             Basket[]
   reviews             Review[]
@@ -122,6 +130,7 @@ model Supplier {
   offers           SupplierOffer[]
   reviews          Review[]
   negotiations     NegotiationRequest[]
+  currentBaskets   Basket[]
   createdAt        DateTime             @default(now())
 }
 
@@ -233,9 +242,17 @@ model Basket {
   customer           Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   name               String
   deliveriesPerMonth Int               @default(4)
+  source             BasketSource      @default(MANUAL)
+  /// הספק שהלקוח עובד איתו היום, כשהסל נבנה מהקטלוג שלו
+  currentSupplierId  String?
+  currentSupplier    Supplier?         @relation(fields: [currentSupplierId], references: [id], onDelete: SetNull)
+  /// מתי הלקוח שמר את הסל לבדיקה חודשית; null לסל שלא נשמר
+  savedAt            DateTime?
   items              BasketItem[]
   runs               OptimizationRun[]
   createdAt          DateTime          @default(now())
+
+  @@index([customerId, createdAt])
 }
 
 model BasketItem {

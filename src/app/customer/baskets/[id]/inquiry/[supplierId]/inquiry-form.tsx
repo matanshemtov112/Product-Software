@@ -3,12 +3,21 @@
 import { useActionState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
-import { sendInquiry } from "../../actions";
+import { sendInquiry } from "../../../../actions";
 
-export function InquiryForm({ supplierId, defaultMessage }: { supplierId: string; defaultMessage: string }) {
+export function InquiryForm({
+  basketId,
+  supplierId,
+  defaultMessage,
+}: {
+  basketId: string;
+  supplierId: string;
+  defaultMessage: string;
+}) {
   const [state, action, pending] = useActionState(sendInquiry, {});
   return (
     <ActionForm action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="basketId" value={basketId} />
       <input type="hidden" name="supplierId" value={supplierId} />
       <textarea
         name="message"

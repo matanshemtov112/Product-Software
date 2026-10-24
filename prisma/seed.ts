@@ -51,6 +51,12 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
   { name: "סוכר לבן", category: "מוצרים יבשים", unit: "KG" },
   { name: "פחית שתייה קלה 330 מ״ל", category: "משקאות", unit: "UNIT" },
   { name: "קופסת אלומיניום לטייק-אווי", category: "חד-פעמי", unit: "UNIT" },
+  { name: "גבינת מוצרלה", category: "מוצרי חלב", unit: "KG", spec: "מגורדת, לפיצה" },
+  { name: "רסק עגבניות", category: "מוצרים יבשים", unit: "KG" },
+  { name: "קפה פולים", category: "קפה", unit: "KG" },
+  { name: "צ׳יפס קפוא", category: "קפואים", unit: "KG" },
+  { name: "לחמניות המבורגר", category: "מאפים", unit: "UNIT" },
+  { name: "פילה סלמון", category: "דגים ופירות ים", unit: "KG", spec: "טרי" },
 ];
 
 interface DemoSupplier {
@@ -80,6 +86,7 @@ const SUPPLIERS: DemoSupplier[] = [
       "שוקיים עוף": [5, 21.5],
       "בקר טחון": [2, 62],
       "אנטריקוט": [1, 139],
+      "צ׳יפס קפוא": [10, 9.4],
     },
   },
   {
@@ -129,6 +136,12 @@ const SUPPLIERS: DemoSupplier[] = [
       "סוכר לבן": [25, 4.1],
       "פחית שתייה קלה 330 מ״ל": [24, 2.1],
       "קופסת אלומיניום לטייק-אווי": [100, 0.85],
+      "גבינת מוצרלה": [2, 36],
+      "רסק עגבניות": [5, 8.9],
+      "קפה פולים": [1, 72],
+      "צ׳יפס קפוא": [10, 8.9],
+      "לחמניות המבורגר": [40, 1.35],
+      "פילה סלמון": [1, 98],
     },
   },
   {
@@ -144,6 +157,7 @@ const SUPPLIERS: DemoSupplier[] = [
       "גבינה לבנה 5%": [1, 18.9],
       "שמנת מתוקה 32%": [1, 16.9],
       "חלב 3%": [1, 6.1],
+      "גבינת מוצרלה": [2, 34.5],
     },
   },
 ];
@@ -319,11 +333,13 @@ async function main() {
       city: "תל אביב",
       regionId: regions.get("מרכז")!,
       preference: "BALANCED",
+      cuisine: "מסעדה בשרית",
       monthlyBudgetAgorot: ils(30000),
       baskets: {
         create: {
           name: "הסל החודשי",
           deliveriesPerMonth: 4,
+          savedAt: new Date(Date.now() - 31 * 86_400_000),
           items: {
             create: DEMO_BASKET.map(([name, quantity, currentPrice]) => ({
               productId: products.get(name)!,
@@ -335,6 +351,38 @@ async function main() {
       },
     },
   });
+  // בדיקה מלפני חודש, כדי שבכניסה לסל השמור יוצג מה השתנה מאז אצל כל ספק
+  const basket = await db.basket.findFirstOrThrow({ where: { customerId: customer.id } });
+  const supplierIds = Object.fromEntries(
+    (await db.supplier.findMany({ select: { id: true, companyNumber: true, companyName: true } })).map((s) => [
+      s.companyNumber,
+      s,
+    ]),
+  );
+  const lastMonth: [string, number, number][] = [
+    ["510000001", 3575, 2],
+    ["510000003", 6020, 10],
+    ["510000004", 623, 1],
+  ];
+  await db.optimizationRun.create({
+    data: {
+      basketId: basket.id,
+      preference: "BALANCED",
+      bestCostAgorot: ils(6010),
+      result: {
+        lowestCostAgorot: ils(6010),
+        recommendedAgorot: ils(6010),
+        suppliers: Object.fromEntries(
+          lastMonth.map(([number, total, items]) => [
+            supplierIds[number].id,
+            { name: supplierIds[number].companyName, totalAgorot: ils(total), items },
+          ]),
+        ),
+      },
+      createdAt: new Date(Date.now() - 31 * 86_400_000),
+    },
+  });
+
   await db.user.create({
     data: { email: "customer@demo.local", name: "לקוח דמו", role: "CUSTOMER", passwordHash, customerId: customer.id },
   });
