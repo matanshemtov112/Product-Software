@@ -1,5 +1,6 @@
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
+import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { supplierForUser } from "@/lib/supplier/catalog";
@@ -11,7 +12,7 @@ const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר
 export default async function SupplierProfile() {
   const session = await requireRole("SUPPLIER");
   const base = await supplierForUser(session.userId);
-  const categories = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+  const tree = await categoryTree();
   const supplier = await db.supplier.findUniqueOrThrow({
     where: { id: base.id },
     include: { deliveryZones: { include: { region: true } }, priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
@@ -40,7 +41,7 @@ export default async function SupplierProfile() {
           בהוספת מוצר יופיעו רק סוגי המוצרים מהתחומים האלה. מוצרים שכבר ברשימה נשארים גם אם מורידים תחום.
         </p>
         <DomainPicker
-          categories={categories}
+          tree={tree}
           initialIds={base.categories.map((c) => c.categoryId)}
           initialAll={base.allCategories}
           submitLabel="שמירת התחומים"

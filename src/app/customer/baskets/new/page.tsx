@@ -144,6 +144,7 @@ export default async function NewBasket({
             }))}
             initialName={`הסל מ${list.name.replace("ספק דמו: ", "")}`}
             initialDeliveries={4}
+            initialVolume=""
             submitLabel="מציאת ספק מתחרה"
           />
         </div>
@@ -178,6 +179,7 @@ export default async function NewBasket({
           initialRows={rows}
           initialName={`סל ${today()}`}
           initialDeliveries={4}
+            initialVolume=""
           submitLabel="השוואת מחירים"
         />
       </div>

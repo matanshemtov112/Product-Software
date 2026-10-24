@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
-import { db } from "@/lib/db";
+import { categoryTree, selectableCategories } from "@/lib/categories";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../../product-form";
 
@@ -10,7 +10,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const supplier = await supplierForUser(session.userId);
   const offer = await getOffer(supplier.id, id);
   if (!offer) notFound();
-  const categories = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+  const categories = selectableCategories(await categoryTree(), null);
   const byTier = pricesByTier(offer);
   const prices = Object.fromEntries(
     supplier.priceTiers.map((t) => {

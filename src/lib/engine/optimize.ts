@@ -82,12 +82,15 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
   };
 }
 
-/** המדרגה הגבוהה ביותר שההיקף אצל הספק, לפי מחירי אותה מדרגה, עומד בסף שלה */
-function tierFor(p: Prepared, lines: BasketLine[]): number {
+/**
+ * המדרגה הגבוהה ביותר שההיקף אצל הספק, לפי מחירי אותה מדרגה, עומד בסף שלה.
+ * scale מגדיל את ההיקף כשהלקוח הצהיר על היקף רכש חודשי גדול מהסל (ראו volumeScale).
+ */
+function tierFor(p: Prepared, lines: BasketLine[], scale = 1): number {
   for (let t = p.supplier.tiers.length - 1; t > 0; t--) {
     let spend = 0;
     for (const line of lines) spend += lineAt(p, line, t)?.lineTotalAgorot ?? 0;
-    if (spend >= p.supplier.tiers[t].minMonthlyAgorot) return t;
+    if (spend * scale >= p.supplier.tiers[t].minMonthlyAgorot) return t;
   }
   return 0;
 }
@@ -124,6 +127,7 @@ function assign(
 /** מחשב את התוכנית לצירוף ספקים אחד, או null אם הצירוף לא אפשרי */
 function evaluateSubset(subset: Prepared[], lines: BasketLine[], opts: EngineOptions): Plan | null {
   const deliveries = Math.max(1, opts.deliveriesPerMonth);
+  const scale = Math.max(1, opts.volumeScale ?? 1);
   const forced = new Map<string, string>();
 
   for (let guard = 0; guard <= lines.length; guard++) {
@@ -131,7 +135,7 @@ function evaluateSubset(subset: Prepared[], lines: BasketLine[], opts: EngineOpt
     let tiers = new Map(subset.map((p) => [p.supplier.id, 0]));
     let assignment = assign(subset, lines, tiers, forced);
     for (let i = 0; i < MAX_TIER_ITERATIONS; i++) {
-      const next = new Map(subset.map((p) => [p.supplier.id, tierFor(p, assignment.bySupplier.get(p.supplier.id)!)]));
+      const next = new Map(subset.map((p) => [p.supplier.id, tierFor(p, assignment.bySupplier.get(p.supplier.id)!, scale)]));
       if ([...next].every(([id, t]) => tiers.get(id) === t)) break;
       tiers = next;
       assignment = assign(subset, lines, tiers, forced);
@@ -139,7 +143,7 @@ function evaluateSubset(subset: Prepared[], lines: BasketLine[], opts: EngineOpt
     // שיבוץ מחדש יכול להוריד ספק מתחת לסף המדרגה שלו; מורידים מדרגה עד שזה תקין
     for (const p of subset) {
       const own = assignment.bySupplier.get(p.supplier.id)!;
-      tiers.set(p.supplier.id, Math.min(tiers.get(p.supplier.id)!, tierFor(p, own)));
+      tiers.set(p.supplier.id, Math.min(tiers.get(p.supplier.id)!, tierFor(p, own, scale)));
     }
 
     const shares: SupplierShare[] = [];
@@ -345,4 +349,26 @@ export function optimizeBasket(lines: BasketLine[], suppliers: SupplierInput[], 
     annualSavingsAgorot: monthly === null ? null : monthly * 12,
     evaluatedCombinations: evaluated,
   };
+}
+
+/**
+ * כמה פעמים היקף הרכש החודשי שהלקוח הצהיר עליו גדול משווי הסל.
+ * הסל נחשב מדגם של הרכש: ספק שמקבל חלק מהסל מקבל את אותו חלק מההיקף המוצהר,
+ * וזה מה שקובע את מדרגת המחיר אצלו. שווי הסל מוערך לפי המחיר הזול ביותר במדרגה הבסיסית.
+ * מחזיר 1 כשאין הצהרה או כשההצהרה קטנה מהסל.
+ */
+export function volumeScale(lines: BasketLine[], suppliers: SupplierInput[], declaredAgorot: number | null): number {
+  if (!declaredAgorot) return 1;
+  const prepared = suppliers.map(prepare);
+  let value = 0;
+  for (const line of lines) {
+    if (line.quantity <= 0) continue;
+    let cheapest: number | null = null;
+    for (const p of prepared) {
+      const priced = lineAt(p, line, 0);
+      if (priced && (cheapest === null || priced.lineTotalAgorot < cheapest)) cheapest = priced.lineTotalAgorot;
+    }
+    value += cheapest ?? 0;
+  }
+  return value > 0 ? Math.max(1, declaredAgorot / value) : 1;
 }

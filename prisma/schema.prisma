@@ -237,20 +237,23 @@ model OfferPrice {
 }
 
 model Basket {
-  id                 String            @id @default(cuid())
-  customerId         String
-  customer           Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  name               String
-  deliveriesPerMonth Int               @default(4)
-  source             BasketSource      @default(MANUAL)
+  id                     String            @id @default(cuid())
+  customerId             String
+  customer               Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name                   String
+  deliveriesPerMonth     Int               @default(4)
+  source                 BasketSource      @default(MANUAL)
   /// הספק שהלקוח עובד איתו היום, כשהסל נבנה מהקטלוג שלו
-  currentSupplierId  String?
-  currentSupplier    Supplier?         @relation(fields: [currentSupplierId], references: [id], onDelete: SetNull)
+  currentSupplierId      String?
+  currentSupplier        Supplier?         @relation(fields: [currentSupplierId], references: [id], onDelete: SetNull)
+  /// טווח היקף הרכש החודשי של הלקוח (₪, ללא מע״מ); קובע מדרגות מחיר כשהוא גדול מהסל
+  monthlyVolumeMinAgorot Int?
+  monthlyVolumeMaxAgorot Int?
   /// מתי הלקוח שמר את הסל לבדיקה חודשית; null לסל שלא נשמר
-  savedAt            DateTime?
-  items              BasketItem[]
-  runs               OptimizationRun[]
-  createdAt          DateTime          @default(now())
+  savedAt                DateTime?
+  items                  BasketItem[]
+  runs                   OptimizationRun[]
+  createdAt              DateTime          @default(now())
 
   @@index([customerId, createdAt])
 }

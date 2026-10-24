@@ -4,6 +4,7 @@ import { useActionState, useMemo, useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { UNIT_LABEL } from "@/lib/format";
+import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { saveBasket } from "../actions";
 
 export interface CatalogItem {
@@ -33,6 +34,7 @@ export function BasketBuilder({
   initialRows,
   initialName,
   initialDeliveries,
+  initialVolume,
   submitLabel,
 }: {
   basketId?: string;
@@ -42,6 +44,8 @@ export function BasketBuilder({
   initialRows: BuilderRow[];
   initialName: string;
   initialDeliveries: number;
+  /** מפתח מ-VOLUME_RANGES, או "" כשלא נבחר */
+  initialVolume: string;
   submitLabel: string;
 }) {
   const [state, action, pending] = useActionState(saveBasket, {});
@@ -73,14 +77,32 @@ export function BasketBuilder({
       <input type="hidden" name="source" value={source} />
       {currentSupplier && <input type="hidden" name="currentSupplierId" value={currentSupplier.id} />}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Field label="שם הסל">
           <Input name="name" defaultValue={initialName} required maxLength={60} />
         </Field>
         <Field label="כמה אספקות בחודש">
           <Input name="deliveriesPerMonth" type="number" min="1" max="31" defaultValue={initialDeliveries} dir="ltr" required />
         </Field>
+        <Field label="היקף הרכש החודשי שלכם (₪, ללא מע״מ)">
+          <select
+            name="volume"
+            defaultValue={initialVolume}
+            className="rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
+          >
+            <option value="">רק הסל הזה</option>
+            {VOLUME_RANGES.map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
+      <p className="-mt-3 text-xs text-muted">
+        ספקים נותנים מחיר טוב יותר ללקוח שקונה יותר. אם הסל הוא רק חלק מהקניות החודשיות שלכם, בחרו את ההיקף הכולל ונחשב
+        לפיו את מדרגת המחיר אצל כל ספק.
+      </p>
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

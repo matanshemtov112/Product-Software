@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot } from "@/lib/customer/checks";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
+import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { db } from "@/lib/db";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
@@ -60,8 +61,11 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
     data.source === "CURRENT_SUPPLIER" && data.currentSupplierId
       ? (await db.supplier.findFirst({ where: { id: data.currentSupplierId, status: "APPROVED" } }))?.id ?? null
       : null;
+  const volume = VOLUME_RANGES.find((r) => r.key === form.get("volume"));
   const fields = {
     name: data.name,
+    monthlyVolumeMinAgorot: volume ? volume.min * 100 : null,
+    monthlyVolumeMaxAgorot: volume?.max ? volume.max * 100 : null,
     deliveriesPerMonth: data.deliveriesPerMonth,
     source: data.source,
     currentSupplierId,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billedQuantity, optimizeBasket } from "./optimize";
+import { billedQuantity, optimizeBasket, volumeScale } from "./optimize";
 import type { BasketLine, SupplierInput } from "./types";
 
 // מחירים בשקלים בבדיקות, מומרים לאגורות
@@ -198,5 +198,42 @@ describe("optimizeBasket", () => {
     const r = optimizeBasket([line("chicken", 50), line("tomato", 20)], [a, b], opts);
     expect(r.singleSupplier!.suppliers).toHaveLength(1);
     expect(r.singleSupplier!.suppliers[0].supplierId).toBe("A");
+  });
+});
+
+describe("declared monthly volume", () => {
+  // מדרגה שנייה מ-₪10,000 בחודש, זולה ב-10%
+  const big = supplier("big", { chicken: [30, 27] }, { tierMins: [0, 10000] });
+  const lines = [line("chicken", 100)]; // ₪3,000 בסל
+
+  it("prices a small customer at the base tier", () => {
+    const plan = optimizeBasket(lines, [big], opts).lowestCost!;
+    expect(plan.suppliers[0].tierName).toBe("מדרגה 0");
+    expect(plan.totalAgorot).toBe(ils(3000));
+  });
+
+  it("gives a customer who buys more each month the tier that volume reaches", () => {
+    const scale = volumeScale(lines, [big], ils(100000));
+    expect(scale).toBeCloseTo(100000 / 3000);
+    const plan = optimizeBasket(lines, [big], { ...opts, volumeScale: scale }).lowestCost!;
+    expect(plan.suppliers[0].tierName).toBe("מדרגה 1");
+    expect(plan.totalAgorot).toBe(ils(2700));
+  });
+
+  it("never shrinks the volume below the basket itself", () => {
+    expect(volumeScale(lines, [big], ils(1000))).toBe(1);
+    expect(volumeScale(lines, [big], null)).toBe(1);
+  });
+
+  it("credits each supplier only with its share of the declared volume", () => {
+    const a = supplier("a", { chicken: [30, 27] }, { tierMins: [0, 10000] });
+    const b = supplier("b", { tomato: [5, 4] }, { tierMins: [0, 10000] });
+    const mixed = [line("chicken", 100), line("tomato", 100)]; // ₪3,000 + ₪500
+    // היקף של ₪14,000: הספק של העוף מקבל 6/7 (₪12,000) ועולה מדרגה; ספק העגבניות מקבל ₪2,000 ולא
+    const scale = volumeScale(mixed, [a, b], ils(14000));
+    const plan = optimizeBasket(mixed, [a, b], { ...opts, volumeScale: scale }).lowestCost!;
+    const tierOf = (id: string) => plan.suppliers.find((s) => s.supplierId === id)!.tierName;
+    expect(tierOf("a")).toBe("מדרגה 1");
+    expect(tierOf("b")).toBe("מדרגה 0");
   });
 });

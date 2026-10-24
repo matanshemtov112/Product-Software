@@ -1,6 +1,12 @@
 import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
-import { optimizeBasket, quoteForSupplier, type EngineResult, type SupplierQuote } from "@/lib/engine";
+import {
+  optimizeBasket,
+  quoteForSupplier,
+  type EngineResult,
+  type SupplierInput,
+  type SupplierQuote,
+} from "@/lib/engine";
 import { loadEngineInput } from "@/lib/engine/load";
 import type { QuoteSnapshot } from "@/lib/inquiries";
 
@@ -31,6 +37,9 @@ export interface QuoteRow {
   supplierName: string;
   quote: SupplierQuote;
   snapshot: QuoteSnapshot;
+  /** סוגי המוצרים מהסל שהספק מכסה */
+  categories: string[];
+  supplier: SupplierInput;
 }
 
 export interface BasketAnalysis {
@@ -38,6 +47,8 @@ export interface BasketAnalysis {
   /** ההצעה של כל ספק רלוונטי, מהקטן לגדול לפי הפער */
   rows: QuoteRow[];
   lineCount: number;
+  /** פי כמה היקף הרכש המוצהר גדול מהסל (1 אם לא הוצהר או קטן ממנו) */
+  volumeScale: number;
 }
 
 /** מריץ את המנוע על סל: שלוש האפשרויות, וההצעה של כל ספק מול החלופה הזולה לאותם מוצרים */
@@ -46,14 +57,27 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
   const result = optimizeBasket(lines, suppliers, options);
   const units = new Map(basket.items.map((i) => [i.productId, i.product.unit]));
   const names = new Map(lines.map((l) => [l.productId, l.productName]));
+  const categoryOf = new Map(basket.items.map((i) => [i.productId, i.product.category.name]));
   const rows: QuoteRow[] = [];
   for (const s of suppliers) {
     const quote = quoteForSupplier(lines, suppliers, options, s.id);
     if (!quote) continue;
-    rows.push({ supplierId: s.id, supplierName: s.name, quote, snapshot: snapshot(quote, units, names) });
+    rows.push({
+      supplierId: s.id,
+      supplierName: s.name,
+      quote,
+      snapshot: snapshot(quote, units, names),
+      categories: [...new Set(quote.share.lines.map((l) => categoryOf.get(l.productId) ?? ""))].filter(Boolean),
+      supplier: s,
+    });
   }
   rows.sort((a, b) => a.quote.gapAgorot - b.quote.gapAgorot || a.quote.share.totalAgorot - b.quote.share.totalAgorot);
-  return { result, rows, lineCount: lines.filter((l) => l.quantity > 0).length };
+  return {
+    result,
+    rows,
+    lineCount: lines.filter((l) => l.quantity > 0).length,
+    volumeScale: options.volumeScale ?? 1,
+  };
 }
 
 function snapshot(quote: SupplierQuote, units: Map<string, Unit>, names: Map<string, string>): QuoteSnapshot {

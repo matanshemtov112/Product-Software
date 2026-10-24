@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
+import { categoryTree, selectableCategories } from "@/lib/categories";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../product-form";
 
@@ -7,10 +8,9 @@ export default async function NewProductPage() {
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
   // ספק רואה רק את סוגי המוצרים והמוצרים מהתחומים שבחר
-  const domains = domainCategoryIds(supplier);
-  const inDomains = domains ? { id: { in: domains } } : {};
+  const domains = await domainCategoryIds(supplier);
   const [categories, catalog] = await Promise.all([
-    db.category.findMany({ where: inDomains, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    categoryTree().then((tree) => selectableCategories(tree, domains)),
     db.product.findMany({
       where: {
         pendingReview: false,

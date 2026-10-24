@@ -29,17 +29,23 @@ const CATEGORIES = [
   "אחר",
 ];
 
+/** תתי-תחומים: ספק יכול להתמחות רק בחלק מתחום, וכל מוצר משויך לתת-תחום המדויק */
+const SUBCATEGORIES: Record<string, string[]> = {
+  "פירות וירקות": ["ירקות אדמה ושורש", "ירקות פרי", "ירוקים ועשבי תיבול", "פטריות", "פירות"],
+  "בשר ועוף": ["עוף והודו", "בקר וטלה"],
+};
+
 const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] = [
-  { name: "חזה עוף טרי", category: "בשר ועוף", unit: "KG", spec: "טרי, כשר" },
-  { name: "שוקיים עוף", category: "בשר ועוף", unit: "KG", spec: "טרי, כשר" },
-  { name: "בקר טחון", category: "בשר ועוף", unit: "KG", spec: "טרי, 15% שומן" },
-  { name: "אנטריקוט", category: "בשר ועוף", unit: "KG", spec: "טרי" },
-  { name: "עגבניות", category: "פירות וירקות", unit: "KG" },
-  { name: "בצל יבש", category: "פירות וירקות", unit: "KG" },
-  { name: "תפוחי אדמה", category: "פירות וירקות", unit: "KG" },
-  { name: "מלפפונים", category: "פירות וירקות", unit: "KG" },
-  { name: "חסה ערבית", category: "פירות וירקות", unit: "UNIT" },
-  { name: "לימונים", category: "פירות וירקות", unit: "KG" },
+  { name: "חזה עוף טרי", category: "עוף והודו", unit: "KG", spec: "טרי, כשר" },
+  { name: "שוקיים עוף", category: "עוף והודו", unit: "KG", spec: "טרי, כשר" },
+  { name: "בקר טחון", category: "בקר וטלה", unit: "KG", spec: "טרי, 15% שומן" },
+  { name: "אנטריקוט", category: "בקר וטלה", unit: "KG", spec: "טרי" },
+  { name: "עגבניות", category: "ירקות פרי", unit: "KG" },
+  { name: "בצל יבש", category: "ירקות אדמה ושורש", unit: "KG" },
+  { name: "תפוחי אדמה", category: "ירקות אדמה ושורש", unit: "KG" },
+  { name: "מלפפונים", category: "ירקות פרי", unit: "KG" },
+  { name: "חסה ערבית", category: "ירוקים ועשבי תיבול", unit: "UNIT" },
+  { name: "לימונים", category: "פירות", unit: "KG" },
   { name: "גבינה צהובה 28%", category: "מוצרי חלב", unit: "KG" },
   { name: "גבינה לבנה 5%", category: "מוצרי חלב", unit: "KG" },
   { name: "שמנת מתוקה 32%", category: "מוצרי חלב", unit: "LITER" },
@@ -57,6 +63,13 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
   { name: "צ׳יפס קפוא", category: "קפואים", unit: "KG" },
   { name: "לחמניות המבורגר", category: "מאפים", unit: "UNIT" },
   { name: "פילה סלמון", category: "דגים ופירות ים", unit: "KG", spec: "טרי" },
+  { name: "בטטה", category: "ירקות אדמה ושורש", unit: "KG" },
+  { name: "גזר", category: "ירקות אדמה ושורש", unit: "KG" },
+  { name: "כרוב לבן", category: "ירקות אדמה ושורש", unit: "KG" },
+  { name: "כוסברה", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "צרור" },
+  { name: "פטרוזיליה", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "צרור" },
+  { name: "נבטי אלפלפא", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "קופסה 100 גרם" },
+  { name: "פטריות שמפיניון", category: "פטריות", unit: "KG" },
 ];
 
 interface DemoSupplier {
@@ -79,7 +92,7 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["בשר ועוף", "קפואים"],
     minOrder: 400,
     reliability: 0.96,
-    tiers: [["רגיל", 0], ["עסקי", 10000], ["היקף גבוה", 25000]],
+    tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 100000]],
     zones: [{ region: "מרכז", fee: 60, freeAbove: 800 }, { region: "שרון", fee: 80, freeAbove: 1200 }],
     offers: {
       "חזה עוף טרי": [5, 31.9],
@@ -93,6 +106,7 @@ const SUPPLIERS: DemoSupplier[] = [
     companyName: "ספק דמו: הירקן הסיטונאי",
     companyNumber: "510000002",
     categories: ["פירות וירקות", "ביצים"],
+    // ספק ירקות אדמה ופרי: זול שם, יקר בירוקים
     minOrder: 120,
     reliability: 0.9,
     tiers: [["רגיל", 0], ["עסקי", 5000]],
@@ -105,6 +119,13 @@ const SUPPLIERS: DemoSupplier[] = [
       "חסה ערבית": [12, 4.5],
       "לימונים": [5, 7.9],
       "ביצים L": [30, 0.95],
+      "בטטה": [10, 5.2],
+      "גזר": [10, 3.6],
+      "כרוב לבן": [10, 3.9],
+      // ירוקים ופטריות הם לא ההתמחות שלו, והמחיר בהתאם
+      "כוסברה": [10, 3.9],
+      "פטרוזיליה": [10, 3.9],
+      "פטריות שמפיניון": [2, 24],
     },
   },
   {
@@ -113,7 +134,7 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: null,
     minOrder: 600,
     reliability: 0.88,
-    tiers: [["רגיל", 0], ["עסקי", 10000], ["היקף גבוה", 25000], ["ארגוני", 50000]],
+    tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 50000], ["ארגוני", 100000]],
     zones: [
       { region: "מרכז", fee: 0, freeAbove: null },
       { region: "שרון", fee: 50, freeAbove: 1500 },
@@ -150,7 +171,7 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["מוצרי חלב"],
     minOrder: 120,
     reliability: 0.97,
-    tiers: [["רגיל", 0], ["עסקי", 3000]],
+    tiers: [["רגיל", 0], ["עסקי", 10000]],
     zones: [{ region: "מרכז", fee: 40, freeAbove: 150 }, { region: "שרון", fee: 30, freeAbove: 150 }],
     offers: {
       "גבינה צהובה 28%": [1, 41.5],
@@ -158,6 +179,22 @@ const SUPPLIERS: DemoSupplier[] = [
       "שמנת מתוקה 32%": [1, 16.9],
       "חלב 3%": [1, 6.1],
       "גבינת מוצרלה": [2, 34.5],
+    },
+  },
+  {
+    companyName: "ספק דמו: ירוקי השדה",
+    companyNumber: "510000005",
+    categories: ["ירוקים ועשבי תיבול", "פטריות"],
+    minOrder: 60,
+    reliability: 0.94,
+    tiers: [["רגיל", 0], ["עסקי", 5000]],
+    zones: [{ region: "מרכז", fee: 25, freeAbove: 100 }, { region: "שרון", fee: 25, freeAbove: 100 }],
+    offers: {
+      "חסה ערבית": [12, 3.4],
+      "כוסברה": [10, 2.3],
+      "פטרוזיליה": [10, 2.3],
+      "נבטי אלפלפא": [6, 4.5],
+      "פטריות שמפיניון": [2, 16.5],
     },
   },
 ];
@@ -240,6 +277,11 @@ async function main() {
 
   const categories = new Map<string, string>();
   for (const name of CATEGORIES) categories.set(name, (await db.category.create({ data: { name } })).id);
+  for (const [parent, children] of Object.entries(SUBCATEGORIES)) {
+    for (const name of children) {
+      categories.set(name, (await db.category.create({ data: { name, parentId: categories.get(parent)! } })).id);
+    }
+  }
 
   const products = new Map<string, string>();
   for (const p of PRODUCTS) {

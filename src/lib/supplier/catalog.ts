@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import { categoryTree, expandCategoryIds } from "@/lib/categories";
 import { db } from "@/lib/db";
 
 export { UNIT_LABEL } from "@/lib/format";
@@ -15,9 +16,16 @@ export async function supplierForUser(userId: string) {
   return user.supplier;
 }
 
-/** מזהי התחומים של הספק, או null כשהוא עובד בכל התחומים */
-export function domainCategoryIds(supplier: { allCategories: boolean; categories: { categoryId: string }[] }) {
-  return supplier.allCategories ? null : supplier.categories.map((c) => c.categoryId);
+/**
+ * מזהי הסוגים שהספק עובד בהם, כולל תתי-התחומים של תחום ראשי שבחר במלואו,
+ * או null כשהוא עובד בכל התחומים
+ */
+export async function domainCategoryIds(supplier: { allCategories: boolean; categories: { categoryId: string }[] }) {
+  if (supplier.allCategories) return null;
+  return expandCategoryIds(
+    await categoryTree(),
+    supplier.categories.map((c) => c.categoryId),
+  );
 }
 
 /** כתובת התמונה של הצעה; הגרסה בכתובת מאפשרת שמירה ארוכה במטמון */

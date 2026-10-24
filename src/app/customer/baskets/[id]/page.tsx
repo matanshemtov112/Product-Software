@@ -4,6 +4,8 @@ import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
 import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot, compareChecks, isCheckSnapshot } from "@/lib/customer/checks";
+import { rankSuppliers } from "@/lib/customer/fit";
+import { volumeRangeFor } from "@/lib/customer/volume";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { deleteBasket, recordCheck } from "../../actions";
@@ -14,6 +16,8 @@ const SOURCE_LABEL = {
   TEMPLATE: "רשימה סטנדרטית",
   CURRENT_SUPPLIER: "לפי הספק הנוכחי",
 } as const;
+
+const PREFERENCE_LABEL = { PRICE: "מחיר קודם", BALANCED: "מאוזן", SERVICE: "שירות קודם" } as const;
 
 const date = (d: Date) => d.toLocaleDateString("he-IL");
 
@@ -49,6 +53,39 @@ export default async function BasketPage({
       ? compareChecks(lastRun.result, checkSnapshot(analysis))
       : null;
   const current = basket.currentSupplierId ? rows.find((r) => r.supplierId === basket.currentSupplierId) : undefined;
+  const ranked = rankSuppliers(
+    rows.map((r) => ({
+      supplierId: r.supplierId,
+      supplierName: r.supplierName,
+      supplier: r.supplier,
+      covered: r.snapshot.lines.length,
+      categories: r.categories,
+      totalAgorot: r.quote.share.totalAgorot,
+      deliveryAgorot: r.quote.share.deliveryAgorot,
+      bestAlternativeAgorot: r.quote.bestAlternativeAgorot,
+      gapAgorot: r.quote.gapAgorot,
+      tierName: r.quote.share.tierName,
+    })),
+    analysis.lineCount,
+    customer.preference,
+  );
+  const volume = volumeRangeFor(basket.monthlyVolumeMinAgorot);
+  // החלוקה של ההמלצה לפי סוג מוצר (תת-תחום), כדי שיהיה ברור לאיזה ספק הולך כל חלק מהסל
+  const categoryOf = new Map(basket.items.map((i) => [i.productId, i.product.category.name]));
+  const groups = new Map<string, { category: string; suppliers: Set<string>; products: string[]; totalAgorot: number }>();
+  for (const share of (result.recommended ?? result.lowestCost)?.suppliers ?? []) {
+    for (const line of share.lines) {
+      const category = categoryOf.get(line.productId) ?? "אחר";
+      const g = groups.get(category) ?? { category, suppliers: new Set(), products: [], totalAgorot: 0 };
+      g.suppliers.add(share.supplierName);
+      g.products.push(line.productName);
+      g.totalAgorot += line.lineTotalAgorot;
+      groups.set(category, g);
+    }
+  }
+  const routing = [...groups.values()]
+    .map((g) => ({ ...g, suppliers: [...g.suppliers] }))
+    .sort((a, b) => b.totalAgorot - a.totalAgorot);
 
   return (
     <div className="flex flex-col gap-5">
@@ -59,6 +96,11 @@ export default async function BasketPage({
             {SOURCE_LABEL[basket.source]}
             {basket.currentSupplier ? `: ${basket.currentSupplier.companyName}` : ""} · {basket.items.length} מוצרים ·{" "}
             {basket.deliveriesPerMonth} אספקות בחודש · נוצר {date(basket.createdAt)}
+          </p>
+          <p className="text-sm text-muted">
+            {volume
+              ? `היקף רכש: ${volume.label} בחודש. מדרגות המחיר אצל כל ספק חושבו לפי ההיקף הזה (לפי הגבול התחתון).`
+              : "מדרגות המחיר חושבו לפי הסל בלבד. אם אתם קונים יותר בחודש, עדכנו את היקף הרכש בעריכת הסל."}
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm">
@@ -173,6 +215,91 @@ export default async function BasketPage({
         </div>
       )}
 
+      {routing.length > 0 && (
+        <Card title="איזה ספק לכל סוג מוצר">
+          <p className="mb-3 text-sm text-muted">
+            לפי ההמלצה: כל קבוצת מוצרים הולכת לספק שמשתלם לה, למשל ירקות אדמה לספק אחד וירוקים לספק שמתמחה בהם.
+          </p>
+          <ul className="divide-y divide-border text-sm">
+            {routing.map((g) => (
+              <li key={g.category} className="flex flex-wrap items-start justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="font-medium">{g.category}</p>
+                  <p className="text-xs text-muted">{g.products.join(", ")}</p>
+                </div>
+                <div className="text-end">
+                  <p>{g.suppliers.join(" + ")}</p>
+                  <p className="text-xs text-muted">{shekels(g.totalAgorot)} לחודש, לפני משלוח</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {ranked.length > 0 && (
+        <Card title="לאיזה ספקים הסל שלכם מכוון">
+          <p className="mb-3 text-sm text-muted">
+            הספקים שמתאימים לסל שסימנתם, מהמתאים ביותר: לפי כמה מהסל כל ספק מכסה, כמה הוא יקר מהחלופה הזולה לאותם
+            מוצרים, ודירוג ואמינות לפי ההעדפה שלכם ({PREFERENCE_LABEL[customer.preference]}).
+          </p>
+          <ol className="flex flex-col gap-3">
+            {ranked.map((r, i) => (
+              <li
+                key={r.supplierId}
+                className={`rounded-lg border p-4 ${i === 0 ? "border-accent bg-accent-soft/40" : "border-border"}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-background text-sm font-semibold">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {r.supplierName}
+                        {r.supplierId === basket.currentSupplierId && (
+                          <span className="ms-2 rounded bg-background px-2 py-0.5 text-xs text-muted">הספק שלכם</span>
+                        )}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {r.labels.map((l) => (
+                          <span key={l} className="rounded bg-accent px-2 py-0.5 text-xs text-white">
+                            {l}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-xl font-bold">{shekels(r.totalAgorot)}</span>
+                    <span className="text-xs text-muted">לחודש ל-{r.covered} מוצרים</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2" aria-label={`התאמה ${r.score}%`}>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-background">
+                    <span className="block h-full rounded-full bg-accent" style={{ width: `${r.score}%` }} />
+                  </span>
+                  <span className="w-20 text-xs text-muted">התאמה {r.score}%</span>
+                </div>
+                <ul className="mt-2 grid gap-x-4 gap-y-0.5 text-sm text-muted sm:grid-cols-2">
+                  {r.reasons.map((reason) => (
+                    <li key={reason}>· {reason}</li>
+                  ))}
+                </ul>
+                <div className="mt-3">
+                  <Link
+                    href={`/customer/baskets/${basket.id}/inquiry/${r.supplierId}`}
+                    className="text-sm text-accent hover:underline"
+                  >
+                    פנייה לספק עם ההצעה
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
       {!result.lowestCost && (
         <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm">
           אף ספק או שילוב ספקים לא מתאים לסל כרגע. לרוב זה קורה כשההזמנה לכל אספקה קטנה ממינימום ההזמנה של הספקים: נסו
@@ -190,43 +317,6 @@ export default async function BasketPage({
         <PlanCard title="ספק יחיד" plan={result.singleSupplier} />
       </div>
       <p className="-mt-2 text-xs text-muted">כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים.</p>
-
-      {rows.length > 0 && (
-        <Card title={current ? "הספקים המתחרים" : "ההצעה של כל ספק"}>
-          <p className="mb-3 text-sm text-muted">
-            ההצעה של כל ספק לסל, מול החלופה הזולה ביותר לאותם מוצרים. אם אתם מעדיפים ספק מסוים והפער קטן, אפשר לשלוח לו
-            פנייה עם ההצעה.
-          </p>
-          <ul className="divide-y divide-border">
-            {rows.map((r) => (
-              <li key={r.supplierId} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="font-medium">
-                    {r.supplierName}
-                    {r.supplierId === basket.currentSupplierId && (
-                      <span className="ms-2 rounded bg-background px-2 py-0.5 text-xs text-muted">הספק שלכם</span>
-                    )}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {r.snapshot.lines.length} מתוך {analysis.lineCount} מוצרים · {shekels(r.quote.share.totalAgorot)} לחודש
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`text-sm ${r.quote.gapAgorot ? "" : "font-medium text-accent"}`}>
-                    {r.quote.gapAgorot ? `יקר ב-${shekels(r.quote.gapAgorot)}` : "הכי זול לאותם מוצרים"}
-                  </span>
-                  <Link
-                    href={`/customer/baskets/${basket.id}/inquiry/${r.supplierId}`}
-                    className="rounded-md border border-border px-3 py-1.5 text-sm hover:border-accent hover:text-accent"
-                  >
-                    פנייה לספק
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
 
       <details className="rounded-lg border border-border bg-surface p-5">
         <summary className="cursor-pointer font-semibold">המוצרים בסל ({basket.items.length})</summary>

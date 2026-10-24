@@ -41,7 +41,8 @@ export function ProductForm({
   tiers,
 }: {
   initial: OfferFormValues;
-  categories: { id: string; name: string }[];
+  /** סוגי מוצר לבחירה, מקובצים לפי תחום ראשי */
+  categories: { group: string; options: { id: string; name: string }[] }[];
   catalog: CatalogProduct[];
   tiers: { id: string; name: string; minMonthlyAgorot: number }[];
 }) {
@@ -97,10 +98,14 @@ export function ProductForm({
               <option value="" disabled>
                 בחירה
               </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+              {categories.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.options.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
           </Field>

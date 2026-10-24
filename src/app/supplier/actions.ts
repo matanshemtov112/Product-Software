@@ -60,9 +60,13 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   let productId = existing?.productId;
   if (!existing) {
     const catalogProduct = await db.product.findUnique({ where: { name: data.productName } });
-    const domains = domainCategoryIds(supplier);
+    const domains = await domainCategoryIds(supplier);
     if (domains && !domains.includes(catalogProduct?.categoryId ?? data.categoryId)) {
       return { error: "סוג המוצר הזה לא נמצא בתחומים שלך. אפשר להוסיף תחומים בפרטי הפרופיל." };
+    }
+    // מוצר חדש משויך לתת-תחום, לא לתחום ראשי שיש לו תתי-תחומים
+    if (!catalogProduct && (await db.category.count({ where: { parentId: data.categoryId } })) > 0) {
+      return { error: "נא לבחור סוג מוצר מדויק יותר" };
     }
     const product =
       catalogProduct ??

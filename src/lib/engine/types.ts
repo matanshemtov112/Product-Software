@@ -57,6 +57,11 @@ export interface EngineOptions {
   maxCandidates?: number;
   /** דירוג שמשמש ספק בלי מספיק ביקורות; ברירת מחדל 4 */
   neutralRating?: number;
+  /**
+   * מכפיל להיקף אצל כל ספק בקביעת מדרגת המחיר, כשהלקוח קונה בחודש יותר מהסל (volumeScale).
+   * ברירת מחדל 1: המדרגה נקבעת לפי הסל בלבד.
+   */
+  volumeScale?: number;
   /** העלות החודשית הנוכחית של הלקוח, לחישוב חיסכון */
   currentCostAgorot?: number | null;
 }

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { volumeScale } from "./optimize";
 import type { BasketLine, SupplierInput } from "./types";
 
 /** מספר הביקורות המינימלי שממנו משתמשים בדירוג האמיתי של ספק */
@@ -11,7 +12,7 @@ export const MIN_REVIEWS_FOR_RATING = 5;
 export async function loadEngineInput(basketId: string, now = new Date()) {
   const basket = await db.basket.findUniqueOrThrow({
     where: { id: basketId },
-    include: { customer: true, items: { include: { product: true } } },
+    include: { customer: true, items: { include: { product: { include: { category: true } } } } },
   });
   const productIds = basket.items.map((i) => i.productId);
 
@@ -90,6 +91,8 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
     options: {
       preference: basket.customer.preference,
       deliveriesPerMonth: basket.deliveriesPerMonth,
+      // לפי הגבול התחתון של הטווח, כדי לא להבטיח מחירים שהלקוח לא בטוח זכאי להם
+      volumeScale: volumeScale(lines, supplierInputs, basket.monthlyVolumeMinAgorot),
       currentCostAgorot,
     },
   };

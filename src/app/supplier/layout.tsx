@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
+import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { categoryCounts, supplierForUser } from "@/lib/supplier/catalog";
 import { DomainPicker } from "./domain-picker";
@@ -19,7 +20,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
 
   // הגדרה ראשונה: לפני שהספק בחר תחומים הוא רואה רק את מסך הבחירה, בכל עמוד באזור הספק
   if (!supplier.categoriesSetAt) {
-    const all = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+    const tree = await categoryTree();
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-4">
         <div>
@@ -30,7 +31,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
           </p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-5">
-          <DomainPicker categories={all} initialIds={[]} initialAll={false} submitLabel="המשך לרשימת המוצרים" />
+          <DomainPicker tree={tree} initialIds={[]} initialAll={false} submitLabel="המשך לרשימת המוצרים" />
         </div>
       </div>
     );
