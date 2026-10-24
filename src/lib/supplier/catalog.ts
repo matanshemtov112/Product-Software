@@ -7,15 +7,28 @@ export const UNIT_LABEL = { KG: "ק״ג", LITER: "ליטר", UNIT: "יחידה" 
 export async function supplierForUser(userId: string) {
   const user = await db.user.findUniqueOrThrow({
     where: { id: userId },
-    include: { supplier: { include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } } } },
+    include: {
+      supplier: { include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } }, categories: true } },
+    },
   });
   if (!user.supplier) throw new Error("User is not linked to a supplier");
   return user.supplier;
 }
 
+/** מזהי התחומים של הספק, או null כשהוא עובד בכל התחומים */
+export function domainCategoryIds(supplier: { allCategories: boolean; categories: { categoryId: string }[] }) {
+  return supplier.allCategories ? null : supplier.categories.map((c) => c.categoryId);
+}
+
+/** כתובת התמונה של הצעה; הגרסה בכתובת מאפשרת שמירה ארוכה במטמון */
+export function offerImageUrl(offer: { id: string; image: { updatedAt: Date } | null }) {
+  return offer.image ? `/api/offer-images/${offer.id}?v=${offer.image.updatedAt.getTime()}` : null;
+}
+
 const offerInclude = {
   product: { include: { category: true } },
   prices: { orderBy: { createdAt: "desc" }, include: { tier: true } },
+  image: { select: { updatedAt: true } },
 } satisfies Prisma.SupplierOfferInclude;
 
 export type OfferWithPrices = Prisma.SupplierOfferGetPayload<{ include: typeof offerInclude }>;

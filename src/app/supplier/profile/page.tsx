@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { supplierForUser } from "@/lib/supplier/catalog";
+import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
 
 const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה" } as const;
@@ -10,6 +11,7 @@ const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר
 export default async function SupplierProfile() {
   const session = await requireRole("SUPPLIER");
   const base = await supplierForUser(session.userId);
+  const categories = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
   const supplier = await db.supplier.findUniqueOrThrow({
     where: { id: base.id },
     include: { deliveryZones: { include: { region: true } }, priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
@@ -31,6 +33,17 @@ export default async function SupplierProfile() {
             minOrder: supplier.minOrderAgorot / 100,
             paymentTermsDays: supplier.paymentTermsDays,
           }}
+        />
+      </Card>
+      <Card title="התחומים שלי">
+        <p className="mb-3 text-sm text-muted">
+          בהוספת מוצר יופיעו רק סוגי המוצרים מהתחומים האלה. מוצרים שכבר ברשימה נשארים גם אם מורידים תחום.
+        </p>
+        <DomainPicker
+          categories={categories}
+          initialIds={base.categories.map((c) => c.categoryId)}
+          initialAll={base.allCategories}
+          submitLabel="שמירת התחומים"
         />
       </Card>
       <div className="grid gap-4 md:grid-cols-2">

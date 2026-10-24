@@ -111,6 +111,10 @@ model Supplier {
   reliability      Float                @default(0.9) // 0 עד 1
   contactPhone     String?
   contactEmail     String?
+  /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
+  allCategories    Boolean              @default(false)
+  /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
+  categoriesSetAt  DateTime?
   users            User[]
   categories       SupplierCategory[]
   deliveryZones    DeliveryZone[]
@@ -180,8 +184,18 @@ model SupplierOffer {
   minQuantity Float        @default(0)
   available   Boolean      @default(true)
   prices      OfferPrice[]
+  image       OfferImage?
 
   @@unique([supplierId, productId])
+}
+
+// תמונת מוצר של ספק. נשמרת במסד בגודל מוקטן, בטבלה נפרדת כדי שהרשימות לא יטענו את הקובץ.
+model OfferImage {
+  offerId     String        @id
+  offer       SupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  data        Bytes
+  contentType String
+  updatedAt   DateTime      @updatedAt
 }
 
 // מדרגת מחיר לפי היקף חודשי אצל אותו ספק.

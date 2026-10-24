@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
-import { listOffers, type OfferWithPrices, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
+import {
+  listOffers,
+  offerImageUrl,
+  type OfferWithPrices,
+  pricesByTier,
+  supplierForUser,
+  UNIT_LABEL,
+} from "@/lib/supplier/catalog";
 import { DeleteOfferButton } from "./delete-button";
+import { OfferImage } from "./offer-image";
 
 type View = "list" | "grid";
 
@@ -131,15 +139,18 @@ export default async function SupplierProducts({
             const price = basePrice(offer, firstTier?.id);
             return (
               <li key={offer.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{offer.product.name}</span>
-                    <Badges offer={offer} pending={price.pending} />
+                <div className="flex min-w-0 items-center gap-3">
+                  <OfferImage offerId={offer.id} src={offerImageUrl(offer)} name={offer.product.name} variant="thumb" />
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{offer.product.name}</span>
+                      <Badges offer={offer} pending={price.pending} />
+                    </div>
+                    <span className="text-sm text-muted">
+                      {offer.product.category.name} · אריזה {offer.packSize} {UNIT_LABEL[offer.product.unit]}
+                      {offer.brand ? ` · ${offer.brand}` : ""}
+                    </span>
                   </div>
-                  <span className="text-sm text-muted">
-                    {offer.product.category.name} · אריזה {offer.packSize} {UNIT_LABEL[offer.product.unit]}
-                    {offer.brand ? ` · ${offer.brand}` : ""}
-                  </span>
                 </div>
                 <div className="flex items-center gap-6">
                   <span className="whitespace-nowrap font-semibold">
@@ -157,6 +168,7 @@ export default async function SupplierProducts({
             const price = basePrice(offer, firstTier?.id);
             return (
               <li key={offer.id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+                <OfferImage offerId={offer.id} src={offerImageUrl(offer)} name={offer.product.name} variant="card" />
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted">{offer.product.category.name}</span>
                   <span className="font-medium">{offer.product.name}</span>

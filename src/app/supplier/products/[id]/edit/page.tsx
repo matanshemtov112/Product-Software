@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
-import { getOffer, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
+import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../../product-form";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +35,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             minQuantity: offer.minQuantity,
             available: offer.available,
             prices,
+            imageSrc: offerImageUrl(offer),
           }}
           categories={categories}
           catalog={[]}

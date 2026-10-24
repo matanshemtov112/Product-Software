@@ -1,15 +1,22 @@
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
-import { supplierForUser } from "@/lib/supplier/catalog";
+import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../product-form";
 
 export default async function NewProductPage() {
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
+  // ספק רואה רק את סוגי המוצרים והמוצרים מהתחומים שבחר
+  const domains = domainCategoryIds(supplier);
+  const inDomains = domains ? { id: { in: domains } } : {};
   const [categories, catalog] = await Promise.all([
-    db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.category.findMany({ where: inDomains, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     db.product.findMany({
-      where: { pendingReview: false, offers: { none: { supplierId: supplier.id } } },
+      where: {
+        pendingReview: false,
+        offers: { none: { supplierId: supplier.id } },
+        ...(domains ? { categoryId: { in: domains } } : {}),
+      },
       orderBy: { name: "asc" },
       select: { name: true, categoryId: true, unit: true },
     }),
@@ -29,6 +36,7 @@ export default async function NewProductPage() {
             minQuantity: 0,
             available: true,
             prices: {},
+            imageSrc: null,
           }}
           categories={categories}
           catalog={catalog}

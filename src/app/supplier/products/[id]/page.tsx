@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
-import { getOffer, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
+import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
+import { removeOfferImage } from "../../actions";
+import { OfferImage } from "../../offer-image";
 import { DeleteOfferButton } from "../../delete-button";
 
 const STATUS_LABEL = { LIVE: "פעיל", PENDING_APPROVAL: "ממתין לאישור", REJECTED: "נדחה" } as const;
@@ -25,6 +27,7 @@ export default async function ProductDetails({
   const unit = UNIT_LABEL[offer.product.unit];
   const byTier = pricesByTier(offer);
   const date = (d: Date) => d.toLocaleDateString("he-IL");
+  const imageSrc = offerImageUrl(offer);
 
   const details = [
     ["סוג מוצר", offer.product.category.name],
@@ -62,7 +65,16 @@ export default async function ProductDetails({
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[14rem_1fr_1fr]">
+        <Card title="תמונה">
+          <OfferImage offerId={offer.id} src={imageSrc} name={offer.product.name} variant="card" />
+          {imageSrc && (
+            <form action={removeOfferImage} className="mt-2">
+              <input type="hidden" name="offerId" value={offer.id} />
+              <button className="text-sm text-danger hover:underline">הסרת התמונה</button>
+            </form>
+          )}
+        </Card>
         <Card title="פרטי המוצר">
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             {details.map(([k, v]) => (

@@ -56,7 +56,8 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
 interface DemoSupplier {
   companyName: string;
   companyNumber: string;
-  categories: string[];
+  /** null: הספק בחר "כל התחומים" */
+  categories: string[] | null;
   minOrder: number;
   reliability: number;
   tiers: [string, number][];
@@ -69,7 +70,7 @@ const SUPPLIERS: DemoSupplier[] = [
   {
     companyName: "ספק דמו: בשרים הגליל",
     companyNumber: "510000001",
-    categories: ["בשר ועוף"],
+    categories: ["בשר ועוף", "קפואים"],
     minOrder: 400,
     reliability: 0.96,
     tiers: [["רגיל", 0], ["עסקי", 10000], ["היקף גבוה", 25000]],
@@ -102,7 +103,7 @@ const SUPPLIERS: DemoSupplier[] = [
   {
     companyName: "ספק דמו: מרכז המזון",
     companyNumber: "510000003",
-    categories: ["בשר ועוף", "פירות וירקות", "מוצרי חלב", "מוצרים יבשים", "משקאות", "חד-פעמי", "ביצים"],
+    categories: null,
     minOrder: 600,
     reliability: 0.88,
     tiers: [["רגיל", 0], ["עסקי", 10000], ["היקף גבוה", 25000], ["ארגוני", 50000]],
@@ -207,7 +208,9 @@ async function main() {
         minOrderAgorot: ils(s.minOrder),
         reliability: s.reliability,
         contactEmail: `supplier${i + 1}@demo.local`,
-        categories: { create: s.categories.map((c) => ({ categoryId: categories.get(c)! })) },
+        allCategories: s.categories === null,
+        categoriesSetAt: new Date(),
+        categories: { create: (s.categories ?? []).map((c) => ({ categoryId: categories.get(c)! })) },
         deliveryZones: {
           create: s.zones.map((z) => ({
             regionId: regions.get(z.region)!,

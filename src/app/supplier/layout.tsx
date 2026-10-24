@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
+import { db } from "@/lib/db";
 import { categoryCounts, supplierForUser } from "@/lib/supplier/catalog";
+import { DomainPicker } from "./domain-picker";
 import { SupplierSidebar } from "./sidebar";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,26 @@ const STATUS_NOTE = {
 export default async function SupplierLayout({ children }: { children: React.ReactNode }) {
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
+
+  // הגדרה ראשונה: לפני שהספק בחר תחומים הוא רואה רק את מסך הבחירה, בכל עמוד באזור הספק
+  if (!supplier.categoriesSetAt) {
+    const all = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col gap-4">
+        <div>
+          <p className="text-sm text-muted">ברוכים הבאים, {supplier.companyName}</p>
+          <h1 className="text-2xl font-bold">באילו תחומים אתם עובדים?</h1>
+          <p className="text-sm text-muted">
+            נציג לכם רק את סוגי המוצרים מהתחומים שתבחרו. אפשר לשנות את זה בכל זמן בפרטי הפרופיל.
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-surface p-5">
+          <DomainPicker categories={all} initialIds={[]} initialAll={false} submitLabel="המשך לרשימת המוצרים" />
+        </div>
+      </div>
+    );
+  }
+
   const categories = await categoryCounts(supplier.id);
   const total = categories.reduce((s, c) => s + c.count, 0);
   const note = STATUS_NOTE[supplier.status];

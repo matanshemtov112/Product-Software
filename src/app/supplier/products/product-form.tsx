@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
 import { saveOffer } from "../actions";
+import { ImageField } from "./image-field";
 
 interface CatalogProduct {
   name: string;
@@ -24,6 +25,7 @@ export interface OfferFormValues {
   available: boolean;
   /** מחיר בשקלים לפי מזהה מדרגה */
   prices: Record<string, string>;
+  imageSrc: string | null;
 }
 
 const UNITS = [
@@ -134,6 +136,11 @@ export function ProductForm({
           <input type="checkbox" name="available" defaultChecked={initial.available} className="size-4 accent-accent" />
           זמין להזמנה
         </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-2 font-semibold">תמונה (לא חובה)</legend>
+        <ImageField currentSrc={initial.imageSrc} />
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">

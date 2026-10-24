@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
-import { supplierForUser } from "@/lib/supplier/catalog";
+import { checkImage } from "@/lib/supplier/images";
+import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
 
 export interface FormState {
@@ -34,6 +35,8 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   const parsed = offerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const data = parsed.data;
+  const image = await checkImage(form.get("image"));
+  if (image && !image.ok) return { error: image.error };
 
   // ספק בלי מדרגות מקבל מדרגה בסיסית אחת
   const tiers = supplier.priceTiers.length
@@ -56,8 +59,13 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
 
   let productId = existing?.productId;
   if (!existing) {
+    const catalogProduct = await db.product.findUnique({ where: { name: data.productName } });
+    const domains = domainCategoryIds(supplier);
+    if (domains && !domains.includes(catalogProduct?.categoryId ?? data.categoryId)) {
+      return { error: "סוג המוצר הזה לא נמצא בתחומים שלך. אפשר להוסיף תחומים בפרטי הפרופיל." };
+    }
     const product =
-      (await db.product.findUnique({ where: { name: data.productName } })) ??
+      catalogProduct ??
       (await db.product.create({
         data: { name: data.productName, categoryId: data.categoryId, unit: data.unit, pendingReview: true },
       }));
@@ -78,6 +86,8 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     ? await db.supplierOffer.update({ where: { id: existing.id }, data: offerData })
     : await db.supplierOffer.create({ data: { ...offerData, supplierId: supplier.id, productId: productId! } });
 
+  if (image?.ok) await storeImage(offer.id, image);
+
   let held = 0;
   for (const { tier, agorot } of prices) {
     if (agorot === null) continue;
@@ -90,6 +100,36 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
 
   revalidatePath("/supplier");
   redirect(held ? `/supplier/products/${offer.id}?held=${held}` : "/supplier");
+}
+
+async function storeImage(offerId: string, image: { data: Buffer; contentType: string }) {
+  const data = new Uint8Array(image.data);
+  await db.offerImage.upsert({
+    where: { offerId },
+    create: { offerId, data, contentType: image.contentType },
+    update: { data, contentType: image.contentType },
+  });
+}
+
+/** העלאה או החלפה של תמונה ישירות מרשימת המוצרים או מעמוד הפרטים */
+export async function uploadOfferImage(form: FormData): Promise<FormState> {
+  const supplier = await currentSupplier();
+  const offerId = String(form.get("offerId") ?? "");
+  const offer = await db.supplierOffer.findFirst({ where: { id: offerId, supplierId: supplier.id } });
+  if (!offer) return { error: "המוצר לא נמצא" };
+  const image = await checkImage(form.get("image"));
+  if (!image) return { error: "לא נבחרה תמונה" };
+  if (!image.ok) return { error: image.error };
+  await storeImage(offer.id, image);
+  revalidatePath("/supplier", "layout");
+  return {};
+}
+
+export async function removeOfferImage(form: FormData) {
+  const supplier = await currentSupplier();
+  const offerId = String(form.get("offerId") ?? "");
+  await db.offerImage.deleteMany({ where: { offerId, offer: { supplierId: supplier.id } } });
+  revalidatePath("/supplier", "layout");
 }
 
 export async function deleteOffer(form: FormData) {
@@ -124,5 +164,29 @@ export async function updateProfile(_: FormState, form: FormData): Promise<FormS
     },
   });
   revalidatePath("/supplier", "layout");
+  return { saved: true };
+}
+
+/** שמירת התחומים של הספק: בהגדרה הראשונה ומעמוד הפרופיל */
+export async function saveDomains(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const supplier = await currentSupplier();
+  const all = form.get("all") === "on";
+  const requested = form.getAll("categoryId").map(String);
+  const valid = all
+    ? []
+    : (await db.category.findMany({ where: { id: { in: requested } }, select: { id: true } })).map((c) => c.id);
+  if (!all && valid.length === 0) return { error: "נא לבחור לפחות תחום אחד, או \"כל התחומים\"" };
+
+  const firstTime = supplier.categoriesSetAt === null;
+  await db.$transaction([
+    db.supplierCategory.deleteMany({ where: { supplierId: supplier.id } }),
+    db.supplierCategory.createMany({ data: valid.map((categoryId) => ({ supplierId: supplier.id, categoryId })) }),
+    db.supplier.update({
+      where: { id: supplier.id },
+      data: { allCategories: all, categoriesSetAt: supplier.categoriesSetAt ?? new Date() },
+    }),
+  ]);
+  revalidatePath("/supplier", "layout");
+  if (firstTime) redirect("/supplier");
   return { saved: true };
 }
