@@ -155,15 +155,17 @@ model SupplierCategory {
 
 // מוצר קנוני: מה שהלקוח מחפש ושם בסל. הצעות הספקים ממופות אליו.
 model Product {
-  id          String          @id @default(cuid())
-  name        String          @unique
-  categoryId  String
-  category    Category        @relation(fields: [categoryId], references: [id])
-  unit        Unit
-  spec        String?
-  offers      SupplierOffer[]
-  basketItems BasketItem[]
-  alerts      PriceAlert[]
+  id            String          @id @default(cuid())
+  name          String          @unique
+  categoryId    String
+  category      Category        @relation(fields: [categoryId], references: [id])
+  unit          Unit
+  spec          String?
+  /// מוצר שספק הוסיף ועדיין לא נבדק מול הקטלוג (כפילויות, שם, יחידה)
+  pendingReview Boolean         @default(false)
+  offers        SupplierOffer[]
+  basketItems   BasketItem[]
+  alerts        PriceAlert[]
 }
 
 model SupplierOffer {

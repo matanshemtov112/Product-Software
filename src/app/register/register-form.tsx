@@ -1,8 +1,10 @@
 "use client";
 
+import { ActionForm } from "@/components/action-form";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
 import { register } from "@/lib/auth/actions";
+import { KindToggle } from "@/components/kind-toggle";
 
 const BUSINESS_TYPES = ["מסעדה", "בית קפה", "קייטרינג", "מלון", "מאפייה", "יצרן מזון", "אחר"];
 
@@ -17,22 +19,8 @@ export function RegisterForm({
   const [state, action, pending] = useActionState(register, {});
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <div role="radiogroup" className="grid grid-cols-2 gap-2">
-        {(["customer", "supplier"] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            role="radio"
-            aria-checked={kind === k}
-            onClick={() => setKind(k)}
-            className={`rounded-md border px-3 py-2 ${kind === k ? "border-accent bg-accent-soft font-medium" : "border-border"}`}
-          >
-            {k === "customer" ? "עסק שקונה" : "ספק"}
-          </button>
-        ))}
-      </div>
-      <input type="hidden" name="kind" value={kind} />
+    <ActionForm action={action} className="flex flex-col gap-4">
+      <KindToggle value={kind} onChange={setKind} />
 
       <Field label="שם מלא">
         <Input name="name" autoComplete="name" required />
@@ -96,6 +84,6 @@ export function RegisterForm({
 
       <FormError message={state.error} />
       <SubmitButton pending={pending}>הרשמה</SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

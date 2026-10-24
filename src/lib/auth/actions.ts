@@ -23,6 +23,7 @@ async function startSession(session: Session) {
 }
 
 const loginSchema = z.object({
+  kind: z.enum(["customer", "supplier"]),
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),
 });
@@ -33,6 +34,13 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const user = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
     return { error: "אימייל או סיסמה שגויים" };
+  }
+  // צוות הפלטפורמה נכנס מכל אחת מהלשוניות
+  if (parsed.data.kind === "supplier" && user.role === "CUSTOMER") {
+    return { error: "החשבון הזה שייך למסעדה. נא לבחור \"כניסה כמסעדה\"" };
+  }
+  if (parsed.data.kind === "customer" && user.role === "SUPPLIER") {
+    return { error: "החשבון הזה שייך לספק. נא לבחור \"כניסה כספק\"" };
   }
   await startSession({ userId: user.id, role: user.role, name: user.name });
   redirect(HOME_BY_ROLE[user.role]);
