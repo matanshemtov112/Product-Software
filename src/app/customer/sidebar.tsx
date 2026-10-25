@@ -17,11 +17,13 @@ export function CustomerSidebar({
   cuisine,
   saved,
   replies,
+  reviewsAboutMe,
 }: {
   businessName: string;
   cuisine: string;
   saved: { id: string; name: string; lastCheck: string | null }[];
   replies: number;
+  reviewsAboutMe: number;
 }) {
   const pathname = usePathname();
   const item = (selected: boolean) =>
@@ -62,6 +64,21 @@ export function CustomerSidebar({
         )}
       </div>
       <div>
+        <p className="px-3 pb-1 text-xs font-medium text-muted">חיפוש ספקים</p>
+        <ul className="flex flex-col gap-0.5">
+          <li>
+            <Link href="/customer/competitors" className={item(pathname === "/customer/competitors")}>
+              מתחרים לספק שלי
+            </Link>
+          </li>
+          <li>
+            <Link href="/customer/photo-search" className={item(pathname === "/customer/photo-search")}>
+              חיפוש מוצר בצילום
+            </Link>
+          </li>
+        </ul>
+      </div>
+      <div>
         <p className="px-3 pb-1 text-xs font-medium text-muted">החשבון שלי</p>
         <ul className="flex flex-col gap-0.5">
           <li>
@@ -73,6 +90,12 @@ export function CustomerSidebar({
             <Link href="/customer/inquiries" className={item(pathname === "/customer/inquiries")}>
               <span>פניות לספקים</span>
               {replies > 0 && <span className="text-xs text-muted">{replies} תשובות</span>}
+            </Link>
+          </li>
+          <li>
+            <Link href="/customer/reviews" className={item(pathname === "/customer/reviews")}>
+              <span>ביקורות עליי</span>
+              {reviewsAboutMe > 0 && <span className="text-xs text-muted">{reviewsAboutMe}</span>}
             </Link>
           </li>
           <li>

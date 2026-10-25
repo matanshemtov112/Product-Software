@@ -29,13 +29,14 @@ export default async function CustomerLayout({ children }: { children: React.Rea
     );
   }
 
-  const [saved, replies] = await Promise.all([
+  const [saved, replies, reviewsAboutMe] = await Promise.all([
     db.basket.findMany({
       where: { customerId: customer.id, savedAt: { not: null } },
       select: { id: true, name: true, runs: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
       orderBy: { savedAt: "asc" },
     }),
     db.negotiationRequest.count({ where: { customerId: customer.id, status: { in: ["OFFERED", "CLOSED"] } } }),
+    db.customerReview.count({ where: { customerId: customer.id } }),
   ]);
 
   return (
@@ -46,6 +47,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
           cuisine={customer.cuisine}
           saved={saved.map((b) => ({ id: b.id, name: b.name, lastCheck: b.runs[0]?.createdAt.toISOString() ?? null }))}
           replies={replies}
+          reviewsAboutMe={reviewsAboutMe}
         />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">{children}</div>

@@ -104,6 +104,7 @@ model Customer {
   users               User[]
   baskets             Basket[]
   reviews             Review[]
+  reviewsBySuppliers  CustomerReview[]
   negotiations        NegotiationRequest[]
   alerts              PriceAlert[]
   createdAt           DateTime             @default(now())
@@ -129,6 +130,7 @@ model Supplier {
   priceTiers       PriceTier[]
   offers           SupplierOffer[]
   reviews          Review[]
+  customerReviews  CustomerReview[]
   negotiations     NegotiationRequest[]
   currentBaskets   Basket[]
   createdAt        DateTime             @default(now())
@@ -301,6 +303,24 @@ model Review {
   createdAt      DateTime     @default(now())
 
   @@index([supplierId, status])
+}
+
+/// ביקורת של ספק על לקוח. ספק יכול לכתוב רק על לקוח שפנה אליו, ביקורת אחת לכל לקוח (אפשר לעדכן)
+model CustomerReview {
+  id            String   @id @default(cuid())
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  overall       Int
+  payment       Int // עמידה בתנאי תשלום
+  communication Int // תקשורת והתנהלות
+  text          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([supplierId, customerId])
+  @@index([customerId, updatedAt])
 }
 
 model NegotiationRequest {

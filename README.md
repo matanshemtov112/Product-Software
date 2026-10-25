@@ -23,7 +23,16 @@ npm run db:seed             # נתוני דמו (מוחק את כל הנתוני
 npm run dev                 # http://localhost:3000
 ```
 
-חשבונות דמו (סיסמה `demo1234`): `customer@demo.local`, `supplier1@demo.local` עד `supplier4@demo.local`, `admin@demo.local`.
+חשבונות דמו (סיסמה `demo1234`): `customer@demo.local`, `supplier1@demo.local` עד `supplier5@demo.local`, `admin@demo.local`.
+
+## חיפוש מוצר בצילום
+
+הלקוח מצלם מוצר, והמערכת שולחת את התמונה ל-Claude (מודל `claude-opus-5-5`) יחד עם רשימת המוצרים בקטלוג. Claude מחזיר אילו מוצרים מהקטלוג מופיעים בתמונה ואילו דומים להם, והמערכת מציגה את הספקים באזור של הלקוח שמוכרים אותם ([src/lib/photo-search](src/lib/photo-search)).
+
+- כדי להפעיל: להגדיר `ANTHROPIC_API_KEY` בסביבת השרת. בלי מפתח המסך מציג שהחיפוש לא הופעל, ושאר המערכת עובדת כרגיל.
+- כל חיפוש הוא קריאה בתשלום ל-API של Claude.
+- אם המודל מסרב לבקשה מסיבות בטיחות, ה-API מריץ אותה אוטומטית על מודל חלופי (`fallbacks: "default"`).
+- לבדיקות בלי מפתח (לא בייצור): `PHOTO_SEARCH_FAKE_RESULT='{"description":"...","exact":["פטריות שמפיניון"],"similar":[]}'`.
 
 ## בדיקות
 

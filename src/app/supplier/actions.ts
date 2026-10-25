@@ -215,3 +215,34 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/inquiries/${inquiryId}`);
 }
+
+const rating = z.coerce.number().int().min(1, "נא לבחור דירוג").max(5);
+const customerReviewSchema = z.object({
+  customerId: z.string().min(1),
+  inquiryId: z.string().min(1),
+  overall: rating,
+  payment: rating,
+  communication: rating,
+  text: z.string().trim().max(1000).optional(),
+});
+
+/** ביקורת של הספק על לקוח שפנה אליו; ביקורת אחת לכל לקוח, ושליחה חוזרת מעדכנת אותה */
+export async function saveCustomerReview(_: FormState, form: FormData): Promise<FormState> {
+  const supplier = await currentSupplier();
+  const parsed = customerReviewSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "נא לדרג את כל שלושת הנושאים" };
+  const { customerId, inquiryId, text, ...scores } = parsed.data;
+  const inquiry = await db.negotiationRequest.findFirst({
+    where: { id: inquiryId, supplierId: supplier.id, customerId },
+    select: { id: true },
+  });
+  if (!inquiry) return { error: "אפשר לכתוב ביקורת רק על לקוח שפנה אליכם" };
+  const data = { ...scores, text: text || null };
+  await db.customerReview.upsert({
+    where: { supplierId_customerId: { supplierId: supplier.id, customerId } },
+    create: { supplierId: supplier.id, customerId, ...data },
+    update: data,
+  });
+  revalidatePath(`/supplier/inquiries/${inquiryId}`);
+  redirect(`/supplier/inquiries/${inquiryId}?reviewed=1`);
+}

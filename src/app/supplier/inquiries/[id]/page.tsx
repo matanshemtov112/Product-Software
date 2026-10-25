@@ -7,10 +7,18 @@ import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL, isQuoteSnapshot } from "@/lib/inquiries";
 import { supplierForUser } from "@/lib/supplier/catalog";
+import { CustomerReviewForm } from "./customer-review-form";
 import { ReplyForm } from "./reply-form";
 
-export default async function SupplierInquiry({ params }: { params: Promise<{ id: string }> }) {
+export default async function SupplierInquiry({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ reviewed?: string }>;
+}) {
   const { id } = await params;
+  const { reviewed } = await searchParams;
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
   const inquiry = await db.negotiationRequest.findFirst({
@@ -28,6 +36,9 @@ export default async function SupplierInquiry({ params }: { params: Promise<{ id
     inquiry.status = "READ";
   }
   const { customer } = inquiry;
+  const myReview = await db.customerReview.findUnique({
+    where: { supplierId_customerId: { supplierId: supplier.id, customerId: customer.id } },
+  });
   const contact = customer.users[0];
   const gapPct = inquiry.gapAgorot ? (inquiry.gapAgorot / (inquiry.totalAgorot - inquiry.gapAgorot)) * 100 : 0;
 
@@ -100,6 +111,22 @@ export default async function SupplierInquiry({ params }: { params: Promise<{ id
         <p className="mt-3 text-xs text-muted">
           ההזמנה עצמה נעשית ישירות מולכם. אפשר גם לעדכן מחירים ברשימת המוצרים, כך שההשוואות הבאות יציגו אותם.
         </p>
+      </Card>
+
+      <Card title={`ביקורת על ${customer.businessName}`}>
+        <p className="mb-3 text-sm text-muted">
+          איך היה לעבוד עם הלקוח? הביקורת מופיעה ללקוח באזור שלו, עם שם החברה שלכם. אפשר לעדכן אותה בכל זמן.
+        </p>
+        {reviewed && myReview && (
+          <p role="status" className="mb-3 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent">
+            הביקורת נשמרה ומופיעה ללקוח.
+          </p>
+        )}
+        <CustomerReviewForm
+          inquiryId={inquiry.id}
+          customerId={customer.id}
+          existing={myReview && { overall: myReview.overall, payment: myReview.payment, communication: myReview.communication, text: myReview.text }}
+        />
       </Card>
     </div>
   );

@@ -31,7 +31,7 @@ const CATEGORIES = [
 
 /** תתי-תחומים: ספק יכול להתמחות רק בחלק מתחום, וכל מוצר משויך לתת-תחום המדויק */
 const SUBCATEGORIES: Record<string, string[]> = {
-  "פירות וירקות": ["ירקות אדמה ושורש", "ירקות פרי", "ירוקים ועשבי תיבול", "פטריות", "פירות"],
+  "פירות וירקות": ["ירקות אדמה ושורש", "ירקות פרי", "ירוקים, עשבי תיבול ופטריות", "פירות"],
   "בשר ועוף": ["עוף והודו", "בקר וטלה"],
 };
 
@@ -44,7 +44,7 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
   { name: "בצל יבש", category: "ירקות אדמה ושורש", unit: "KG" },
   { name: "תפוחי אדמה", category: "ירקות אדמה ושורש", unit: "KG" },
   { name: "מלפפונים", category: "ירקות פרי", unit: "KG" },
-  { name: "חסה ערבית", category: "ירוקים ועשבי תיבול", unit: "UNIT" },
+  { name: "חסה ערבית", category: "ירוקים, עשבי תיבול ופטריות", unit: "UNIT" },
   { name: "לימונים", category: "פירות", unit: "KG" },
   { name: "גבינה צהובה 28%", category: "מוצרי חלב", unit: "KG" },
   { name: "גבינה לבנה 5%", category: "מוצרי חלב", unit: "KG" },
@@ -66,10 +66,10 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
   { name: "בטטה", category: "ירקות אדמה ושורש", unit: "KG" },
   { name: "גזר", category: "ירקות אדמה ושורש", unit: "KG" },
   { name: "כרוב לבן", category: "ירקות אדמה ושורש", unit: "KG" },
-  { name: "כוסברה", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "צרור" },
-  { name: "פטרוזיליה", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "צרור" },
-  { name: "נבטי אלפלפא", category: "ירוקים ועשבי תיבול", unit: "UNIT", spec: "קופסה 100 גרם" },
-  { name: "פטריות שמפיניון", category: "פטריות", unit: "KG" },
+  { name: "כוסברה", category: "ירוקים, עשבי תיבול ופטריות", unit: "UNIT", spec: "צרור" },
+  { name: "פטרוזיליה", category: "ירוקים, עשבי תיבול ופטריות", unit: "UNIT", spec: "צרור" },
+  { name: "נבטי אלפלפא", category: "ירוקים, עשבי תיבול ופטריות", unit: "UNIT", spec: "קופסה 100 גרם" },
+  { name: "פטריות שמפיניון", category: "ירוקים, עשבי תיבול ופטריות", unit: "KG" },
 ];
 
 interface DemoSupplier {
@@ -184,7 +184,7 @@ const SUPPLIERS: DemoSupplier[] = [
   {
     companyName: "ספק דמו: ירוקי השדה",
     companyNumber: "510000005",
-    categories: ["ירוקים ועשבי תיבול", "פטריות"],
+    categories: ["ירוקים, עשבי תיבול ופטריות"],
     minOrder: 60,
     reliability: 0.94,
     tiers: [["רגיל", 0], ["עסקי", 5000]],
@@ -454,6 +454,20 @@ async function main() {
       createdAt: new Date(Date.now() - 2 * 3_600_000),
     },
   });
+
+  // מסעדת הדמו פנתה בעבר לשני ספקים, והם כתבו עליה ביקורת
+  const pastInquiries: [string, string, string, number, number, number, string][] = [
+    ["510000001", "נשמח לשמוע על מחיר קבוע לחזה עוף.", "נוכל לתת ₪33 לק״ג בהתחייבות חודשית.", 5, 5, 4, "לקוח מסודר, משלמים בזמן ומזמינים יום מראש."],
+    ["510000003", "יש אפשרות למשלוח פעמיים בשבוע?", "כן, ללא תוספת מעל ₪1,500 להזמנה.", 4, 4, 5, "תקשורת מצוינת. פעם אחת התשלום התעכב בשבוע."],
+  ];
+  for (const [number, message, reply, overall, payment, communication, text] of pastInquiries) {
+    const supplierId = supplierIds[number].id;
+    const at = new Date(Date.now() - 20 * 86_400_000);
+    await db.negotiationRequest.create({
+      data: { customerId: customer.id, supplierId, gapAgorot: 0, message, reply, status: "OFFERED", repliedAt: at, createdAt: at },
+    });
+    await db.customerReview.create({ data: { customerId: customer.id, supplierId, overall, payment, communication, text } });
+  }
 
   console.log(
     `Seeded ${REGIONS.length} regions, ${CATEGORIES.length} categories, ${PRODUCTS.length} products, ${SUPPLIERS.length} suppliers. Demo password: ${DEMO_PASSWORD}`,
