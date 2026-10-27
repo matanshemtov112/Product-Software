@@ -41,7 +41,12 @@ export default async function NewBasket({
           <h1 className="text-2xl font-bold">בדיקת מחירים חדשה</h1>
           <p className="text-sm text-muted">איך נתחיל? בכל דרך תוכלו לעדכן מוצרים וכמויות לפני ההשוואה.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
+          <ModeCard
+            href="/customer/invoices/new"
+            title="יש לי חשבונית מהספק"
+            text="מצלמים או מעלים חשבונית, ואנחנו קוראים ממנה את המוצרים, הכמויות והמחירים שאתם משלמים היום."
+          />
           <ModeCard
             href="?mode=manual"
             title="יש לי רשימת מוצרים"

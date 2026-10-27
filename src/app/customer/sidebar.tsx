@@ -41,6 +41,12 @@ export function CustomerSidebar({
       >
         + בדיקת מחירים חדשה
       </Link>
+      <Link
+        href="/customer/invoices/new"
+        className={`mx-1 -mt-2 rounded-md border px-3 py-2 text-center text-sm font-medium ${pathname.startsWith("/customer/invoices") ? "border-accent bg-accent-soft text-accent" : "border-accent text-accent hover:bg-accent-soft"}`}
+      >
+        העלאת חשבונית
+      </Link>
       <div>
         <p className="px-3 pb-1 text-xs font-medium text-muted">הסלים השמורים שלי</p>
         {saved.length === 0 ? (
@@ -51,10 +57,15 @@ export function CustomerSidebar({
               const stale = since(b.lastCheck) === "הגיע הזמן לבדוק";
               return (
                 <li key={b.id}>
-                  <Link href={`/customer/baskets/${b.id}`} className={item(pathname.startsWith(`/customer/baskets/${b.id}`))}>
+                  <Link
+                    href={`/customer/baskets/${b.id}`}
+                    className={item(pathname.startsWith(`/customer/baskets/${b.id}`))}
+                  >
                     <span className="min-w-0">
                       <span className="block truncate">{b.name}</span>
-                      <span className={`block text-xs ${stale ? "text-accent" : "text-muted"}`}>{since(b.lastCheck)}</span>
+                      <span className={`block text-xs ${stale ? "text-accent" : "text-muted"}`}>
+                        {since(b.lastCheck)}
+                      </span>
                     </span>
                   </Link>
                 </li>

@@ -16,6 +16,7 @@ import { DeleteBasketButton } from "./delete-button";
 const SOURCE_LABEL = {
   MANUAL: "רשימה שבניתם",
   TEMPLATE: "רשימה סטנדרטית",
+  INVOICE: "מחשבונית",
   CURRENT_SUPPLIER: "לפי הספק הנוכחי",
 } as const;
 

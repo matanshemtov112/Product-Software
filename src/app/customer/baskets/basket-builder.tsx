@@ -54,7 +54,7 @@ export function BasketBuilder({
   submitLabel,
 }: {
   basketId?: string;
-  source: "MANUAL" | "CURRENT_SUPPLIER" | "TEMPLATE";
+  source: "MANUAL" | "CURRENT_SUPPLIER" | "TEMPLATE" | "INVOICE";
   currentSupplier?: { id: string; name: string };
   catalog: CatalogItem[];
   initialRows: BuilderRow[];

@@ -36,7 +36,7 @@ const basketSchema = z.object({
   basketId: z.string().optional(),
   name: z.string().trim().min(2, "נא לתת שם לסל").max(60),
   deliveriesPerMonth: z.coerce.number().int().min(1, "לפחות אספקה אחת בחודש").max(31),
-  source: z.enum(["MANUAL", "CURRENT_SUPPLIER", "TEMPLATE"]),
+  source: z.enum(["MANUAL", "CURRENT_SUPPLIER", "TEMPLATE", "INVOICE"]),
   currentSupplierId: z.string().optional(),
   currentSupplierName: z.string().trim().max(80).optional(),
 });

@@ -37,6 +37,7 @@ enum BasketSource {
   MANUAL // הלקוח בחר מוצרים מהקטלוג
   CURRENT_SUPPLIER // מוצרים מהקטלוג של הספק שהלקוח עובד איתו היום
   TEMPLATE // רשימה סטנדרטית לפי סוג המסעדה
+  INVOICE // שורות שנקראו מחשבונית של הספק הנוכחי
 }
 
 enum PriceKind {
@@ -105,6 +106,7 @@ model Customer {
   baskets             Basket[]
   reviews             Review[]
   reviewsBySuppliers  CustomerReview[]
+  invoices            Invoice[]
   negotiations        NegotiationRequest[]
   alerts              PriceAlert[]
   createdAt           DateTime             @default(now())
@@ -262,6 +264,24 @@ model Basket {
   items                  BasketItem[]
   runs                   OptimizationRun[]
   createdAt              DateTime          @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+/// חשבונית שהלקוח העלה: מה נקרא ממנה. הקובץ עצמו לא נשמר.
+model Invoice {
+  id           String   @id @default(cuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// שם הספק כפי שמופיע בחשבונית; לא נחשף לספקים אחרים
+  supplierName String?
+  invoiceDate  String?
+  fileCount    Int
+  /// השורות שנקראו (InvoiceLine[]), מחירים ללא מע״מ באגורות
+  lines        Json
+  /// הסל שנוצר מהחשבונית אחרי אישור הלקוח
+  basketId     String?
+  createdAt    DateTime @default(now())
 
   @@index([customerId, createdAt])
 }
