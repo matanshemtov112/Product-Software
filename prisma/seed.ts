@@ -381,6 +381,7 @@ async function main() {
         create: {
           name: "הסל החודשי",
           deliveriesPerMonth: 4,
+          currentSupplierName: "סיטונאות דמו (לא רשום במערכת)",
           savedAt: new Date(Date.now() - 31 * 86_400_000),
           items: {
             create: DEMO_BASKET.map(([name, quantity, currentPrice]) => ({
@@ -449,6 +450,21 @@ async function main() {
       gapAgorot: ils(64),
       totalAgorot: productsAgorot,
       quote: { tierName: "רגיל", lines, productsAgorot, deliveryAgorot: 0, totalAgorot: productsAgorot, missingProducts: [] },
+      customerProfile: {
+        businessName: "קפה דמו",
+        businessType: "בית קפה",
+        cuisine: "בית קפה",
+        city: "רמת גן",
+        region: "מרכז",
+        contactName: "נועה (דמו)",
+        phone: "050-0000000",
+        email: "cafe@demo.local",
+        monthlyVolume: "₪10,000–20,000",
+        deliveriesPerMonth: 4,
+        basketName: "עוף לבית הקפה",
+        itemCount: 2,
+        customerSince: new Date().toLocaleDateString("he-IL"),
+      },
       message:
         "שלום, אנחנו קפה דמו ומעוניינים לעבוד איתכם. קיבלנו דרך המערכת את ההצעה שלכם, אבל יש פער של ₪64 בחודש מול ספק מתחרה. נשמח לשמוע אם תוכלו להתאים את המחיר.",
       createdAt: new Date(Date.now() - 2 * 3_600_000),

@@ -58,6 +58,7 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
   const units = new Map(basket.items.map((i) => [i.productId, i.product.unit]));
   const names = new Map(lines.map((l) => [l.productId, l.productName]));
   const categoryOf = new Map(basket.items.map((i) => [i.productId, i.product.category.name]));
+  const paid = new Map(basket.items.map((i) => [i.productId, i.currentUnitPriceAgorot]));
   const rows: QuoteRow[] = [];
   for (const s of suppliers) {
     const quote = quoteForSupplier(lines, suppliers, options, s.id);
@@ -66,7 +67,7 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
       supplierId: s.id,
       supplierName: s.name,
       quote,
-      snapshot: snapshot(quote, units, names),
+      snapshot: snapshot(quote, units, names, paid),
       categories: [...new Set(quote.share.lines.map((l) => categoryOf.get(l.productId) ?? ""))].filter(Boolean),
       supplier: s,
     });
@@ -80,7 +81,12 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
   };
 }
 
-function snapshot(quote: SupplierQuote, units: Map<string, Unit>, names: Map<string, string>): QuoteSnapshot {
+function snapshot(
+  quote: SupplierQuote,
+  units: Map<string, Unit>,
+  names: Map<string, string>,
+  paid: Map<string, number | null>,
+): QuoteSnapshot {
   const { share } = quote;
   return {
     tierName: share.tierName,
@@ -91,6 +97,7 @@ function snapshot(quote: SupplierQuote, units: Map<string, Unit>, names: Map<str
       billedQuantity: l.billedQuantity,
       unitPriceAgorot: l.unitPriceAgorot,
       lineTotalAgorot: l.lineTotalAgorot,
+      customerPaidAgorot: paid.get(l.productId) ?? null,
     })),
     productsAgorot: share.productsAgorot,
     deliveryAgorot: share.deliveryAgorot,

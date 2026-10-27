@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot } from "@/lib/customer/checks";
+import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
@@ -37,6 +38,7 @@ const basketSchema = z.object({
   deliveriesPerMonth: z.coerce.number().int().min(1, "לפחות אספקה אחת בחודש").max(31),
   source: z.enum(["MANUAL", "CURRENT_SUPPLIER", "TEMPLATE"]),
   currentSupplierId: z.string().optional(),
+  currentSupplierName: z.string().trim().max(80).optional(),
 });
 
 /** יצירה או עדכון של סל: המוצרים, הכמות החודשית והמחיר שהלקוח משלם היום (לא חובה) */
@@ -57,10 +59,17 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
   }
   if (items.length === 0) return { error: "נא לבחור לפחות מוצר אחד" };
 
-  const currentSupplierId =
+  // ספק נוכחי: נבחר מהקטלוג שלו, או נכתב בשם; אם השם הוא של ספק רשום מקשרים אליו כדי להשוות גם מול המחירון שלו
+  const typedName = data.currentSupplierName || null;
+  const currentSupplier =
     data.source === "CURRENT_SUPPLIER" && data.currentSupplierId
-      ? (await db.supplier.findFirst({ where: { id: data.currentSupplierId, status: "APPROVED" } }))?.id ?? null
-      : null;
+      ? await db.supplier.findFirst({ where: { id: data.currentSupplierId, status: "APPROVED" } })
+      : typedName
+        ? await db.supplier.findFirst({
+            where: { companyName: { equals: typedName, mode: "insensitive" }, status: "APPROVED" },
+          })
+        : null;
+  const currentSupplierId = currentSupplier?.id ?? null;
   const volume = VOLUME_RANGES.find((r) => r.key === form.get("volume"));
   const fields = {
     name: data.name,
@@ -69,6 +78,7 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
     deliveriesPerMonth: data.deliveriesPerMonth,
     source: data.source,
     currentSupplierId,
+    currentSupplierName: currentSupplier?.companyName ?? typedName,
   };
 
   let basketId = data.basketId;
@@ -151,6 +161,7 @@ export async function sendInquiry(_: FormState, form: FormData): Promise<FormSta
       gapAgorot: row.quote.gapAgorot,
       totalAgorot: row.snapshot.totalAgorot,
       quote: JSON.parse(JSON.stringify(row.snapshot)),
+      customerProfile: JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))),
       message,
     },
   });

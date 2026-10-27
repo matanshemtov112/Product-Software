@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
-import { catalogForBasket, supplierPriceList } from "@/lib/customer/catalog";
+import { catalogForBasket, supplierPriceList, suppliersInRegion } from "@/lib/customer/catalog";
 import { customerForUser, getBasket } from "@/lib/customer/quotes";
 import { volumeRangeFor } from "@/lib/customer/volume";
 import { BasketBuilder, type BuilderRow } from "../../basket-builder";
@@ -58,6 +58,8 @@ export default async function EditBasket({ params }: { params: Promise<{ id: str
           initialName={basket.name}
           initialDeliveries={basket.deliveriesPerMonth}
           initialVolume={volumeRangeFor(basket.monthlyVolumeMinAgorot)?.key ?? ""}
+          initialSupplierName={basket.currentSupplierName ?? ""}
+          supplierNames={(await suppliersInRegion(customer.regionId)).map((s) => s.companyName)}
           submitLabel="שמירה והשוואה מחדש"
         />
       </div>

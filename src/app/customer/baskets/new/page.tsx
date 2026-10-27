@@ -179,7 +179,8 @@ export default async function NewBasket({
           initialRows={rows}
           initialName={`סל ${today()}`}
           initialDeliveries={4}
-            initialVolume=""
+          initialVolume=""
+          supplierNames={(await suppliersInRegion(customer.regionId)).map((s) => s.companyName)}
           submitLabel="השוואת מחירים"
         />
       </div>

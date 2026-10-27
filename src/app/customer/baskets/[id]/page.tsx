@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
+import { SendToSupplierLink } from "@/components/send-to-supplier";
 import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot, compareChecks, isCheckSnapshot } from "@/lib/customer/checks";
 import { rankSuppliers } from "@/lib/customer/fit";
+import { comparePaidPrices } from "@/lib/customer/paid-prices";
 import { volumeRangeFor } from "@/lib/customer/volume";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { shekels, UNIT_LABEL } from "@/lib/format";
@@ -70,6 +72,25 @@ export default async function BasketPage({
     customer.preference,
   );
   const volume = volumeRangeFor(basket.monthlyVolumeMinAgorot);
+  // המחירים שהלקוח משלם היום מול ההצעה הזולה במערכת לכל מוצר
+  const paid = comparePaidPrices(
+    basket.items.map((i) => ({
+      productId: i.productId,
+      productName: i.product.name,
+      unit: i.product.unit,
+      quantity: i.monthlyQuantity,
+      paidAgorot: i.currentUnitPriceAgorot,
+    })),
+    rows.flatMap((r) =>
+      r.quote.share.lines.map((l) => ({
+        supplierId: r.supplierId,
+        supplierName: r.supplierName,
+        productId: l.productId,
+        unitPriceAgorot: l.unitPriceAgorot,
+      })),
+    ),
+  );
+  const yourSupplier = basket.currentSupplier?.companyName ?? basket.currentSupplierName;
   // החלוקה של ההמלצה לפי סוג מוצר (תת-תחום), כדי שיהיה ברור לאיזה ספק הולך כל חלק מהסל
   const categoryOf = new Map(basket.items.map((i) => [i.productId, i.product.category.name]));
   const groups = new Map<string, { category: string; suppliers: Set<string>; products: string[]; totalAgorot: number }>();
@@ -94,7 +115,7 @@ export default async function BasketPage({
           <h1 className="text-2xl font-bold">{basket.name}</h1>
           <p className="text-sm text-muted">
             {SOURCE_LABEL[basket.source]}
-            {basket.currentSupplier ? `: ${basket.currentSupplier.companyName}` : ""} · {basket.items.length} מוצרים ·{" "}
+            {yourSupplier ? ` · הספק שלכם היום: ${yourSupplier}` : ""} · {basket.items.length} מוצרים ·{" "}
             {basket.deliveriesPerMonth} אספקות בחודש · נוצר {date(basket.createdAt)}
           </p>
           <p className="text-sm text-muted">
@@ -175,6 +196,119 @@ export default async function BasketPage({
         </div>
       )}
 
+      {paid.lines.length > 0 && (
+        <Card title="המחירים שלכם היום מול המערכת">
+          <div className="flex flex-col gap-4">
+            {paid.monthlySavingAgorot > 0 ? (
+              <div className="rounded-lg bg-accent-soft p-4">
+                <p className="text-sm">
+                  מצאנו מחיר טוב יותר ל-{paid.lines.filter((l) => l.monthlySavingAgorot > 0).length} מתוך {paid.lines.length}{" "}
+                  המוצרים שמילאתם להם מחיר{yourSupplier ? ` (מול ${yourSupplier})` : ""}
+                </p>
+                <p className="text-3xl font-bold text-accent">חיסכון של עד {shekels(paid.monthlySavingAgorot)} בחודש</p>
+                <p className="text-sm text-muted">{shekels(paid.monthlySavingAgorot * 12)} בשנה, לפי מחיר ליחידה ולפני משלוח</p>
+                {result.monthlySavingsAgorot !== null && result.monthlySavingsAgorot > 0 && (
+                  <p className="mt-1 text-sm">
+                    כולל משלוחים ומינימום הזמנה, לפי האפשרות המומלצת: חיסכון של{" "}
+                    <strong>{shekels(result.monthlySavingsAgorot)}</strong> בחודש.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="rounded-lg bg-background px-4 py-3 text-sm">
+                המחירים שאתם משלמים היום טובים או שווים למה שיש כרגע במערכת. אפשר עדיין לפנות לספק ולבקש הצעה.
+              </p>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[32rem] text-sm">
+                <thead className="text-muted">
+                  <tr>
+                    <th className="pb-2 text-start font-normal">מוצר</th>
+                    <th className="pb-2 text-start font-normal">אתם משלמים</th>
+                    <th className="pb-2 text-start font-normal">הכי זול במערכת</th>
+                    <th className="pb-2 text-start font-normal">חיסכון בחודש</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paid.lines.map((l) => {
+                    const unit = UNIT_LABEL[l.unit as keyof typeof UNIT_LABEL];
+                    return (
+                      <tr key={l.productId} className="border-t border-border">
+                        <td className="py-2">
+                          {l.productName}
+                          <span className="block text-xs text-muted">
+                            {l.quantity} {unit} בחודש
+                          </span>
+                        </td>
+                        <td className="py-2">
+                          {shekels(l.paidAgorot, 2)} / {unit}
+                        </td>
+                        <td className="py-2">
+                          {l.best ? (
+                            <>
+                              <span className={l.monthlySavingAgorot > 0 ? "font-medium text-accent" : ""}>
+                                {shekels(l.best.unitPriceAgorot, 2)} / {unit}
+                              </span>
+                              <span className="block text-xs text-muted">
+                                {l.best.supplierName}
+                                {l.best.supplierId === basket.currentSupplierId ? " (הספק שלכם)" : ""}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-muted">אין ספק במערכת</span>
+                          )}
+                        </td>
+                        <td className="py-2">
+                          {l.monthlySavingAgorot > 0 ? (
+                            <span className="font-semibold text-accent">{shekels(l.monthlySavingAgorot)}</span>
+                          ) : l.best ? (
+                            <span className="text-muted">המחיר שלכם טוב יותר</span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {paid.suppliers.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="font-medium">אפשרויות להוזלה אצל ספקים במערכת</p>
+                <ul className="flex flex-col gap-2">
+                  {paid.suppliers.map((s) => (
+                    <li
+                      key={s.supplierId}
+                      className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          {s.supplierName}
+                          {s.supplierId === basket.currentSupplierId && (
+                            <span className="ms-2 rounded bg-background px-2 py-0.5 text-xs text-muted">הספק שלכם</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-muted">
+                          חיסכון של {shekels(s.monthlySavingAgorot)} בחודש על {s.products.join(", ")}
+                        </p>
+                      </div>
+                      <SendToSupplierLink href={`/customer/baskets/${basket.id}/inquiry/${s.supplierId}`} />
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted">
+                  המחירים במערכת הם מהמחירון של כל ספק, לפי מדרגת ההיקף שלכם. ההוזלה תקפה אחרי שהספק מאשר אותה בתשובה
+                  להודעה שלכם.
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
       {current && (
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4">
@@ -205,14 +339,6 @@ export default async function BasketPage({
         <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
           לא הצלחנו לתמחר את הסל אצל הספק הנוכחי שלכם (ייתכן שהסל קטן ממינימום ההזמנה שלו).
         </p>
-      )}
-
-      {!current && result.monthlySavingsAgorot !== null && result.monthlySavingsAgorot > 0 && (
-        <div className="rounded-lg bg-accent-soft p-5">
-          <p className="text-sm">חיסכון חודשי אפשרי</p>
-          <p className="text-3xl font-bold text-accent">{shekels(result.monthlySavingsAgorot)}</p>
-          <p className="text-sm text-muted">{shekels(result.annualSavingsAgorot!)} בשנה, מול המחירים שאתם משלמים היום</p>
-        </div>
       )}
 
       {routing.length > 0 && (
@@ -287,12 +413,7 @@ export default async function BasketPage({
                   ))}
                 </ul>
                 <div className="mt-3">
-                  <Link
-                    href={`/customer/baskets/${basket.id}/inquiry/${r.supplierId}`}
-                    className="text-sm text-accent hover:underline"
-                  >
-                    פנייה לספק עם ההצעה
-                  </Link>
+                  <SendToSupplierLink href={`/customer/baskets/${basket.id}/inquiry/${r.supplierId}`} />
                 </div>
               </li>
             ))}

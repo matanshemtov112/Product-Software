@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { QuoteTable } from "@/components/quote-table";
 import { requireRole } from "@/lib/auth/current";
+import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { INQUIRY_STATUS_LABEL, OPEN_INQUIRY } from "@/lib/inquiries";
+import { INQUIRY_STATUS_LABEL, OPEN_INQUIRY, profileRows } from "@/lib/inquiries";
 import { InquiryForm } from "./inquiry-form";
 
 export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
@@ -17,15 +18,30 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
   if (!basket) notFound();
   const row = (await analyzeBasket(basket.id)).rows.find((r) => r.supplierId === supplierId);
   if (!row) notFound();
+  const profile = await customerProfile(customer.id, basket);
+  const paidLines = row.snapshot.lines.filter((l) => l.customerPaidAgorot != null);
+  const cheaperToday = paidLines.filter((l) => l.customerPaidAgorot! < l.unitPriceAgorot);
+  const cheaperHere = paidLines.filter((l) => l.customerPaidAgorot! > l.unitPriceAgorot);
   const open = await db.negotiationRequest.findFirst({
-    where: { customerId: customer.id, supplierId, status: { in: OPEN_INQUIRY } },
+    where: {
+      customerId: customer.id,
+      supplierId,
+      status: { in: OPEN_INQUIRY },
+    },
   });
 
   const gap = row.quote.gapAgorot;
-  const defaultMessage = gap
-    ? `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם. קיבלנו דרך המערכת את ההצעה שלכם לסל החודשי שלנו, ` +
-      `אבל יש פער של ${shekels(gap)} בחודש מול ספק מתחרה. נשמח לשמוע אם תוכלו להתאים את המחיר.`
-    : `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם על הסל החודשי שלנו. נשמח שתיצרו קשר.`;
+  const defaultMessage =
+    (gap
+      ? `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם. קיבלנו דרך המערכת את ההצעה שלכם לסל החודשי שלנו, ` +
+        `אבל יש פער של ${shekels(gap)} בחודש מול ספק מתחרה. נשמח לשמוע אם תוכלו להתאים את המחיר.`
+      : `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם על הסל החודשי שלנו. נשמח שתיצרו קשר.`) +
+    (cheaperHere.length
+      ? ` ראינו אצלכם במערכת מחיר טוב יותר ממה שאנחנו משלמים היום על ${cheaperHere.map((l) => l.productName).join(", ")}, ונשמח שתאשרו לנו אותו.`
+      : "") +
+    (cheaperToday.length
+      ? ` היום אנחנו משלמים פחות על ${cheaperToday.map((l) => l.productName).join(", ")}; המחירים מופיעים בהצעה.`
+      : "");
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,7 +51,8 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         </Link>
         <h1 className="text-2xl font-bold">פנייה ל{row.supplierName}</h1>
         <p className="text-sm text-muted">
-          הספק יקבל את ההצעה הזאת, את ההודעה שלכם ואת פרטי הקשר שלכם. שם הספק המתחרה לא נחשף, רק גובה הפער.
+          הספק יקבל את ההצעה, ההודעה שלכם וכל הפרטים שמסרתם בהרשמה ובסל
+          {paidLines.length ? ", כולל המחירים שאתם משלמים היום" : ""}. שם הספק המתחרה ושם הספק הנוכחי שלכם לא נחשפים.
         </p>
       </div>
 
@@ -63,11 +80,34 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         <QuoteTable quote={row.snapshot} />
       </Card>
 
+      <Card title="הפרטים שיישלחו לספק">
+        <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+          {profileRows(profile).map(([label, value]) => (
+            <div key={label} className="flex gap-2">
+              <dt className="w-32 shrink-0 text-muted">{label}</dt>
+              <dd className="min-w-0 break-words">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 text-xs text-muted">
+          הפרטים נלקחים מההרשמה ומהסל. לעדכון סוג המסעדה:{" "}
+          <Link href="/customer/profile" className="text-accent">
+            סוג המסעדה
+          </Link>
+          ; לעדכון ההיקף והאספקות:{" "}
+          <Link href={`/customer/baskets/${basket.id}/edit`} className="text-accent">
+            עריכת הסל
+          </Link>
+          .
+        </p>
+      </Card>
+
       <Card title="ההודעה לספק">
         {open ? (
           <p className="text-sm">
-            כבר שלחתם פנייה לספק הזה ב-{open.createdAt.toLocaleDateString("he-IL")} (סטטוס:{" "}
-            {INQUIRY_STATUS_LABEL[open.status]}). אפשר לשלוח פנייה חדשה אחרי שהספק יענה.
+            כבר שלחתם פנייה לספק הזה ב-
+            {open.createdAt.toLocaleDateString("he-IL")} (סטטוס: {INQUIRY_STATUS_LABEL[open.status]}). אפשר לשלוח פנייה
+            חדשה אחרי שהספק יענה.
           </p>
         ) : (
           <InquiryForm basketId={basket.id} supplierId={supplierId} defaultMessage={defaultMessage} />

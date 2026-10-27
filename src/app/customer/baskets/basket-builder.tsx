@@ -35,6 +35,8 @@ export function BasketBuilder({
   initialName,
   initialDeliveries,
   initialVolume,
+  initialSupplierName = "",
+  supplierNames = [],
   submitLabel,
 }: {
   basketId?: string;
@@ -46,6 +48,10 @@ export function BasketBuilder({
   initialDeliveries: number;
   /** מפתח מ-VOLUME_RANGES, או "" כשלא נבחר */
   initialVolume: string;
+  /** שם הספק שהלקוח עובד איתו היום, כפי שכתב אותו */
+  initialSupplierName?: string;
+  /** שמות הספקים במערכת, להשלמה אוטומטית של שם הספק הנוכחי */
+  supplierNames?: string[];
   submitLabel: string;
 }) {
   const [state, action, pending] = useActionState(saveBasket, {});
@@ -103,6 +109,29 @@ export function BasketBuilder({
         ספקים נותנים מחיר טוב יותר ללקוח שקונה יותר. אם הסל הוא רק חלק מהקניות החודשיות שלכם, בחרו את ההיקף הכולל ונחשב
         לפיו את מדרגת המחיר אצל כל ספק.
       </p>
+
+      {!checklist && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-background/60 p-4">
+          <Field label="הספק שאתם עובדים איתו היום (לא חובה)">
+            <Input
+              name="currentSupplierName"
+              list="current-suppliers"
+              defaultValue={initialSupplierName}
+              maxLength={80}
+              placeholder="למשל: הירקן של משה"
+            />
+          </Field>
+          <datalist id="current-suppliers">
+            {supplierNames.map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
+          <p className="text-xs text-muted">
+            מלאו את שם הספק ואת המחיר שאתם משלמים לו היום בכל מוצר, ונראה לכם איפה יש במערכת מחיר טוב יותר. שם הספק
+            שלכם לא נחשף לספקים אחרים.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -220,7 +249,7 @@ export function BasketBuilder({
           </div>
         )}
         <p className="text-xs text-muted">
-          המחיר שאתם משלמים היום לא חובה. אם תמלאו אותו לכל המוצרים, נחשב כמה תחסכו בחודש.
+          המחיר שאתם משלמים היום (ליחידה, ללא מע״מ) לא חובה. בכל מוצר שתמלאו נראה אם יש במערכת מחיר טוב יותר וכמה תחסכו בחודש.
         </p>
       </div>
 

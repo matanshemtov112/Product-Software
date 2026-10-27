@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { ActionForm } from "@/components/action-form";
-import { FormError, SubmitButton } from "@/components/form";
+import { FormError } from "@/components/form";
+import { SendToSupplierButton } from "@/components/send-to-supplier";
 import { sendInquiry } from "../../../../actions";
 
 export function InquiryForm({
@@ -30,7 +31,7 @@ export function InquiryForm({
       />
       <FormError message={state.error} />
       <div>
-        <SubmitButton pending={pending}>שליחת הפנייה</SubmitButton>
+        <SendToSupplierButton pending={pending} />
       </div>
     </ActionForm>
   );

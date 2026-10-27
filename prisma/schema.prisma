@@ -248,6 +248,8 @@ model Basket {
   /// הספק שהלקוח עובד איתו היום, כשהסל נבנה מהקטלוג שלו
   currentSupplierId      String?
   currentSupplier        Supplier?         @relation(fields: [currentSupplierId], references: [id], onDelete: SetNull)
+  /// שם הספק הנוכחי כפי שהלקוח כתב אותו (גם ספק שלא רשום במערכת); לא נחשף לספקים אחרים
+  currentSupplierName    String?
   /// טווח היקף הרכש החודשי של הלקוח (₪, ללא מע״מ); קובע מדרגות מחיר כשהוא גדול מהסל
   monthlyVolumeMinAgorot Int?
   monthlyVolumeMaxAgorot Int?
@@ -334,6 +336,8 @@ model NegotiationRequest {
   gapAgorot   Int // פער מול החלופה הזולה; בלי שם המתחרה
   /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
   quote       Json?
+  /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
+  customerProfile Json?
   /// סה"כ ההצעה של הספק, כולל משלוח
   totalAgorot Int               @default(0)
   message     String

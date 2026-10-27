@@ -5,7 +5,7 @@ import { QuoteTable } from "@/components/quote-table";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { INQUIRY_STATUS_LABEL, isQuoteSnapshot } from "@/lib/inquiries";
+import { INQUIRY_STATUS_LABEL, isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { CustomerReviewForm } from "./customer-review-form";
 import { ReplyForm } from "./reply-form";
@@ -87,6 +87,20 @@ export default async function SupplierInquiry({
           )}
         </div>
       </div>
+
+      {isCustomerProfile(inquiry.customerProfile) && (
+        <Card title="פרטי הלקוח">
+          <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+            {profileRows(inquiry.customerProfile).map(([label, value]) => (
+              <div key={label} className="flex gap-2">
+                <dt className="w-32 shrink-0 text-muted">{label}</dt>
+                <dd className="min-w-0 break-words">{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-xs text-muted">כפי שהלקוח מסר בהרשמה ובסל, ביום הפנייה.</p>
+        </Card>
+      )}
 
       <Card title="ההודעה מהלקוח">
         <p className="whitespace-pre-line text-sm">{inquiry.message}</p>
