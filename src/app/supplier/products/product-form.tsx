@@ -20,6 +20,7 @@ export interface OfferFormValues {
   unit: "KG" | "LITER" | "UNIT";
   brand: string;
   supplierSku: string;
+  supplierProductName: string;
   packSize: number;
   minQuantity: number;
   available: boolean;
@@ -124,6 +125,14 @@ export function ProductForm({
               <input type="hidden" name="unit" value={unit} />
             </>
           )}
+          <Field label="השם שלכם למוצר, כמו בחשבונית (לא חובה)">
+            <Input
+              name="supplierProductName"
+              defaultValue={initial.supplierProductName}
+              maxLength={80}
+              placeholder="למשל: קנולה פח 18 ל׳"
+            />
+          </Field>
           <Field label="מותג (לא חובה)">
             <Input name="brand" defaultValue={initial.brand} />
           </Field>

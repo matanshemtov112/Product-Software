@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { categoryTree, expandCategoryIds } from "@/lib/categories";
 import { db } from "@/lib/db";
+import { searchItems, type SearchFields } from "@/lib/search";
 
 export { UNIT_LABEL } from "@/lib/format";
 
@@ -34,7 +35,7 @@ export function offerImageUrl(offer: { id: string; image: { updatedAt: Date } | 
 }
 
 const offerInclude = {
-  product: { include: { category: true } },
+  product: { include: { category: { include: { parent: true } } } },
   prices: { orderBy: { createdAt: "desc" }, include: { tier: true } },
   image: { select: { updatedAt: true } },
 } satisfies Prisma.SupplierOfferInclude;
@@ -42,18 +43,28 @@ const offerInclude = {
 export type OfferWithPrices = Prisma.SupplierOfferGetPayload<{ include: typeof offerInclude }>;
 
 export async function listOffers(supplierId: string, filters: { q?: string; categoryId?: string }) {
-  const q = filters.q?.trim();
-  return db.supplierOffer.findMany({
-    where: {
-      supplierId,
-      product: {
-        ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
-        ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-      },
-    },
+  const offers = await db.supplierOffer.findMany({
+    where: { supplierId, ...(filters.categoryId ? { product: { categoryId: filters.categoryId } } : {}) },
     include: offerInclude,
     orderBy: { product: { name: "asc" } },
   });
+  return searchItems(offers, filters.q ?? "", offerSearchFields);
+}
+
+/** מה מחפשים במוצר של ספק: השם בקטלוג, השם של הספק, שמות נרדפים, מותג, מק"ט וקטגוריה */
+export function offerSearchFields(offer: {
+  supplierProductName: string | null;
+  brand: string | null;
+  supplierSku: string | null;
+  product: { name: string; aliases: string[]; category: { name: string; parent: { name: string } | null } };
+}): SearchFields {
+  return {
+    name: offer.product.name,
+    aliases: [offer.supplierProductName, offer.brand, offer.supplierSku, ...offer.product.aliases].filter(
+      (a): a is string => Boolean(a),
+    ),
+    categories: [offer.product.category.name, offer.product.category.parent?.name].filter((c): c is string => Boolean(c)),
+  };
 }
 
 export async function getOffer(supplierId: string, offerId: string) {

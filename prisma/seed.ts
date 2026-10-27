@@ -33,12 +33,14 @@ const CATEGORIES = [
 const SUBCATEGORIES: Record<string, string[]> = {
   "פירות וירקות": ["ירקות אדמה ושורש", "ירקות פרי", "ירוקים, עשבי תיבול ופטריות", "פירות"],
   "בשר ועוף": ["עוף והודו", "בקר וטלה"],
+  "מוצרים יבשים": ["שמנים", "קמח, אורז וסוכר", "שימורים ורטבים"],
 };
 
-const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] = [
+/** aliases: שמות נוספים שלקוחות וספקים משתמשים בהם, לחיפוש */
+const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string; aliases?: string[] }[] = [
   { name: "חזה עוף טרי", category: "עוף והודו", unit: "KG", spec: "טרי, כשר" },
   { name: "שוקיים עוף", category: "עוף והודו", unit: "KG", spec: "טרי, כשר" },
-  { name: "בקר טחון", category: "בקר וטלה", unit: "KG", spec: "טרי, 15% שומן" },
+  { name: "בקר טחון", category: "בקר וטלה", unit: "KG", spec: "טרי, 15% שומן", aliases: ["בשר טחון"] },
   { name: "אנטריקוט", category: "בקר וטלה", unit: "KG", spec: "טרי" },
   { name: "עגבניות", category: "ירקות פרי", unit: "KG" },
   { name: "בצל יבש", category: "ירקות אדמה ושורש", unit: "KG" },
@@ -51,16 +53,19 @@ const PRODUCTS: { name: string; category: string; unit: Unit; spec?: string }[] 
   { name: "שמנת מתוקה 32%", category: "מוצרי חלב", unit: "LITER" },
   { name: "חלב 3%", category: "מוצרי חלב", unit: "LITER" },
   { name: "ביצים L", category: "ביצים", unit: "UNIT", spec: "תבנית 30" },
-  { name: "קמח לבן", category: "מוצרים יבשים", unit: "KG" },
-  { name: "אורז פרסי", category: "מוצרים יבשים", unit: "KG" },
-  { name: "שמן קנולה", category: "מוצרים יבשים", unit: "LITER" },
-  { name: "סוכר לבן", category: "מוצרים יבשים", unit: "KG" },
+  { name: "קמח לבן", category: "קמח, אורז וסוכר", unit: "KG", aliases: ["קמח חיטה", "קמח רב תכליתי"] },
+  { name: "אורז פרסי", category: "קמח, אורז וסוכר", unit: "KG" },
+  { name: "שמן קנולה", category: "שמנים", unit: "LITER", aliases: ["שמן לפתית", "שמן צמחי"] },
+  { name: "שמן סויה", category: "שמנים", unit: "LITER", aliases: ["שמן צמחי"] },
+  { name: "שמן חמניות", category: "שמנים", unit: "LITER", aliases: ["שמן חמנייה"] },
+  { name: "שמן זית", category: "שמנים", unit: "LITER", aliases: ["שמן זית כתית"] },
+  { name: "סוכר לבן", category: "קמח, אורז וסוכר", unit: "KG" },
   { name: "פחית שתייה קלה 330 מ״ל", category: "משקאות", unit: "UNIT" },
   { name: "קופסת אלומיניום לטייק-אווי", category: "חד-פעמי", unit: "UNIT" },
   { name: "גבינת מוצרלה", category: "מוצרי חלב", unit: "KG", spec: "מגורדת, לפיצה" },
-  { name: "רסק עגבניות", category: "מוצרים יבשים", unit: "KG" },
+  { name: "רסק עגבניות", category: "שימורים ורטבים", unit: "KG", aliases: ["פסטה עגבניות"] },
   { name: "קפה פולים", category: "קפה", unit: "KG" },
-  { name: "צ׳יפס קפוא", category: "קפואים", unit: "KG" },
+  { name: "צ׳יפס קפוא", category: "קפואים", unit: "KG", aliases: ["תפוחי אדמה קפואים", "פריט"] },
   { name: "לחמניות המבורגר", category: "מאפים", unit: "UNIT" },
   { name: "פילה סלמון", category: "דגים ופירות ים", unit: "KG", spec: "טרי" },
   { name: "בטטה", category: "ירקות אדמה ושורש", unit: "KG" },
@@ -81,8 +86,8 @@ interface DemoSupplier {
   reliability: number;
   tiers: [string, number][];
   zones: { region: string; fee: number; freeAbove: number | null }[];
-  /** מוצר → [גודל אריזה, מחיר במדרגה הראשונה]; המדרגות הבאות זולות ב-3% כל אחת */
-  offers: Record<string, [number, number]>;
+  /** מוצר → [גודל אריזה, מחיר במדרגה הראשונה, השם של הספק למוצר]; המדרגות הבאות זולות ב-3% כל אחת */
+  offers: Record<string, [number, number] | [number, number, string]>;
 }
 
 const SUPPLIERS: DemoSupplier[] = [
@@ -99,7 +104,7 @@ const SUPPLIERS: DemoSupplier[] = [
       "שוקיים עוף": [5, 21.5],
       "בקר טחון": [2, 62],
       "אנטריקוט": [1, 139],
-      "צ׳יפס קפוא": [10, 9.4],
+      "צ׳יפס קפוא": [10, 9.4, "צ'יפס חתוך דק"],
     },
   },
   {
@@ -153,14 +158,18 @@ const SUPPLIERS: DemoSupplier[] = [
       "ביצים L": [30, 1.05],
       "קמח לבן": [25, 3.2],
       "אורז פרסי": [5, 9.8],
-      "שמן קנולה": [18, 9.5],
+      // לכל ספק שם משלו למוצר; הלקוח מוצא אותו גם בשם הקנוני וגם בשם של הספק
+      "שמן קנולה": [18, 9.5, "קנולה פח 18 ל׳"],
+      "שמן סויה": [18, 8.9, "סויה פח 18 ל׳"],
+      "שמן חמניות": [5, 11.2, "חמניות בקבוק 5 ל׳"],
+      "שמן זית": [4, 32, "זית כתית מעולה 4 ל׳"],
       "סוכר לבן": [25, 4.1],
       "פחית שתייה קלה 330 מ״ל": [24, 2.1],
       "קופסת אלומיניום לטייק-אווי": [100, 0.85],
       "גבינת מוצרלה": [2, 36],
       "רסק עגבניות": [5, 8.9],
       "קפה פולים": [1, 72],
-      "צ׳יפס קפוא": [10, 8.9],
+      "צ׳יפס קפוא": [10, 8.9, "פריט 9 מ״מ"],
       "לחמניות המבורגר": [40, 1.35],
       "פילה סלמון": [1, 98],
     },
@@ -286,7 +295,7 @@ async function main() {
   const products = new Map<string, string>();
   for (const p of PRODUCTS) {
     const created = await db.product.create({
-      data: { name: p.name, unit: p.unit, spec: p.spec, categoryId: categories.get(p.category)! },
+      data: { name: p.name, unit: p.unit, spec: p.spec, aliases: p.aliases ?? [], categoryId: categories.get(p.category)! },
     });
     products.set(p.name, created.id);
   }
@@ -322,11 +331,12 @@ async function main() {
       },
       include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
     });
-    for (const [productName, [packSize, basePrice]] of Object.entries(s.offers)) {
+    for (const [productName, [packSize, basePrice, supplierProductName]] of Object.entries(s.offers)) {
       await db.supplierOffer.create({
         data: {
           supplierId: supplier.id,
           productId: products.get(productName)!,
+          supplierProductName,
           packSize,
           prices: {
             create: supplier.priceTiers.map((tier, t) => ({

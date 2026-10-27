@@ -31,6 +31,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             unit: offer.product.unit,
             brand: offer.brand ?? "",
             supplierSku: offer.supplierSku ?? "",
+            supplierProductName: offer.supplierProductName ?? "",
             packSize: offer.packSize,
             minQuantity: offer.minQuantity,
             available: offer.available,

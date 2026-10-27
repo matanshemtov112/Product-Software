@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { UNIT_LABEL } from "@/lib/format";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
+import { normalize, searchItems } from "@/lib/search";
 import { saveBasket } from "../actions";
 
 export interface CatalogItem {
@@ -12,7 +13,20 @@ export interface CatalogItem {
   name: string;
   unit: keyof typeof UNIT_LABEL;
   category: string;
+  parentCategory?: string;
+  /** שמות נוספים: נרדפים, השמות שספקים נותנים למוצר ומותגים */
+  aliases?: string[];
+  /** בסל לפי ספק נוכחי: השם של הספק למוצר */
+  supplierName?: string;
 }
+
+const searchFields = (p: CatalogItem) => ({
+  name: p.name,
+  aliases: p.aliases,
+  categories: [p.category, p.parentCategory].filter((c): c is string => Boolean(c)),
+});
+
+const MAX_RESULTS = 20;
 
 export interface BuilderRow {
   productId: string;
@@ -57,24 +71,36 @@ export function BasketBuilder({
   const [state, action, pending] = useActionState(saveBasket, {});
   const [rows, setRows] = useState(initialRows);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("");
   const byId = useMemo(() => new Map(catalog.map((p) => [p.id, p])), [catalog]);
   const checklist = source === "CURRENT_SUPPLIER";
 
   const update = (productId: string, patch: Partial<BuilderRow>) =>
     setRows((prev) => prev.map((r) => (r.productId === productId ? { ...r, ...patch } : r)));
   const remove = (productId: string) => setRows((prev) => prev.filter((r) => r.productId !== productId));
-  const add = (productId: string) => {
-    if (rows.some((r) => r.productId === productId)) return;
-    setRows((prev) => [...prev, { productId, quantity: "", price: "", included: true }]);
+  const add = (productIds: string[]) => {
+    setRows((prev) => [
+      ...prev,
+      ...productIds
+        .filter((id) => !prev.some((r) => r.productId === id))
+        .map((productId) => ({ productId, quantity: "", price: "", included: true })),
+    ]);
     setSearch("");
   };
   const onSearch = (value: string) => {
     const match = catalog.find((p) => p.name === value);
-    if (match) add(match.id);
+    if (match) add([match.id]);
     else setSearch(value);
   };
 
   const available = catalog.filter((p) => !rows.some((r) => r.productId === p.id));
+  // חיפוש בקטלוג: גם בשמות שספקים נותנים למוצר, בשמות נרדפים ובקטגוריה ("שמן" מוצא את כל השמנים)
+  const results = normalize(search) ? searchItems(available, search, searchFields) : [];
+  // בסל לפי ספק נוכחי: סינון המוצרים של הספק; שורות מוסתרות עדיין נשלחות עם הטופס
+  const visible = new Set(
+    (filter ? searchItems(catalog, filter, searchFields) : catalog).map((p) => p.id),
+  );
+  const filteredOut = rows.filter((r) => !visible.has(r.productId)).length;
   const included = rows.filter((r) => r.included).length;
 
   return (
@@ -143,10 +169,38 @@ export function BasketBuilder({
           </span>
         </div>
         {checklist && (
-          <p className="text-sm text-muted">
-            סמנו את המוצרים שאתם קונים מהספק ומלאו כמה אתם צורכים בחודש. המחיר מולא לפי המחירון של הספק; אם אתם משלמים
-            מחיר אחר, עדכנו אותו.
-          </p>
+          <>
+            <p className="text-sm text-muted">
+              סמנו את המוצרים שאתם קונים מהספק ומלאו כמה אתם צורכים בחודש. המחיר מולא לפי המחירון של הספק; אם אתם משלמים
+              מחיר אחר, עדכנו אותו.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="search"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={`חיפוש בקטלוג של ${currentSupplier?.name ?? "הספק"}, למשל "שמן"`}
+                aria-label="חיפוש בקטלוג של הספק"
+                className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 outline-none focus:border-accent"
+              />
+              {filter && (
+                <span className="text-sm text-muted">
+                  {rows.length - filteredOut} מוצרים מתאימים
+                  {rows.length - filteredOut > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRows((prev) => prev.map((r) => (visible.has(r.productId) ? { ...r, included: true } : r)))
+                      }
+                      className="ms-2 text-accent hover:underline"
+                    >
+                      סימון כולם
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+          </>
         )}
 
         {rows.length === 0 ? (
@@ -162,6 +216,7 @@ export function BasketBuilder({
               return (
                 <li
                   key={r.productId}
+                  hidden={!visible.has(r.productId)}
                   className={`flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-4 ${r.included ? "" : "opacity-60"}`}
                 >
                   <label className="flex min-w-0 flex-1 items-center gap-2">
@@ -176,7 +231,10 @@ export function BasketBuilder({
                     )}
                     <span className="min-w-0">
                       <span className="block font-medium">{p.name}</span>
-                      <span className="block text-xs text-muted">{p.category}</span>
+                      <span className="block text-xs text-muted">
+                        {p.supplierName && p.supplierName !== p.name ? `אצל הספק: ${p.supplierName} · ` : ""}
+                        {p.category}
+                      </span>
                     </span>
                   </label>
                   {r.included && <input type="hidden" name="productId" value={r.productId} />}
@@ -190,7 +248,7 @@ export function BasketBuilder({
                         value={r.quantity}
                         onChange={(e) => update(r.productId, { quantity: e.target.value, included: true })}
                         disabled={!r.included && !checklist}
-                        required={r.included}
+                        required={r.included && visible.has(r.productId)}
                         aria-label={`כמות חודשית של ${p.name}`}
                         className="w-24 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent"
                         dir="ltr"
@@ -235,7 +293,7 @@ export function BasketBuilder({
               list="basket-catalog"
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="+ הוספת מוצר: חיפוש בקטלוג"
+              placeholder='+ הוספת מוצר: חיפוש בקטלוג, למשל "שמן" או השם אצל הספק שלכם'
               aria-label="הוספת מוצר מהקטלוג"
               className="rounded-md border border-dashed border-border bg-surface px-3 py-2 outline-none focus:border-accent"
             />
@@ -246,6 +304,55 @@ export function BasketBuilder({
                 </option>
               ))}
             </datalist>
+            {normalize(search) && (
+              <div className="rounded-lg border border-border bg-surface p-2" aria-live="polite">
+                {results.length === 0 ? (
+                  <p className="p-2 text-sm text-muted">לא מצאנו מוצר בשם הזה בקטלוג.</p>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-2 pb-2 text-sm">
+                      <span className="text-muted">{results.length} מוצרים מתאימים</span>
+                      {results.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => add(results.slice(0, MAX_RESULTS).map((p) => p.id))}
+                          className="text-accent hover:underline"
+                        >
+                          הוספת כולם לסל
+                        </button>
+                      )}
+                    </div>
+                    <ul className="divide-y divide-border">
+                      {results.slice(0, MAX_RESULTS).map((p) => {
+                        // כשהמוצר נמצא בזכות שם אחר, מראים באיזה שם
+                        const nameHit = normalize(p.name).includes(normalize(search))
+                          ? undefined
+                          : (p.aliases ?? []).find((a) => normalize(a).includes(normalize(search)));
+                        return (
+                          <li key={p.id} className="flex items-center justify-between gap-3 px-2 py-2">
+                            <span className="min-w-0">
+                              <span className="block font-medium">{p.name}</span>
+                              <span className="block text-xs text-muted">
+                                {nameHit ? `נקרא גם: ${nameHit} · ` : ""}
+                                {p.category}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => add([p.id])}
+                              className="shrink-0 rounded-md border border-border px-3 py-1 text-sm hover:bg-background"
+                              aria-label={`הוספת ${p.name} לסל`}
+                            >
+                              + הוספה
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
         <p className="text-xs text-muted">

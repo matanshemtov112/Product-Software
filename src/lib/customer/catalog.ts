@@ -5,10 +5,23 @@ import type { CatalogItem } from "@/app/customer/baskets/basket-builder";
 export async function catalogForBasket(): Promise<CatalogItem[]> {
   const products = await db.product.findMany({
     where: { pendingReview: false },
-    include: { category: true },
+    include: {
+      category: { include: { parent: true } },
+      // השמות שספקים נותנים למוצר, כדי שלקוח ימצא אותו גם כשהוא מכיר אותו בשם של הספק שלו
+      offers: { where: { available: true }, select: { supplierProductName: true, brand: true } },
+    },
     orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
   });
-  return products.map((p) => ({ id: p.id, name: p.name, unit: p.unit, category: p.category.name }));
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    unit: p.unit,
+    category: p.category.name,
+    parentCategory: p.category.parent?.name,
+    aliases: [
+      ...new Set([...p.aliases, ...p.offers.flatMap((o) => [o.supplierProductName, o.brand])].filter((a): a is string => Boolean(a))),
+    ],
+  }));
 }
 
 /** ספקים מאושרים שמספקים לאזור של הלקוח, לבחירת "הספק שלי היום" */
@@ -35,7 +48,7 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
       offers: {
         where: { available: true, product: { pendingReview: false } },
         include: {
-          product: { include: { category: true } },
+          product: { include: { category: { include: { parent: true } } } },
           prices: {
             where: {
               status: "LIVE",
@@ -56,7 +69,15 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
     id: supplier.id,
     name: supplier.companyName,
     items: supplier.offers.map((o) => ({
-      product: { id: o.product.id, name: o.product.name, unit: o.product.unit, category: o.product.category.name },
+      product: {
+        id: o.product.id,
+        name: o.product.name,
+        unit: o.product.unit,
+        category: o.product.category.name,
+        parentCategory: o.product.category.parent?.name,
+        aliases: [o.supplierProductName, o.brand, ...o.product.aliases].filter((a): a is string => Boolean(a)),
+        supplierName: o.supplierProductName ?? undefined,
+      },
       priceAgorot: o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot ?? null,
     })),
   };

@@ -20,6 +20,7 @@ const offerSchema = z.object({
   unit: z.enum(["KG", "LITER", "UNIT"]),
   brand: z.string().trim().optional(),
   supplierSku: z.string().trim().optional(),
+  supplierProductName: z.string().trim().max(80).optional(),
   packSize: z.coerce.number().positive("גודל אריזה חייב להיות חיובי"),
   minQuantity: z.coerce.number().min(0).default(0),
   available: z.literal("on").optional(),
@@ -82,6 +83,7 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   const offerData = {
     brand: data.brand || null,
     supplierSku: data.supplierSku || null,
+    supplierProductName: data.supplierProductName || null,
     packSize: data.packSize,
     minQuantity: data.minQuantity,
     available: data.available === "on",

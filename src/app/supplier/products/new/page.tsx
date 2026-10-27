@@ -32,6 +32,7 @@ export default async function NewProductPage() {
             unit: "KG",
             brand: "",
             supplierSku: "",
+            supplierProductName: "",
             packSize: 1,
             minQuantity: 0,
             available: true,

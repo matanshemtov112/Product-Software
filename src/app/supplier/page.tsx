@@ -147,6 +147,7 @@ export default async function SupplierProducts({
                       <Badges offer={offer} pending={price.pending} />
                     </div>
                     <span className="text-sm text-muted">
+                      {offer.supplierProductName ? `"${offer.supplierProductName}" · ` : ""}
                       {offer.product.category.name} · אריזה {offer.packSize} {UNIT_LABEL[offer.product.unit]}
                       {offer.brand ? ` · ${offer.brand}` : ""}
                     </span>

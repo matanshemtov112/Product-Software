@@ -176,6 +176,8 @@ model Product {
   category      Category        @relation(fields: [categoryId], references: [id])
   unit          Unit
   spec          String?
+  /// שמות נוספים לאותו מוצר, לחיפוש (למשל "שמן לפתית" ל"שמן קנולה")
+  aliases       String[]        @default([])
   /// מוצר שספק הוסיף ועדיין לא נבדק מול הקטלוג (כפילויות, שם, יחידה)
   pendingReview Boolean         @default(false)
   offers        SupplierOffer[]
@@ -184,18 +186,20 @@ model Product {
 }
 
 model SupplierOffer {
-  id          String       @id @default(cuid())
-  supplierId  String
-  supplier    Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  productId   String
-  product     Product      @relation(fields: [productId], references: [id])
-  supplierSku String?
-  brand       String?
-  packSize    Float // ביחידות בסיס, למשל 10 ק״ג
-  minQuantity Float        @default(0)
-  available   Boolean      @default(true)
-  prices      OfferPrice[]
-  image       OfferImage?
+  id                  String       @id @default(cuid())
+  supplierId          String
+  supplier            Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product      @relation(fields: [productId], references: [id])
+  supplierSku         String?
+  /// השם שהספק נותן למוצר (כמו בחשבונית שלו); הלקוחות מוצאים את המוצר גם בשם הזה
+  supplierProductName String?
+  brand               String?
+  packSize            Float // ביחידות בסיס, למשל 10 ק״ג
+  minQuantity         Float        @default(0)
+  available           Boolean      @default(true)
+  prices              OfferPrice[]
+  image               OfferImage?
 
   @@unique([supplierId, productId])
 }
@@ -326,25 +330,25 @@ model CustomerReview {
 }
 
 model NegotiationRequest {
-  id          String            @id @default(cuid())
-  customerId  String
-  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId  String
-  supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  runId       String?
-  run         OptimizationRun?  @relation(fields: [runId], references: [id])
-  gapAgorot   Int // פער מול החלופה הזולה; בלי שם המתחרה
+  id              String            @id @default(cuid())
+  customerId      String
+  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String
+  supplier        Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId           String?
+  run             OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot       Int // פער מול החלופה הזולה; בלי שם המתחרה
   /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
-  quote       Json?
+  quote           Json?
   /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
   customerProfile Json?
   /// סה"כ ההצעה של הספק, כולל משלוח
-  totalAgorot Int               @default(0)
-  message     String
-  status      NegotiationStatus @default(SENT)
-  reply       String?
-  repliedAt   DateTime?
-  createdAt   DateTime          @default(now())
+  totalAgorot     Int               @default(0)
+  message         String
+  status          NegotiationStatus @default(SENT)
+  reply           String?
+  repliedAt       DateTime?
+  createdAt       DateTime          @default(now())
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])

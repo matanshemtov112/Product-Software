@@ -34,6 +34,7 @@ export default async function ProductDetails({
     ["יחידת מכירה", unit],
     ["גודל אריזה", `${offer.packSize} ${unit}`],
     ["כמות מינימלית", offer.minQuantity ? `${offer.minQuantity} ${unit}` : "אין"],
+    ["השם שלכם למוצר", offer.supplierProductName ?? "לא צוין"],
     ["מותג", offer.brand ?? "לא צוין"],
     ['מק"ט', offer.supplierSku ?? "לא צוין"],
     ["זמינות", offer.available ? "זמין" : "לא זמין"],
