@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { minOrderLabel, packLabel } from "@/lib/pack";
 import type { CatalogItem } from "@/app/customer/baskets/basket-builder";
 
 /** הקטלוג הקנוני לבחירת מוצרים לסל (בלי מוצרים שממתינים לבדיקה) */
@@ -19,7 +20,11 @@ export async function catalogForBasket(): Promise<CatalogItem[]> {
     category: p.category.name,
     parentCategory: p.category.parent?.name,
     aliases: [
-      ...new Set([...p.aliases, ...p.offers.flatMap((o) => [o.supplierProductName, o.brand])].filter((a): a is string => Boolean(a))),
+      ...new Set(
+        [...p.aliases, ...p.offers.flatMap((o) => [o.supplierProductName, o.brand])].filter((a): a is string =>
+          Boolean(a),
+        ),
+      ),
     ],
   }));
 }
@@ -77,6 +82,8 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
         parentCategory: o.product.category.parent?.name,
         aliases: [o.supplierProductName, o.brand, ...o.product.aliases].filter((a): a is string => Boolean(a)),
         supplierName: o.supplierProductName ?? undefined,
+        pack: packLabel({ ...o, unit: o.product.unit }),
+        minOrder: minOrderLabel({ ...o, unit: o.product.unit }) ?? undefined,
       },
       priceAgorot: o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot ?? null,
     })),

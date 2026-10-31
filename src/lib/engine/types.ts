@@ -24,6 +24,9 @@ export interface Offer {
   /** גודל אריזה ביחידות בסיס; הכמות מעוגלת כלפי מעלה לכפולה שלו */
   packSize: number;
   minQuantity?: number;
+  /** לתצוגה: איך המוצר מגיע והמינימום להזמנה, למשל "קרטון 15–20 ק״ג" */
+  packLabel?: string;
+  minOrderLabel?: string | null;
   /** מחיר לפי מזהה מדרגה */
   prices: Record<string, TierPrice>;
 }

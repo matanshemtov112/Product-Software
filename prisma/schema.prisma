@@ -27,6 +27,19 @@ enum Unit {
   UNIT
 }
 
+/// איך המוצר מגיע כשמזמינים אותו
+enum PackType {
+  UNIT // יחידה בודדת
+  CARTON // קרטון
+  CRATE // ארגז
+  SACK // שק
+  TIN // פח
+  BOTTLE // בקבוק
+  PACK // חבילה
+  TRAY // מגש
+  BUCKET // דלי
+}
+
 enum SupplierStatus {
   PENDING
   APPROVED
@@ -197,8 +210,15 @@ model SupplierOffer {
   /// השם שהספק נותן למוצר (כמו בחשבונית שלו); הלקוחות מוצאים את המוצר גם בשם הזה
   supplierProductName String?
   brand               String?
-  packSize            Float // ביחידות בסיס, למשל 10 ק״ג
+  /// סוג האריזה שבה המוצר מגיע; null = אריזה כללית
+  packType            PackType?
+  packSize            Float // ביחידות בסיס, למשל 10 ק״ג; במשקל משתנה: המשקל הנמוך
+  /// במשקל משתנה (למשל קרטון אנטריקוט 15–20 ק״ג): המשקל הגבוה
+  packSizeMax         Float?
+  /// כמות מינימלית להזמנה ביחידות בסיס
   minQuantity         Float        @default(0)
+  /// כמות מינימלית להזמנה באריזות (למשל 2 קרטונים); גובר על minQuantity כשמוגדר
+  minPacks            Int?
   available           Boolean      @default(true)
   prices              OfferPrice[]
   image               OfferImage?

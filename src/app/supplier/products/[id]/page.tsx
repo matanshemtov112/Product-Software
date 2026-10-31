@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
+import { minOrderLabel, packLabel } from "@/lib/pack";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
 import { removeOfferImage } from "../../actions";
 import { OfferImage } from "../../offer-image";
@@ -25,6 +26,7 @@ export default async function ProductDetails({
   const offer = await getOffer(supplier.id, id);
   if (!offer) notFound();
   const unit = UNIT_LABEL[offer.product.unit];
+  const pack = { ...offer, unit: offer.product.unit };
   const byTier = pricesByTier(offer);
   const date = (d: Date) => d.toLocaleDateString("he-IL");
   const imageSrc = offerImageUrl(offer);
@@ -32,8 +34,8 @@ export default async function ProductDetails({
   const details = [
     ["סוג מוצר", offer.product.category.name],
     ["יחידת מכירה", unit],
-    ["גודל אריזה", `${offer.packSize} ${unit}`],
-    ["כמות מינימלית", offer.minQuantity ? `${offer.minQuantity} ${unit}` : "אין"],
+    ["איך המוצר מגיע", packLabel(pack)],
+    ["כמות מינימלית להזמנה", minOrderLabel(pack) ?? "אין"],
     ["השם שלכם למוצר", offer.supplierProductName ?? "לא צוין"],
     ["מותג", offer.brand ?? "לא צוין"],
     ['מק"ט', offer.supplierSku ?? "לא צוין"],
@@ -53,7 +55,10 @@ export default async function ProductDetails({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-4">
-          <Link href={`/supplier/products/${offer.id}/edit`} className="rounded-md bg-accent px-4 py-2 text-sm text-white">
+          <Link
+            href={`/supplier/products/${offer.id}/edit`}
+            className="rounded-md bg-accent px-4 py-2 text-sm text-white"
+          >
             עריכה
           </Link>
           <DeleteOfferButton offerId={offer.id} productName={offer.product.name} />

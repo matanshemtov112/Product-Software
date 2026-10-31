@@ -1,6 +1,6 @@
 // נתוני דמו לפיתוח: אזורים, 18 קטגוריות, קטלוג קנוני, ארבעה ספקים מומצאים, לקוח דמו ואדמין.
 // הספקים והמחירים מומצאים ואינם מייצגים ספקים אמיתיים. כל המחירים ללא מע״מ.
-import { PrismaClient, type Unit } from "@prisma/client";
+import { type PackType, PrismaClient, type Unit } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth/password";
 
 const db = new PrismaClient();
@@ -89,6 +89,38 @@ interface DemoSupplier {
   /** מוצר → [גודל אריזה, מחיר במדרגה הראשונה, השם של הספק למוצר]; המדרגות הבאות זולות ב-3% כל אחת */
   offers: Record<string, [number, number] | [number, number, string]>;
 }
+
+/** איך כל מוצר מגיע אצל ספקי הדמו: סוג אריזה, משקל משתנה ומינימום באריזות */
+const DEMO_PACKS: Record<
+  string,
+  { packType: PackType; packSize?: number; packSizeMax?: number; minPacks?: number; minQuantity?: number }
+> = {
+  אנטריקוט: { packType: "CARTON", packSize: 15, packSizeMax: 20, minPacks: 1 },
+  "חזה עוף טרי": { packType: "CARTON", packSize: 5, packSizeMax: 6 },
+  "שוקיים עוף": { packType: "CARTON", packSize: 5, packSizeMax: 6 },
+  "בקר טחון": { packType: "PACK" },
+  "צ׳יפס קפוא": { packType: "CARTON" },
+  עגבניות: { packType: "CRATE", minPacks: 1 },
+  "בצל יבש": { packType: "SACK" },
+  "תפוחי אדמה": { packType: "SACK" },
+  מלפפונים: { packType: "CRATE" },
+  "חסה ערבית": { packType: "CRATE" },
+  לימונים: { packType: "CRATE" },
+  "ביצים L": { packType: "TRAY", minPacks: 2 },
+  בטטה: { packType: "CRATE" },
+  גזר: { packType: "SACK" },
+  "כרוב לבן": { packType: "CRATE" },
+  "קמח לבן": { packType: "SACK" },
+  "אורז פרסי": { packType: "SACK" },
+  "סוכר לבן": { packType: "SACK" },
+  "שמן קנולה": { packType: "TIN" },
+  "שמן סויה": { packType: "TIN" },
+  "שמן זית": { packType: "TIN" },
+  "שמן חמניות": { packType: "BOTTLE" },
+  "גבינה צהובה 28%": { packType: "PACK", minQuantity: 5 },
+  "חלב 3%": { packType: "CARTON" },
+  "פחית שתייה קלה 330 מ״ל": { packType: "CARTON" },
+};
 
 const SUPPLIERS: DemoSupplier[] = [
   {
@@ -332,12 +364,14 @@ async function main() {
       include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
     });
     for (const [productName, [packSize, basePrice, supplierProductName]] of Object.entries(s.offers)) {
+      const pack = DEMO_PACKS[productName];
       await db.supplierOffer.create({
         data: {
           supplierId: supplier.id,
           productId: products.get(productName)!,
           supplierProductName,
           packSize,
+          ...pack,
           prices: {
             create: supplier.priceTiers.map((tier, t) => ({
               tierId: tier.id,

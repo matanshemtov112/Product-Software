@@ -22,7 +22,15 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
           <tbody>
             {quote.lines.map((l) => (
               <tr key={l.productName} className="border-t border-border">
-                <td className="py-2">{l.productName}</td>
+                <td className="py-2">
+                  {l.productName}
+                  {l.pack && (
+                    <span className="block text-xs text-muted">
+                      {l.pack}
+                      {l.minOrder && ` · מינימום ${l.minOrder}`}
+                    </span>
+                  )}
+                </td>
                 <td className="py-2">
                   {l.billedQuantity} {UNIT_LABEL[l.unit]}
                   {l.billedQuantity !== l.quantity && (

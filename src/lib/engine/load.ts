@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel } from "@/lib/pack";
 import { volumeScale } from "./optimize";
 import type { BasketLine, SupplierInput } from "./types";
 
@@ -28,6 +29,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
       offers: {
         where: { productId: { in: productIds }, available: true },
         include: {
+          product: { select: { unit: true } },
           prices: {
             where: {
               status: "LIVE",
@@ -75,7 +77,15 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
             prices[p.tierId] = { unitPriceAgorot: p.unitPriceAgorot, kind: "PROMOTION" };
           }
         }
-        return { productId: o.productId, packSize: o.packSize, minQuantity: o.minQuantity, prices };
+        const pack = { ...o, unit: o.product.unit };
+        return {
+          productId: o.productId,
+          packSize: nominalPackSize(o),
+          minQuantity: minBaseQuantity(pack),
+          packLabel: packLabel(pack),
+          minOrderLabel: minOrderLabel(pack),
+          prices,
+        };
       }),
     };
   });

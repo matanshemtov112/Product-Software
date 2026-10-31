@@ -22,6 +22,9 @@ export interface QuoteSnapshot {
     lineTotalAgorot: number;
     /** המחיר ליחידה שהלקוח משלם היום, אם מילא (בלי שם הספק הנוכחי) */
     customerPaidAgorot?: number | null;
+    /** איך המוצר מגיע אצל הספק והמינימום להזמנה */
+    pack?: string;
+    minOrder?: string | null;
   }[];
   productsAgorot: number;
   deliveryAgorot: number;
@@ -53,7 +56,9 @@ export interface CustomerProfileSnapshot {
 }
 
 export function isCustomerProfile(value: unknown): value is CustomerProfileSnapshot {
-  return typeof value === "object" && value !== null && typeof (value as CustomerProfileSnapshot).businessName === "string";
+  return (
+    typeof value === "object" && value !== null && typeof (value as CustomerProfileSnapshot).businessName === "string"
+  );
 }
 
 /** השורות שמוצגות לספק ולקוח: מה בדיוק נשלח */

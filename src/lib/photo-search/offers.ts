@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { packLabel } from "@/lib/pack";
 import type { OfferRow } from "./match";
 
 /** הצעות פעילות למוצרים שזוהו, אצל ספקים מאושרים שמספקים לאזור, עם המחיר במדרגה הבסיסית */
@@ -12,7 +13,9 @@ export async function offersForProducts(names: string[], regionId: string, now =
     },
     include: {
       product: { include: { category: true } },
-      supplier: { select: { id: true, companyName: true, priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1 } } },
+      supplier: {
+        select: { id: true, companyName: true, priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1 } },
+      },
       prices: {
         where: {
           status: "LIVE",
@@ -32,5 +35,6 @@ export async function offersForProducts(names: string[], regionId: string, now =
     supplierId: o.supplier.id,
     supplierName: o.supplier.companyName,
     priceAgorot: o.prices.find((p) => p.tierId === o.supplier.priceTiers[0]?.id)?.unitPriceAgorot ?? null,
+    pack: packLabel({ ...o, unit: o.product.unit }),
   }));
 }

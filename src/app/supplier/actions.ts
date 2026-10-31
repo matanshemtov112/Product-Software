@@ -21,8 +21,11 @@ const offerSchema = z.object({
   brand: z.string().trim().optional(),
   supplierSku: z.string().trim().optional(),
   supplierProductName: z.string().trim().max(80).optional(),
+  packType: z.enum(["", "UNIT", "CARTON", "CRATE", "SACK", "TIN", "BOTTLE", "PACK", "TRAY", "BUCKET"]).default(""),
   packSize: z.coerce.number().positive("גודל אריזה חייב להיות חיובי"),
-  minQuantity: z.coerce.number().min(0).default(0),
+  packSizeMax: z.union([z.literal(""), z.coerce.number().positive()]).optional(),
+  minAmount: z.union([z.literal(""), z.coerce.number().min(0)]).optional(),
+  minIn: z.enum(["packs", "units"]).default("units"),
   available: z.literal("on").optional(),
 });
 
@@ -74,18 +77,27 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
       (await db.product.create({
         data: { name: data.productName, categoryId: data.categoryId, unit: data.unit, pendingReview: true },
       }));
-    if (await db.supplierOffer.findUnique({ where: { supplierId_productId: { supplierId: supplier.id, productId: product.id } } })) {
+    if (
+      await db.supplierOffer.findUnique({
+        where: { supplierId_productId: { supplierId: supplier.id, productId: product.id } },
+      })
+    ) {
       return { error: "המוצר הזה כבר נמצא ברשימה שלך" };
     }
     productId = product.id;
   }
 
+  const minAmount = typeof data.minAmount === "number" ? data.minAmount : 0;
   const offerData = {
     brand: data.brand || null,
     supplierSku: data.supplierSku || null,
     supplierProductName: data.supplierProductName || null,
+    packType: data.packType || null,
     packSize: data.packSize,
-    minQuantity: data.minQuantity,
+    // משקל משתנה: רק כשהטווח באמת גדל מהמשקל הנמוך
+    packSizeMax: typeof data.packSizeMax === "number" && data.packSizeMax > data.packSize ? data.packSizeMax : null,
+    minPacks: data.minIn === "packs" && minAmount > 0 ? Math.ceil(minAmount) : null,
+    minQuantity: data.minIn === "units" ? minAmount : 0,
     available: data.available === "on",
   };
   const offer = existing
@@ -181,7 +193,7 @@ export async function saveDomains(_: FormState, form: FormData): Promise<FormSta
   const valid = all
     ? []
     : (await db.category.findMany({ where: { id: { in: requested } }, select: { id: true } })).map((c) => c.id);
-  if (!all && valid.length === 0) return { error: "נא לבחור לפחות תחום אחד, או \"כל התחומים\"" };
+  if (!all && valid.length === 0) return { error: 'נא לבחור לפחות תחום אחד, או "כל התחומים"' };
 
   const firstTime = supplier.categoriesSetAt === null;
   await db.$transaction([

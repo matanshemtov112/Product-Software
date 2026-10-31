@@ -67,7 +67,7 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
       supplierId: s.id,
       supplierName: s.name,
       quote,
-      snapshot: snapshot(quote, units, names, paid),
+      snapshot: snapshot(quote, units, names, paid, s),
       categories: [...new Set(quote.share.lines.map((l) => categoryOf.get(l.productId) ?? ""))].filter(Boolean),
       supplier: s,
     });
@@ -86,8 +86,10 @@ function snapshot(
   units: Map<string, Unit>,
   names: Map<string, string>,
   paid: Map<string, number | null>,
+  supplier: SupplierInput,
 ): QuoteSnapshot {
   const { share } = quote;
+  const offers = new Map(supplier.offers.map((o) => [o.productId, o]));
   return {
     tierName: share.tierName,
     lines: share.lines.map((l) => ({
@@ -98,6 +100,8 @@ function snapshot(
       unitPriceAgorot: l.unitPriceAgorot,
       lineTotalAgorot: l.lineTotalAgorot,
       customerPaidAgorot: paid.get(l.productId) ?? null,
+      pack: offers.get(l.productId)?.packLabel,
+      minOrder: offers.get(l.productId)?.minOrderLabel,
     })),
     productsAgorot: share.productsAgorot,
     deliveryAgorot: share.deliveryAgorot,

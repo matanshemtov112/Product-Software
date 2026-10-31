@@ -22,11 +22,14 @@ function ProductResult({ product }: { product: ProductSuppliers }) {
           <li key={s.id} className="flex items-center justify-between gap-2 py-1.5">
             <span>
               {s.name}
+              {s.pack && <span className="ms-2 text-xs text-muted">{s.pack}</span>}
               {i === 0 && product.suppliers.length > 1 && s.priceAgorot != null && (
                 <span className="ms-2 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">הכי זול</span>
               )}
             </span>
-            <span className="text-muted">{s.priceAgorot != null ? `${shekels(s.priceAgorot, 2)} / ${unit}` : "אין מחיר"}</span>
+            <span className="text-muted">
+              {s.priceAgorot != null ? `${shekels(s.priceAgorot, 2)} / ${unit}` : "אין מחיר"}
+            </span>
           </li>
         ))}
       </ul>
@@ -67,7 +70,10 @@ export function PhotoSearch() {
 
   return (
     <div className="flex flex-col gap-4">
-      <ActionForm action={action} className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:flex-row sm:items-center">
+      <ActionForm
+        action={action}
+        className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:flex-row sm:items-center"
+      >
         <div className="flex aspect-square w-full max-w-48 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-background text-sm text-muted">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {preview ? <img src={preview} alt="התמונה שנבחרה" className="size-full object-cover" /> : "אין תמונה"}
@@ -110,7 +116,13 @@ export function PhotoSearch() {
           className="hidden"
           onChange={(e) => onFile(e.target.files?.[0])}
         />
-        <input ref={gallery} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+        <input
+          ref={gallery}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => onFile(e.target.files?.[0])}
+        />
         <input ref={payload} type="file" name="photo" className="hidden" tabIndex={-1} aria-hidden="true" />
       </ActionForm>
 
@@ -139,7 +151,9 @@ export function PhotoSearch() {
           )}
           {matches.similar.length > 0 && (
             <section className="flex flex-col gap-2">
-              <h2 className="text-lg font-semibold">{matches.exact.length ? "מוצרים דומים" : "לא מצאנו את המוצר עצמו, אבל יש מוצרים דומים"}</h2>
+              <h2 className="text-lg font-semibold">
+                {matches.exact.length ? "מוצרים דומים" : "לא מצאנו את המוצר עצמו, אבל יש מוצרים דומים"}
+              </h2>
               <ul className="flex flex-col gap-3">
                 {matches.similar.map((p) => (
                   <ProductResult key={p.productId} product={p} />

@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/action-form";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
+import { PACK_LABEL, type PackTypeKey } from "@/lib/pack";
 import { saveOffer } from "../actions";
 import { ImageField } from "./image-field";
 
@@ -21,8 +22,11 @@ export interface OfferFormValues {
   brand: string;
   supplierSku: string;
   supplierProductName: string;
+  packType: PackTypeKey | "";
   packSize: number;
+  packSizeMax: number | null;
   minQuantity: number;
+  minPacks: number | null;
   available: boolean;
   /** מחיר בשקלים לפי מזהה מדרגה */
   prices: Record<string, string>;
@@ -51,6 +55,8 @@ export function ProductForm({
   const editing = Boolean(initial.offerId);
   const [categoryId, setCategoryId] = useState(initial.categoryId);
   const [unit, setUnit] = useState(initial.unit);
+  const [packType, setPackType] = useState(initial.packType);
+  const unitLabel = UNITS.find((u) => u.value === unit)?.label ?? "";
 
   // בחירת מוצר קיים מהקטלוג ממלאת את סוג המוצר והיחידה שלו
   const onProductName = (name: string) => {
@@ -111,7 +117,12 @@ export function ProductForm({
             </Select>
           </Field>
           <Field label="יחידת מכירה">
-            <Select name="unit" value={unit} onChange={(e) => setUnit(e.target.value as typeof unit)} disabled={editing}>
+            <Select
+              name="unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as typeof unit)}
+              disabled={editing}
+            >
               {UNITS.map((u) => (
                 <option key={u.value} value={u.value}>
                   {u.label}
@@ -139,12 +150,67 @@ export function ProductForm({
           <Field label='מק"ט אצלכם (לא חובה)'>
             <Input name="supplierSku" defaultValue={initial.supplierSku} dir="ltr" />
           </Field>
-          <Field label={`גודל אריזה (${UNITS.find((u) => u.value === unit)?.label})`}>
-            <Input name="packSize" type="number" step="any" min="0" defaultValue={initial.packSize} dir="ltr" required />
+          <Field label="איך המוצר מגיע">
+            <Select name="packType" value={packType} onChange={(e) => setPackType(e.target.value as PackTypeKey | "")}>
+              <option value="">{`בתפזורת, לפי ${unitLabel}`}</option>
+              {Object.entries(PACK_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
           </Field>
-          <Field label="כמות מינימלית להזמנה">
-            <Input name="minQuantity" type="number" step="any" min="0" defaultValue={initial.minQuantity} dir="ltr" />
-          </Field>
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">
+              {packType ? `כמה ${unitLabel} ב${PACK_LABEL[packType]}` : `גודל אריזה (${unitLabel})`}
+            </span>
+            <div className="flex items-center gap-2 [&_input]:w-full [&_input]:min-w-0">
+              <Input
+                name="packSize"
+                type="number"
+                step="any"
+                min="0"
+                defaultValue={initial.packSize}
+                dir="ltr"
+                required
+                aria-label="גודל אריזה"
+              />
+              <span className="text-muted">עד</span>
+              <Input
+                name="packSizeMax"
+                type="number"
+                step="any"
+                min="0"
+                defaultValue={initial.packSizeMax ?? ""}
+                dir="ltr"
+                placeholder="משקל משתנה"
+                aria-label="גודל אריזה מקסימלי"
+              />
+            </div>
+            <span className="text-xs text-muted">במשקל משתנה, למשל קרטון של 15 עד 20 ק״ג. אחרת השאירו ריק.</span>
+          </div>
+          <div className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">כמות מינימלית להזמנה (לא חובה)</span>
+            <div className="flex items-center gap-2 [&_input]:w-full [&_input]:min-w-0">
+              <Input
+                name="minAmount"
+                type="number"
+                step="any"
+                min="0"
+                defaultValue={initial.minPacks ?? (initial.minQuantity || "")}
+                dir="ltr"
+                aria-label="כמות מינימלית"
+              />
+              <Select
+                name="minIn"
+                defaultValue={initial.minPacks ? "packs" : "units"}
+                aria-label="יחידת הכמות המינימלית"
+              >
+                <option value="units">{unitLabel}</option>
+                <option value="packs">{packType ? PACK_LABEL[packType] : "אריזות"}</option>
+              </Select>
+            </div>
+          </div>
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="available" defaultChecked={initial.available} className="size-4 accent-accent" />
@@ -177,7 +243,9 @@ export function ProductForm({
             </Field>
           ))}
         </div>
-        <p className="text-xs text-muted">שינוי של יותר מ-30% ממחיר קיים ייכנס להשוואות רק אחרי אישור צוות הפלטפורמה.</p>
+        <p className="text-xs text-muted">
+          שינוי של יותר מ-30% ממחיר קיים ייכנס להשוואות רק אחרי אישור צוות הפלטפורמה.
+        </p>
       </fieldset>
 
       <FormError message={state.error} />

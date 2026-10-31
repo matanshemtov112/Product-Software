@@ -7,6 +7,8 @@ export interface OfferRow {
   supplierName: string;
   /** מחיר במדרגה הבסיסית; null כשאין מחיר פעיל */
   priceAgorot: number | null;
+  /** איך המוצר מגיע אצל הספק, למשל "קרטון 15–20 ק״ג" */
+  pack?: string;
 }
 
 export interface ProductSuppliers {
@@ -14,7 +16,7 @@ export interface ProductSuppliers {
   productName: string;
   unit: string;
   category: string;
-  suppliers: { id: string; name: string; priceAgorot: number | null }[];
+  suppliers: { id: string; name: string; priceAgorot: number | null; pack?: string }[];
 }
 
 export interface PhotoMatches {
@@ -35,12 +37,15 @@ export function groupMatches(identified: { exact: string[]; similar: string[] },
       byName.set(o.productName, entry);
     }
     if (!entry.suppliers.some((s) => s.id === o.supplierId)) {
-      entry.suppliers.push({ id: o.supplierId, name: o.supplierName, priceAgorot: o.priceAgorot });
+      entry.suppliers.push({ id: o.supplierId, name: o.supplierName, priceAgorot: o.priceAgorot, pack: o.pack });
     }
   }
   for (const entry of byName.values()) {
     entry.suppliers.sort((a, b) => (a.priceAgorot ?? Infinity) - (b.priceAgorot ?? Infinity));
   }
   const take = (names: string[]) => names.flatMap((n) => byName.get(n) ?? []);
-  return { exact: take(identified.exact), similar: take(identified.similar.filter((n) => !identified.exact.includes(n))) };
+  return {
+    exact: take(identified.exact),
+    similar: take(identified.similar.filter((n) => !identified.exact.includes(n))),
+  };
 }

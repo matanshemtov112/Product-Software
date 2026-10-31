@@ -18,6 +18,9 @@ export interface CatalogItem {
   aliases?: string[];
   /** בסל לפי ספק נוכחי: השם של הספק למוצר */
   supplierName?: string;
+  /** איך המוצר מגיע אצל הספק והמינימום להזמנה (רק במחירון של ספק) */
+  pack?: string;
+  minOrder?: string;
 }
 
 const searchFields = (p: CatalogItem) => ({
@@ -97,9 +100,7 @@ export function BasketBuilder({
   // חיפוש בקטלוג: גם בשמות שספקים נותנים למוצר, בשמות נרדפים ובקטגוריה ("שמן" מוצא את כל השמנים)
   const results = normalize(search) ? searchItems(available, search, searchFields) : [];
   // בסל לפי ספק נוכחי: סינון המוצרים של הספק; שורות מוסתרות עדיין נשלחות עם הטופס
-  const visible = new Set(
-    (filter ? searchItems(catalog, filter, searchFields) : catalog).map((p) => p.id),
-  );
+  const visible = new Set((filter ? searchItems(catalog, filter, searchFields) : catalog).map((p) => p.id));
   const filteredOut = rows.filter((r) => !visible.has(r.productId)).length;
   const included = rows.filter((r) => r.included).length;
 
@@ -114,7 +115,15 @@ export function BasketBuilder({
           <Input name="name" defaultValue={initialName} required maxLength={60} />
         </Field>
         <Field label="כמה אספקות בחודש">
-          <Input name="deliveriesPerMonth" type="number" min="1" max="31" defaultValue={initialDeliveries} dir="ltr" required />
+          <Input
+            name="deliveriesPerMonth"
+            type="number"
+            min="1"
+            max="31"
+            defaultValue={initialDeliveries}
+            dir="ltr"
+            required
+          />
         </Field>
         <Field label="היקף הרכש החודשי שלכם (₪, ללא מע״מ)">
           <select
@@ -153,17 +162,15 @@ export function BasketBuilder({
             ))}
           </datalist>
           <p className="text-xs text-muted">
-            מלאו את שם הספק ואת המחיר שאתם משלמים לו היום בכל מוצר, ונראה לכם איפה יש במערכת מחיר טוב יותר. שם הספק
-            שלכם לא נחשף לספקים אחרים.
+            מלאו את שם הספק ואת המחיר שאתם משלמים לו היום בכל מוצר, ונראה לכם איפה יש במערכת מחיר טוב יותר. שם הספק שלכם
+            לא נחשף לספקים אחרים.
           </p>
         </div>
       )}
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-semibold">
-            {checklist ? `המוצרים מהקטלוג של ${currentSupplier?.name}` : "המוצרים בסל"}
-          </h2>
+          <h2 className="font-semibold">{checklist ? `המוצרים מהקטלוג של ${currentSupplier?.name}` : "המוצרים בסל"}</h2>
           <span className="text-sm text-muted">
             {included} מוצרים{checklist ? " נבחרו" : ""} · כמות לחודש · מחיר ללא מע״מ
           </span>
@@ -234,6 +241,8 @@ export function BasketBuilder({
                       <span className="block text-xs text-muted">
                         {p.supplierName && p.supplierName !== p.name ? `אצל הספק: ${p.supplierName} · ` : ""}
                         {p.category}
+                        {p.pack && ` · ${p.pack}`}
+                        {p.minOrder && ` · מינימום ${p.minOrder}`}
                       </span>
                     </span>
                   </label>
@@ -356,7 +365,8 @@ export function BasketBuilder({
           </div>
         )}
         <p className="text-xs text-muted">
-          המחיר שאתם משלמים היום (ליחידה, ללא מע״מ) לא חובה. בכל מוצר שתמלאו נראה אם יש במערכת מחיר טוב יותר וכמה תחסכו בחודש.
+          המחיר שאתם משלמים היום (ליחידה, ללא מע״מ) לא חובה. בכל מוצר שתמלאו נראה אם יש במערכת מחיר טוב יותר וכמה תחסכו
+          בחודש.
         </p>
       </div>
 

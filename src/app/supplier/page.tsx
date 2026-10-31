@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
+import { packLabel } from "@/lib/pack";
 import {
   listOffers,
   offerImageUrl,
@@ -148,7 +149,7 @@ export default async function SupplierProducts({
                     </div>
                     <span className="text-sm text-muted">
                       {offer.supplierProductName ? `"${offer.supplierProductName}" · ` : ""}
-                      {offer.product.category.name} · אריזה {offer.packSize} {UNIT_LABEL[offer.product.unit]}
+                      {offer.product.category.name} · {packLabel({ ...offer, unit: offer.product.unit })}
                       {offer.brand ? ` · ${offer.brand}` : ""}
                     </span>
                   </div>
@@ -178,7 +179,7 @@ export default async function SupplierProducts({
                 <div>
                   <p className="text-xl font-bold">{price.live !== null ? shekels(price.live, 2) : "אין מחיר"}</p>
                   <p className="text-xs text-muted">
-                    ל{UNIT_LABEL[offer.product.unit]} · אריזה {offer.packSize} {UNIT_LABEL[offer.product.unit]}
+                    ל{UNIT_LABEL[offer.product.unit]} · {packLabel({ ...offer, unit: offer.product.unit })}
                   </p>
                 </div>
                 <div className="mt-auto border-t border-border pt-3">
