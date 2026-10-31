@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
-import { hasPack, minOrderLabel, packLabel, packPriceLabel } from "@/lib/pack";
+import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel } from "@/lib/pack";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
 import { removeOfferImage } from "../../actions";
 import { OfferImage } from "../../offer-image";
@@ -111,7 +111,7 @@ export default async function ProductDetails({
                     </td>
                     <td className="py-2">
                       {p?.live != null ? `${shekels(p.live, 2)} / ${unit}` : "—"}
-                      {p?.live != null && hasPack(offer) && (
+                      {p?.live != null && pricedPerPack(offer) && (
                         <span className="block text-xs text-muted">{packPriceLabel(p.live, pack)}</span>
                       )}
                     </td>

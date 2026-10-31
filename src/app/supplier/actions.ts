@@ -49,7 +49,9 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     ? supplier.priceTiers
     : [await db.priceTier.create({ data: { supplierId: supplier.id, name: "רגיל", minMonthlyAgorot: 0 } })];
   // מחיר לאריזה נשמר כמחיר ליחידת בסיס, כדי שההשוואה תהיה תמיד לפי ק״ג/ליטר/יחידה
-  const perPack = data.pricePer === "pack" && data.packSize > 0;
+  // במשקל משתנה אין מחיר קבוע לאריזה, ולכן המחיר תמיד ליחידת המידה
+  const variableWeight = typeof data.packSizeMax === "number" && data.packSizeMax > data.packSize;
+  const perPack = data.pricePer === "pack" && data.packSize > 0 && !variableWeight;
   const packDivisor = perPack
     ? nominalPackSize({
         packSize: data.packSize,

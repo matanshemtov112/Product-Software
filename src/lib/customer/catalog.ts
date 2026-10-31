@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { hasPack, minOrderLabel, packLabel, packPriceLabel, type PackInfo } from "@/lib/pack";
+import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel, type PackInfo } from "@/lib/pack";
 import type { CatalogItem } from "@/app/customer/baskets/basket-builder";
 
 /** הקטלוג הקנוני לבחירת מוצרים לסל (בלי מוצרים שממתינים לבדיקה) */
@@ -92,9 +92,12 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
 }
 
 function packPriceOf(
-  o: Omit<PackInfo, "unit" | "minQuantity" | "minPacks"> & { product: { unit: PackInfo["unit"] } },
+  o: Omit<PackInfo, "unit" | "minQuantity" | "minPacks"> & {
+    pricePerPack: boolean;
+    product: { unit: PackInfo["unit"] };
+  },
   agorot?: number,
 ) {
   const pack = { ...o, unit: o.product.unit };
-  return agorot != null && hasPack(pack) ? packPriceLabel(agorot, pack) : undefined;
+  return agorot != null && pricedPerPack(pack) ? packPriceLabel(agorot, pack) : undefined;
 }

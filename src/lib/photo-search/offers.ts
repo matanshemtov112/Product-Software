@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { hasPack, packLabel, packPriceLabel } from "@/lib/pack";
+import { pricedPerPack, packLabel, packPriceLabel } from "@/lib/pack";
 import type { OfferRow } from "./match";
 
 /** הצעות פעילות למוצרים שזוהו, אצל ספקים מאושרים שמספקים לאזור, עם המחיר במדרגה הבסיסית */
@@ -39,7 +39,7 @@ export async function offersForProducts(names: string[], regionId: string, now =
       supplierName: o.supplier.companyName,
       priceAgorot,
       // מחיר לאריזה כשיש, אחרת רק איך המוצר מגיע
-      pack: priceAgorot !== null && hasPack(pack) ? packPriceLabel(priceAgorot, pack) : packLabel(pack),
+      pack: priceAgorot !== null && pricedPerPack(pack) ? packPriceLabel(priceAgorot, pack) : packLabel(pack),
     };
   });
 }

@@ -66,6 +66,9 @@ export function ProductForm({
   const [prices, setPrices] = useState(initial.prices);
   const pack = { unit, packSize: Number(packSize) || 0, packSizeMax: Number(packSizeMax) || null };
   const nominal = nominalPackSize(pack);
+  // במשקל משתנה אין מחיר קבוע לאריזה: המחיר תמיד ליחידת המידה
+  const variable = Boolean(pack.packSizeMax && pack.packSizeMax > pack.packSize);
+  const effectivePricePer = variable ? "unit" : pricePer;
   const packName = packType ? PACK_LABEL[packType] : "אריזה";
   const packText = pack.packSize > 0 ? `${packName} ${packContent(pack)}` : packName;
   // המחיר המקביל: ליחידה כשמזינים לאריזה, ולאריזה כשמזינים ליחידה
@@ -73,7 +76,7 @@ export function ProductForm({
     const n = Number(value);
     if (!value || !(n > 0) || !(nominal > 0)) return null;
     const agorot = Math.round(n * 100);
-    return pricePer === "pack"
+    return effectivePricePer === "pack"
       ? `= ${shekels(Math.round(agorot / nominal), 2)} ל${unitLabel}${pack.packSizeMax ? " (לפי משקל ממוצע)" : ""}`
       : `= ${shekels(Math.round(agorot * nominal), 2)} ל${packText}`;
   };
@@ -256,13 +259,14 @@ export function ProductForm({
           ).map(([value, label]) => (
             <label
               key={value}
-              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${pricePer === value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
+              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${effectivePricePer === value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
             >
               <input
                 type="radio"
                 name="pricePer"
                 value={value}
-                checked={pricePer === value}
+                checked={effectivePricePer === value}
+                disabled={value === "pack" && variable}
                 onChange={() => setPricePer(value)}
                 className="accent-accent"
               />
@@ -270,6 +274,11 @@ export function ProductForm({
             </label>
           ))}
         </div>
+        <p className="text-xs text-muted">
+          מוצר שקיל (כמו אנטריקוט) מתמחרים ל{unitLabel}, והלקוח יראה רק את המחיר ל{unitLabel}. מוצר במחיר קומפלט (כמו פח
+          שמן) מתמחרים לאריזה, והלקוח יראה את המחיר לאריזה וגם את המחיר ל{unitLabel}.
+          {variable && " במשקל משתנה המחיר הוא תמיד ל" + unitLabel + "."}
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {(tiers.length ? tiers : [{ id: "new", name: "רגיל", minMonthlyAgorot: 0 }]).map((t, i) => (
             <Field

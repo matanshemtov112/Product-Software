@@ -56,9 +56,12 @@ export function minOrderLabel(p: PackInfo) {
   return null;
 }
 
-/** האם המוצר נמכר באריזה שיש טעם להציג לה מחיר (ולא בתפזורת לפי יחידת המידה) */
-export function hasPack(p: Pick<PackInfo, "packType" | "packSize" | "packSizeMax">) {
-  return p.packSize !== 1 || Boolean(p.packSizeMax) || (p.packType !== null && p.packType !== "UNIT");
+/**
+ * האם להציג מחיר לאריזה: רק כשהספק בחר לתמחר לפי אריזה (מחיר קומפלט לפח, לקרטון).
+ * מוצר שקיל, כמו אנטריקוט בקרטון, מתומחר לפי ק״ג ומוצג רק במחיר לק״ג.
+ */
+export function pricedPerPack(p: Pick<PackInfo, "packType" | "packSize" | "packSizeMax"> & { pricePerPack?: boolean }) {
+  return Boolean(p.pricePerPack) && (p.packSize !== 1 || p.packType !== null);
 }
 
 /** מחיר לאריזה לפי מחיר ליחידה, למשל "₪72.00 לפח 4 ליטר"; במשקל משתנה טווח מחירים */

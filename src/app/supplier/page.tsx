@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
-import { hasPack, packLabel, packPriceLabel } from "@/lib/pack";
+import { pricedPerPack, packLabel, packPriceLabel } from "@/lib/pack";
 import {
   listOffers,
   offerImageUrl,
@@ -161,7 +161,7 @@ export default async function SupplierProducts({
                         ? `${shekels(price.live, 2)} / ${UNIT_LABEL[offer.product.unit]}`
                         : "אין מחיר"}
                     </span>
-                    {price.live !== null && hasPack(offer) && (
+                    {price.live !== null && pricedPerPack(offer) && (
                       <span className="block text-xs text-muted">
                         {packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}
                       </span>
@@ -189,7 +189,7 @@ export default async function SupplierProducts({
                   <p className="text-xl font-bold">{price.live !== null ? shekels(price.live, 2) : "אין מחיר"}</p>
                   <p className="text-xs text-muted">
                     ל{UNIT_LABEL[offer.product.unit]}
-                    {price.live !== null && hasPack(offer)
+                    {price.live !== null && pricedPerPack(offer)
                       ? ` · ${packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}`
                       : ` · ${packLabel({ ...offer, unit: offer.product.unit })}`}
                   </p>

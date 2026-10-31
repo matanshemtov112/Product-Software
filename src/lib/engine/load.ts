@@ -84,7 +84,13 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
           minQuantity: minBaseQuantity(pack),
           packLabel: packLabel(pack),
           minOrderLabel: minOrderLabel(pack),
-          packInfo: { unit: pack.unit, packType: o.packType, packSize: o.packSize, packSizeMax: o.packSizeMax },
+          packInfo: {
+            unit: pack.unit,
+            packType: o.packType,
+            packSize: o.packSize,
+            packSizeMax: o.packSizeMax,
+            pricePerPack: o.pricePerPack,
+          },
           prices,
         };
       }),

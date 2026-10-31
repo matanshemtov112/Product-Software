@@ -30,7 +30,7 @@ export interface Offer {
   packLabel?: string;
   minOrderLabel?: string | null;
   /** לתצוגה: נתוני האריזה, לחישוב המחיר לאריזה */
-  packInfo?: Pick<PackInfo, "unit" | "packType" | "packSize" | "packSizeMax">;
+  packInfo?: Pick<PackInfo, "unit" | "packType" | "packSize" | "packSizeMax"> & { pricePerPack: boolean };
   /** מחיר לפי מזהה מדרגה */
   prices: Record<string, TierPrice>;
 }
