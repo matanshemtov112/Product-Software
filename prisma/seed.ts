@@ -469,7 +469,7 @@ async function main() {
         contactName: "נועה (דמו)",
         phone: "050-0000000",
         email: "cafe@demo.local",
-        monthlyVolume: "₪10,000–20,000",
+        monthlyVolume: "₪10,000–30,000",
         deliveriesPerMonth: 4,
         basketName: "עוף לבית הקפה",
         itemCount: 2,
