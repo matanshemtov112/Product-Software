@@ -99,7 +99,7 @@ export function CustomerSidebar({
         <ul className="flex flex-col gap-0.5">
           <li>
             <Link href="/customer" className={item(pathname === "/customer")}>
-              כל הבדיקות
+              סקירה ובדיקות
             </Link>
           </li>
           <li>
