@@ -7,6 +7,7 @@ import { supplierForUser } from "@/lib/supplier/catalog";
 import { supplierLogoUrl } from "@/lib/supplier/logo";
 import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
+import { TiersForm } from "./tiers-form";
 
 const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה" } as const;
 
@@ -56,20 +57,12 @@ export default async function SupplierProfile() {
           submitLabel="שמירת התחומים"
         />
       </Card>
+      <Card title="מדרגות מחיר">
+        <TiersForm
+          initial={supplier.priceTiers.map((t) => ({ id: t.id, name: t.name, min: t.minMonthlyAgorot / 100 }))}
+        />
+      </Card>
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="מדרגות מחיר">
-          {supplier.priceTiers.length === 0 ? (
-            <p className="text-sm text-muted">מדרגה בסיסית תיווצר עם המוצר הראשון.</p>
-          ) : (
-            <ul className="text-sm">
-              {supplier.priceTiers.map((t) => (
-                <li key={t.id}>
-                  {t.name}: מ-{shekels(t.minMonthlyAgorot)} בחודש
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
         <Card title="אזורי משלוח">
           {supplier.deliveryZones.length === 0 ? (
             <p className="text-sm text-muted">עדיין לא הוגדרו אזורי משלוח.</p>
@@ -85,7 +78,7 @@ export default async function SupplierProfile() {
           )}
         </Card>
       </div>
-      <p className="text-xs text-muted">עריכת מדרגות ואזורי משלוח תתווסף בהמשך.</p>
+      <p className="text-xs text-muted">עריכת אזורי משלוח תתווסף בהמשך.</p>
     </div>
   );
 }

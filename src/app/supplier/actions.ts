@@ -10,6 +10,7 @@ import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
 import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
 import { VALID_DAYS } from "@/lib/matches";
+import { parseTiers } from "@/lib/supplier/tiers";
 
 export interface FormState {
   error?: string;
@@ -346,4 +347,37 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
   ]);
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/matches/${request.id}?answered=1`);
+}
+
+/**
+ * שמירת מדרגות המחיר של הספק. מדרגה שהוסרה נמחקת עם המחירים שלה;
+ * במדרגה חדשה בלי מחיר, הלקוח מקבל את המחיר של המדרגה שמתחתיה.
+ */
+export async function saveTiers(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const supplier = await currentSupplier();
+  const ids = form.getAll("tierId").map(String);
+  const names = form.getAll("tierName").map(String);
+  const mins = form.getAll("tierMin").map(String);
+  const parsed = parseTiers(ids.map((id, i) => ({ id, name: names[i] ?? "", min: mins[i] ?? "" })));
+  if (!parsed.ok) return { error: parsed.error };
+
+  const existing = new Set(supplier.priceTiers.map((t) => t.id));
+  if (parsed.tiers.some((t) => t.id && !existing.has(t.id))) return { error: "המדרגות השתנו בינתיים. נא לרענן את הדף" };
+  const kept = parsed.tiers.filter((t) => t.id);
+  const keptIds = new Set(kept.map((t) => t.id));
+  await db.$transaction([
+    db.priceTier.deleteMany({ where: { supplierId: supplier.id, id: { notIn: [...keptIds] as string[] } } }),
+    // ערכים זמניים, כדי ששינוי סדר לא יתנגש בסף ייחודי
+    ...kept.map((t, i) => db.priceTier.update({ where: { id: t.id! }, data: { minMonthlyAgorot: -1 - i } })),
+    ...kept.map((t) =>
+      db.priceTier.update({ where: { id: t.id! }, data: { name: t.name, minMonthlyAgorot: t.minMonthlyAgorot } }),
+    ),
+    ...parsed.tiers
+      .filter((t) => !t.id)
+      .map((t) =>
+        db.priceTier.create({ data: { supplierId: supplier.id, name: t.name, minMonthlyAgorot: t.minMonthlyAgorot } }),
+      ),
+  ]);
+  revalidatePath("/supplier", "layout");
+  return { saved: true };
 }
