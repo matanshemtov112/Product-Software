@@ -164,6 +164,14 @@ model Supplier {
   reliability      Float                @default(0.9) // 0 עד 1
   contactPhone     String?
   contactEmail     String?
+  /// תיאור קצר של הספק, מוצג ללקוחות
+  description      String?
+  /// שעות פעילות, טקסט חופשי (למשל "א-ה 06:00-14:00")
+  openingHours     String?
+  /// תנאי אספקה, טקסט חופשי (למשל "הזמנה עד 14:00, אספקה למחרת")
+  deliveryTerms    String?
+  logo             SupplierLogo?
+  views            SupplierView[]
   /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
   allCategories    Boolean              @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
@@ -489,4 +497,24 @@ model MatchRequestLine {
   response           MatchResponse @default(PENDING)
   counterPriceAgorot Int?
   decision           MatchDecision @default(PENDING)
+}
+
+model SupplierLogo {
+  supplierId  String   @id
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  data        Bytes
+  contentType String
+  updatedAt   DateTime @updatedAt
+}
+
+/// הספק הופיע בהשוואה שלקוח פתח: שורה אחת לכל ספק, סל ויום
+model SupplierView {
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  basketId   String
+  customerId String
+  day        DateTime @db.Date
+
+  @@id([supplierId, basketId, day])
+  @@index([supplierId, day])
 }

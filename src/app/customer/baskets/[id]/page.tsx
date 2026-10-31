@@ -8,6 +8,7 @@ import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot, compareChecks, isCheckSnapshot } from "@/lib/customer/checks";
 import { rankSuppliers } from "@/lib/customer/fit";
 import { volumeRangeFor } from "@/lib/customer/volume";
+import { recordSupplierViews } from "@/lib/supplier/stats";
 import { analyzeBasket, customerForUser, getBasket, paidComparison } from "@/lib/customer/quotes";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { deleteBasket, recordCheck } from "../../actions";
@@ -48,6 +49,11 @@ export default async function BasketPage({
   const basket = await getBasket(customer.id, id);
   if (!basket) notFound();
   const analysis = await analyzeBasket(basket.id);
+  await recordSupplierViews(
+    basket.id,
+    customer.id,
+    analysis.rows.map((r) => r.supplierId),
+  );
   const { result, rows } = analysis;
 
   const lastRun = basket.runs[0];

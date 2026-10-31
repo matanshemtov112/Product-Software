@@ -4,6 +4,7 @@ import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { supplierForUser } from "@/lib/supplier/catalog";
+import { supplierLogoUrl } from "@/lib/supplier/logo";
 import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
 
@@ -15,7 +16,11 @@ export default async function SupplierProfile() {
   const tree = await categoryTree();
   const supplier = await db.supplier.findUniqueOrThrow({
     where: { id: base.id },
-    include: { deliveryZones: { include: { region: true } }, priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
+    include: {
+      logo: { select: { updatedAt: true } },
+      deliveryZones: { include: { region: true } },
+      priceTiers: { orderBy: { minMonthlyAgorot: "asc" } },
+    },
   });
   return (
     <div className="flex flex-col gap-4">
@@ -33,6 +38,10 @@ export default async function SupplierProfile() {
             contactEmail: supplier.contactEmail ?? "",
             minOrder: supplier.minOrderAgorot / 100,
             paymentTermsDays: supplier.paymentTermsDays,
+            description: supplier.description ?? "",
+            openingHours: supplier.openingHours ?? "",
+            deliveryTerms: supplier.deliveryTerms ?? "",
+            logoUrl: supplierLogoUrl(supplier.id, supplier.logo),
           }}
         />
       </Card>

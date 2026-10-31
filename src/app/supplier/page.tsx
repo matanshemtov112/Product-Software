@@ -10,10 +10,35 @@ import {
   supplierForUser,
   UNIT_LABEL,
 } from "@/lib/supplier/catalog";
+import { supplierStats } from "@/lib/supplier/stats";
 import { DeleteOfferButton } from "./delete-button";
 import { OfferImage } from "./offer-image";
 
 type View = "list" | "grid";
+
+function Stat({
+  label,
+  value,
+  note,
+  warn,
+  link,
+}: {
+  label: string;
+  value: number;
+  note: string;
+  warn?: boolean;
+  link?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border bg-surface p-4 ${warn ? "border-[#e0a800]" : "border-border"} ${link ? "hover:border-accent" : ""}`}
+    >
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xs text-muted">{note}</p>
+    </div>
+  );
+}
 
 function Badges({ offer, pending }: { offer: OfferWithPrices; pending: boolean }) {
   return (
@@ -91,6 +116,8 @@ export default async function SupplierProducts({
   if (q) params.set("q", q);
   if (category) params.set("category", category);
   const categoryName = category ? offers[0]?.product.category.name : undefined;
+  const filtered = Boolean(q || category);
+  const stats = filtered ? null : await supplierStats(supplier.id, offers);
 
   return (
     <div className="flex flex-col gap-4">
@@ -109,6 +136,27 @@ export default async function SupplierProducts({
           + מוצר חדש
         </Link>
       </div>
+
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="הופעות בהשוואות" value={stats.views} note={`${stats.customers} לקוחות שונים · 30 יום אחרונים`} />
+          <Link href="/supplier/inquiries" className="contents">
+            <Stat label="פניות מלקוחות" value={stats.leads} note="פניות ובקשות השוואה · 30 יום" link />
+          </Link>
+          <Stat
+            label="מוצרים ללא מחיר"
+            value={stats.withoutPrice}
+            note={stats.pendingPrice ? `ועוד ${stats.pendingPrice} עם מחיר שממתין לאישור` : "לא מופיעים בהשוואות"}
+            warn={stats.withoutPrice > 0}
+          />
+          <Stat
+            label="מחירים לעדכון"
+            value={stats.stalePrice}
+            note="לא עודכנו 30 יום, מוצגים כ״מחירון״"
+            warn={stats.stalePrice > 0}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <form role="search" className="flex min-w-0 flex-1 gap-2">

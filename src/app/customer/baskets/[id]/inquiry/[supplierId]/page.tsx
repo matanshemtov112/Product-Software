@@ -8,6 +8,7 @@ import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL, OPEN_INQUIRY, profileRows } from "@/lib/inquiries";
+import { supplierLogoUrl } from "@/lib/supplier/logo";
 import { InquiryForm } from "./inquiry-form";
 
 export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
@@ -19,6 +20,18 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
   const row = (await analyzeBasket(basket.id)).rows.find((r) => r.supplierId === supplierId);
   if (!row) notFound();
   const profile = await customerProfile(customer.id, basket);
+  const about = await db.supplier.findUnique({
+    where: { id: supplierId },
+    select: {
+      description: true,
+      openingHours: true,
+      deliveryTerms: true,
+      paymentTermsDays: true,
+      minOrderAgorot: true,
+      logo: { select: { updatedAt: true } },
+    },
+  });
+  const logoUrl = about ? supplierLogoUrl(supplierId, about.logo) : null;
   const paidLines = row.snapshot.lines.filter((l) => l.customerPaidAgorot != null);
   const cheaperToday = paidLines.filter((l) => l.customerPaidAgorot! < l.unitPriceAgorot);
   const cheaperHere = paidLines.filter((l) => l.customerPaidAgorot! > l.unitPriceAgorot);
@@ -55,6 +68,39 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           {paidLines.length ? ", כולל המחירים שאתם משלמים היום" : ""}. שם הספק המתחרה ושם הספק הנוכחי שלכם לא נחשפים.
         </p>
       </div>
+
+      {about && (
+        <Card title="על הספק">
+          <div className="flex items-start gap-4">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={`הלוגו של ${row.supplierName}`}
+                className="size-14 shrink-0 rounded-lg border border-border bg-white object-contain"
+              />
+            )}
+            <dl className="grid min-w-0 flex-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+              {about.description && <dd className="text-foreground sm:col-span-2">{about.description}</dd>}
+              {(
+                [
+                  ["שעות פעילות", about.openingHours],
+                  ["תנאי אספקה", about.deliveryTerms],
+                  ["מינימום הזמנה", about.minOrderAgorot ? shekels(about.minOrderAgorot) : "אין"],
+                  ["תנאי תשלום", `שוטף + ${about.paymentTermsDays}`],
+                ] as const
+              )
+                .filter(([, v]) => v)
+                .map(([k, v]) => (
+                  <div key={k} className="flex gap-2">
+                    <dt className="w-24 shrink-0 text-muted">{k}</dt>
+                    <dd className="min-w-0 break-words">{v}</dd>
+                  </div>
+                ))}
+            </dl>
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-border bg-surface p-4">

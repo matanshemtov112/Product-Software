@@ -178,6 +178,9 @@ const profileSchema = z.object({
   contactEmail: z.union([z.literal(""), z.string().trim().email("אימייל לא תקין")]).optional(),
   minOrder: z.coerce.number().min(0, "מינימום הזמנה לא יכול להיות שלילי"),
   paymentTermsDays: z.coerce.number().int().min(0).max(180),
+  description: z.string().trim().max(500, "התיאור ארוך מדי (עד 500 תווים)").optional(),
+  openingHours: z.string().trim().max(120, "שעות הפעילות ארוכות מדי").optional(),
+  deliveryTerms: z.string().trim().max(300, "תנאי האספקה ארוכים מדי").optional(),
 });
 
 export async function updateProfile(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
@@ -185,9 +188,24 @@ export async function updateProfile(_: FormState, form: FormData): Promise<FormS
   const parsed = profileSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const d = parsed.data;
+  const logo = await checkImage(form.get("logo"));
+  if (logo && !logo.ok) return { error: logo.error };
+  if (logo?.ok) {
+    const image = { data: new Uint8Array(logo.data), contentType: logo.contentType };
+    await db.supplierLogo.upsert({
+      where: { supplierId: supplier.id },
+      create: { supplierId: supplier.id, ...image },
+      update: image,
+    });
+  } else if (form.get("removeLogo") === "on") {
+    await db.supplierLogo.deleteMany({ where: { supplierId: supplier.id } });
+  }
   await db.supplier.update({
     where: { id: supplier.id },
     data: {
+      description: d.description || null,
+      openingHours: d.openingHours || null,
+      deliveryTerms: d.deliveryTerms || null,
       companyName: d.companyName,
       contactPhone: d.contactPhone || null,
       contactEmail: d.contactEmail || null,

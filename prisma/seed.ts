@@ -351,6 +351,9 @@ async function main() {
         contactEmail: `supplier${i + 1}@demo.local`,
         allCategories: s.categories === null,
         categoriesSetAt: new Date(),
+        description: `ספק דמו בתחומי ${(s.categories ?? ["מזון"]).join(", ")}. משרתים מסעדות ובתי קפה.`,
+        openingHours: "ימים א׳ עד ה׳ משש בבוקר עד שלוש, ו׳ עד 11",
+        deliveryTerms: "הזמנה עד 14:00 מגיעה למחרת בבוקר, בימים א, ג, ה.",
         categories: { create: (s.categories ?? []).map((c) => ({ categoryId: categories.get(c)! })) },
         deliveryZones: {
           create: s.zones.map((z) => ({
