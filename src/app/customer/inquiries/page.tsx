@@ -4,6 +4,8 @@ import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL } from "@/lib/inquiries";
+import Link from "next/link";
+import { MATCH_STATUS_LABEL, matchSummary } from "@/lib/matches";
 
 export default async function CustomerInquiries({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
   const { sent } = await searchParams;
@@ -12,6 +14,11 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
   const inquiries = await db.negotiationRequest.findMany({
     where: { customerId: customer.id },
     include: { supplier: { select: { companyName: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const matches = await db.matchRequest.findMany({
+    where: { customerId: customer.id },
+    include: { supplier: { select: { companyName: true } }, lines: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -26,7 +33,40 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
           הפנייה נשלחה לספק. התשובה תופיע כאן.
         </p>
       )}
-      <Card>
+      {matches.length > 0 && (
+        <Card title="בקשות השוואה מהספקים שלכם">
+          <ul className="divide-y divide-border">
+            {matches.map((m) => {
+              const sum = matchSummary(m.lines);
+              return (
+                <li key={m.id}>
+                  <Link
+                    href={`/customer/matches/${m.id}`}
+                    className="flex flex-col gap-1 py-3 text-sm hover:bg-background sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="flex flex-wrap items-center gap-2">
+                      {sum.awaitingDecision > 0 && (
+                        <span className="size-2 rounded-full bg-accent" aria-hidden="true" />
+                      )}
+                      <span className="font-medium">{m.supplier.companyName}</span>
+                      <span className="rounded bg-background px-2 py-0.5 text-xs text-muted">
+                        {MATCH_STATUS_LABEL[m.status]}
+                      </span>
+                    </span>
+                    <span className="text-muted">
+                      {m.lines.length} מוצרים · {m.createdAt.toLocaleDateString("he-IL")}
+                      {m.status === "SENT" || m.status === "READ"
+                        ? ` · ביקשתם חיסכון של ${shekels(sum.requestedAgorot)} בחודש`
+                        : ` · הספק הציע חיסכון של ${shekels(sum.offeredAgorot)} בחודש`}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+      <Card title={matches.length > 0 ? "פניות לספקים חדשים" : undefined}>
         {inquiries.length === 0 ? (
           <p className="text-sm text-muted">עדיין לא שלחתם פניות. אפשר לפנות לספק מתוך עמוד ההשוואה של סל.</p>
         ) : (

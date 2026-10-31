@@ -302,6 +302,7 @@ async function main() {
   await db.$transaction([
     db.user.deleteMany(),
     db.negotiationRequest.deleteMany(),
+    db.matchRequest.deleteMany(),
     db.priceAlert.deleteMany(),
     db.review.deleteMany(),
     db.basket.deleteMany(),
@@ -438,8 +439,34 @@ async function main() {
       },
     },
   });
+  // סל שני, שהספק הנוכחי שלו רשום במערכת: כך אפשר לנסות "בקש מהספק שלי להשוות"
+  const foodCenter = await db.supplier.findFirstOrThrow({ where: { companyNumber: "510000003" } });
+  await db.basket.create({
+    data: {
+      customerId: customer.id,
+      name: "בשר ושמן",
+      source: "INVOICE",
+      deliveriesPerMonth: 4,
+      currentSupplierId: foodCenter.id,
+      currentSupplierName: foodCenter.companyName,
+      savedAt: new Date(Date.now() - 7 * 86_400_000),
+      items: {
+        create: (
+          [
+            ["חזה עוף טרי", 50, 34.5],
+            ["בקר טחון", 30, 65],
+            ["שמן קנולה", 20, 9.9],
+          ] as const
+        ).map(([name, quantity, currentPrice]) => ({
+          productId: products.get(name)!,
+          monthlyQuantity: quantity,
+          currentUnitPriceAgorot: ils(currentPrice),
+        })),
+      },
+    },
+  });
   // בדיקה מלפני חודש, כדי שבכניסה לסל השמור יוצג מה השתנה מאז אצל כל ספק
-  const basket = await db.basket.findFirstOrThrow({ where: { customerId: customer.id } });
+  const basket = await db.basket.findFirstOrThrow({ where: { customerId: customer.id, name: "הסל החודשי" } });
   const supplierIds = Object.fromEntries(
     (await db.supplier.findMany({ select: { id: true, companyNumber: true, companyName: true } })).map((s) => [
       s.companyNumber,

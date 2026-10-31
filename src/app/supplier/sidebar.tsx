@@ -55,10 +55,16 @@ export function SupplierSidebar({
         <p className="px-3 pb-1 text-xs font-medium text-muted">לקוחות</p>
         <ul className="flex flex-col gap-0.5">
           <li>
-            <Link href="/supplier/inquiries" className={item(pathname.startsWith("/supplier/inquiries"))}>
+            <Link
+              href="/supplier/inquiries"
+              className={item(pathname.startsWith("/supplier/inquiries") || pathname.startsWith("/supplier/matches"))}
+            >
               <span>פניות</span>
               {newInquiries > 0 && (
-                <span className="rounded-full bg-accent px-2 text-xs font-medium text-white" aria-label={`${newInquiries} חדשות`}>
+                <span
+                  className="rounded-full bg-accent px-2 text-xs font-medium text-white"
+                  aria-label={`${newInquiries} חדשות`}
+                >
                   {newInquiries}
                 </span>
               )}

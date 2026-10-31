@@ -9,6 +9,7 @@ import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
 import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
+import { VALID_DAYS } from "@/lib/matches";
 
 export interface FormState {
   error?: string;
@@ -272,4 +273,59 @@ export async function saveCustomerReview(_: FormState, form: FormData): Promise<
   });
   revalidatePath(`/supplier/inquiries/${inquiryId}`);
   redirect(`/supplier/inquiries/${inquiryId}?reviewed=1`);
+}
+
+/**
+ * תשובת הספק לבקשת השוואה: לכל מוצר השוואה, הצעה נגדית או סירוב.
+ * הצעה נגדית חייבת להיות נמוכה מהמחיר שהלקוח משלם היום. המחירים חלים על הלקוח הזה בלבד.
+ */
+export async function respondMatch(_: FormState, form: FormData): Promise<FormState> {
+  const supplier = await currentSupplier();
+  const requestId = String(form.get("requestId") ?? "");
+  const request = await db.matchRequest.findFirst({
+    where: { id: requestId, supplierId: supplier.id },
+    include: { lines: true },
+  });
+  if (!request) return { error: "הבקשה לא נמצאה" };
+  if (request.status === "CLOSED") return { error: "הלקוח כבר סגר את הבקשה" };
+  const updates = [];
+  for (const line of request.lines) {
+    if (line.decision !== "PENDING") continue;
+    const response = String(form.get(`response_${line.id}`) ?? "");
+    if (response !== "MATCHED" && response !== "COUNTER" && response !== "DECLINED")
+      return { error: `נא לבחור תשובה ל"${line.productName}"` };
+    let counter: number | null = null;
+    if (response === "COUNTER") {
+      counter = parseShekels(form.get(`counter_${line.id}`));
+      if (counter === null) return { error: `נא למלא מחיר להצעה הנגדית ל"${line.productName}"` };
+      if (counter >= line.currentPriceAgorot)
+        return { error: `ההצעה ל"${line.productName}" צריכה להיות נמוכה מהמחיר שהלקוח משלם היום` };
+    }
+    updates.push(
+      db.matchRequestLine.update({
+        where: { id: line.id },
+        data: {
+          // הצעה נגדית בדיוק במחיר המבוקש היא השוואה
+          response: counter === line.targetPriceAgorot ? "MATCHED" : response,
+          counterPriceAgorot: counter === line.targetPriceAgorot ? null : counter,
+        },
+      }),
+    );
+  }
+  const note =
+    String(form.get("note") ?? "")
+      .trim()
+      .slice(0, 1000) || null;
+  const days = Number(form.get("validDays"));
+  if (!VALID_DAYS.includes(days)) return { error: "נא לבחור עד מתי ההצעה בתוקף" };
+  const validUntil = new Date(Date.now() + days * 86_400_000);
+  await db.$transaction([
+    ...updates,
+    db.matchRequest.update({
+      where: { id: request.id },
+      data: { status: "ANSWERED", supplierNote: note, validUntil, answeredAt: new Date() },
+    }),
+  ]);
+  revalidatePath("/supplier", "layout");
+  redirect(`/supplier/matches/${request.id}?answered=1`);
 }

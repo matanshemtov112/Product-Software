@@ -64,6 +64,29 @@ enum PriceChangeStatus {
   REJECTED
 }
 
+/// בקשה מהספק הנוכחי של הלקוח להשוות מחירים
+enum MatchStatus {
+  SENT
+  READ
+  ANSWERED
+  CLOSED
+}
+
+/// תשובת הספק לשורה
+enum MatchResponse {
+  PENDING
+  MATCHED
+  COUNTER
+  DECLINED
+}
+
+/// החלטת הלקוח על תשובת הספק
+enum MatchDecision {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 enum NegotiationStatus {
   SENT
   READ
@@ -121,6 +144,7 @@ model Customer {
   reviewsBySuppliers  CustomerReview[]
   invoices            Invoice[]
   negotiations        NegotiationRequest[]
+  matchRequests       MatchRequest[]
   alerts              PriceAlert[]
   createdAt           DateTime             @default(now())
 }
@@ -147,6 +171,7 @@ model Supplier {
   reviews          Review[]
   customerReviews  CustomerReview[]
   negotiations     NegotiationRequest[]
+  matchRequests    MatchRequest[]
   currentBaskets   Basket[]
   createdAt        DateTime             @default(now())
 }
@@ -417,4 +442,46 @@ model Subscription {
   priceAgorot Int       @default(0) // הפיילוט חינמי
   renewsAt    DateTime?
   createdAt   DateTime  @default(now())
+}
+
+/// "בקש מהספק שלי להשוות": הלקוח מבקש מהספק הנוכחי שלו להשוות מחירים למחיר הזול במערכת.
+/// שם הספק המתחרה לא נשמר ולא מוצג לספק.
+model MatchRequest {
+  id              String             @id @default(cuid())
+  customerId      String
+  customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String
+  supplier        Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// הסל שממנו נלקחו הכמויות והמחירים; אישור מחיר מעדכן בו את "המחיר היום"
+  basketId        String?
+  message         String?
+  /// פרטי הלקוח ברגע הבקשה (CustomerProfileSnapshot)
+  customerProfile Json?
+  status          MatchStatus        @default(SENT)
+  supplierNote    String?
+  /// עד מתי ההצעה של הספק בתוקף
+  validUntil      DateTime?
+  answeredAt      DateTime?
+  createdAt       DateTime           @default(now())
+  lines           MatchRequestLine[]
+
+  @@index([supplierId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model MatchRequestLine {
+  id                 String        @id @default(cuid())
+  requestId          String
+  request            MatchRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  productId          String
+  productName        String
+  unit               String
+  monthlyQuantity    Float
+  /// מה הלקוח משלם היום לספק, ליחידה, ללא מע״מ
+  currentPriceAgorot Int
+  /// המחיר הזול שנמצא במערכת, ליחידה
+  targetPriceAgorot  Int
+  response           MatchResponse @default(PENDING)
+  counterPriceAgorot Int?
+  decision           MatchDecision @default(PENDING)
 }

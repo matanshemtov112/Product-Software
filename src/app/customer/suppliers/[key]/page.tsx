@@ -7,7 +7,9 @@ import { SupplierStatusBadge } from "@/components/supplier-status";
 import { requireRole } from "@/lib/auth/current";
 import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerForUser } from "@/lib/customer/quotes";
+import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
+import { MATCH_STATUS_LABEL, matchCandidates } from "@/lib/matches";
 
 export default async function MySupplierPage({ params }: { params: Promise<{ key: string }> }) {
   const key = decodeURIComponent((await params).key);
@@ -16,6 +18,14 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
   const supplier = (await mySuppliers(customer.id)).find((s) => s.key === key);
   if (!supplier) notFound();
   const { score } = supplier;
+  const candidates = matchCandidates(supplier.lines);
+  const requests = supplier.supplierId
+    ? await db.matchRequest.findMany({
+        where: { customerId: customer.id, supplierId: supplier.supplierId },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      })
+    : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -39,6 +49,35 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
           ))}
         </p>
       </div>
+
+      {candidates.length > 0 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-accent bg-accent-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-medium">רוצים להישאר עם {supplier.name}?</p>
+            <p className="text-sm">
+              בקשו ממנו להשוות את המחיר ב-{candidates.length} מוצרים שמצאנו זולים יותר, וחסכו בלי להחליף ספק.
+            </p>
+            {requests.length > 0 && (
+              <p className="mt-1 text-sm">
+                {requests.map((r, i) => (
+                  <span key={r.id}>
+                    {i > 0 && " · "}
+                    <Link href={`/customer/matches/${r.id}`} className="text-accent">
+                      בקשה מ-{r.createdAt.toLocaleDateString("he-IL")}: {MATCH_STATUS_LABEL[r.status]}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
+          <Link
+            href={`/customer/suppliers/${encodeURIComponent(supplier.key)}/match`}
+            className="shrink-0 rounded-md bg-accent px-4 py-2 text-center text-sm font-medium whitespace-nowrap text-white"
+          >
+            בקשו מהספק להשוות
+          </Link>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-[1fr_2fr]">
         <Card title="ציון תחרותיות">

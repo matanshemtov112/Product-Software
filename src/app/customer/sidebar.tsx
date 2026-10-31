@@ -103,7 +103,10 @@ export function CustomerSidebar({
             </Link>
           </li>
           <li>
-            <Link href="/customer/inquiries" className={item(pathname === "/customer/inquiries")}>
+            <Link
+              href="/customer/inquiries"
+              className={item(pathname === "/customer/inquiries" || pathname.startsWith("/customer/matches"))}
+            >
               <span>פניות לספקים</span>
               {replies > 0 && <span className="text-xs text-muted">{replies} תשובות</span>}
             </Link>
