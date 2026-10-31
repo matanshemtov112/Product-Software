@@ -1,0 +1,54 @@
+import { nominalPackSize } from "@/lib/pack";
+import { notFound } from "next/navigation";
+import { requireRole } from "@/lib/auth/current";
+import { categoryTree, selectableCategories } from "@/lib/categories";
+import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
+import { ProductForm } from "../../product-form";
+
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await requireRole("SUPPLIER");
+  const supplier = await supplierForUser(session.userId);
+  const offer = await getOffer(supplier.id, id);
+  if (!offer) notFound();
+  const categories = selectableCategories(await categoryTree(), null);
+  const byTier = pricesByTier(offer);
+  const prices = Object.fromEntries(
+    supplier.priceTiers.map((t) => {
+      const p = byTier.get(t.id);
+      // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
+      const agorot = p?.live ? (offer.pricePerPack ? p.live * nominalPackSize(offer) : p.live) : null;
+      return [t.id, agorot ? (agorot / 100).toFixed(2) : ""];
+    }),
+  );
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-2xl font-bold">עריכת {offer.product.name}</h1>
+      <div className="rounded-lg border border-border bg-surface p-5">
+        <ProductForm
+          initial={{
+            offerId: offer.id,
+            productName: offer.product.name,
+            categoryId: offer.product.categoryId,
+            unit: offer.product.unit,
+            brand: offer.brand ?? "",
+            supplierSku: offer.supplierSku ?? "",
+            supplierProductName: offer.supplierProductName ?? "",
+            packType: offer.packType ?? "",
+            packSize: offer.packSize,
+            packSizeMax: offer.packSizeMax,
+            minQuantity: offer.minQuantity,
+            minPacks: offer.minPacks,
+            pricePerPack: offer.pricePerPack,
+            available: offer.available,
+            prices,
+            imageSrc: offerImageUrl(offer),
+          }}
+          categories={categories}
+          catalog={[]}
+          tiers={supplier.priceTiers}
+        />
+      </div>
+    </div>
+  );
+}
