@@ -9,7 +9,10 @@ export async function customerProfile(
 ): Promise<CustomerProfileSnapshot> {
   const customer = await db.customer.findUniqueOrThrow({
     where: { id: customerId },
-    include: { region: true, users: { select: { name: true, email: true, phone: true }, orderBy: { createdAt: "asc" }, take: 1 } },
+    include: {
+      region: true,
+      users: { select: { name: true, email: true, phone: true }, orderBy: { createdAt: "asc" }, take: 1 },
+    },
   });
   const contact = customer.users[0];
   return {
@@ -17,11 +20,13 @@ export async function customerProfile(
     businessType: customer.businessType,
     cuisine: customer.cuisine,
     city: customer.city,
+    address: customer.address,
     region: customer.region.name,
     contactName: contact?.name ?? null,
     phone: contact?.phone ?? null,
     email: contact?.email ?? null,
     monthlyVolume: volumeRangeFor(basket.monthlyVolumeMinAgorot)?.label ?? null,
+    totalVolume: volumeRangeFor(customer.totalVolumeMinAgorot)?.label ?? null,
     deliveriesPerMonth: basket.deliveriesPerMonth,
     basketName: basket.name,
     itemCount: basket.items.length,

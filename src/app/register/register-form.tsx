@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
 import { register } from "@/lib/auth/actions";
 import { KindToggle } from "@/components/kind-toggle";
+import { VOLUME_RANGES } from "@/lib/customer/volume";
 
 const BUSINESS_TYPES = ["מסעדה", "בית קפה", "קייטרינג", "מלון", "מאפייה", "יצרן מזון", "אחר"];
 
@@ -48,7 +49,10 @@ export function RegisterForm({
             </Select>
           </Field>
           <Field label="עיר">
-            <Input name="city" required />
+            <Input name="city" autoComplete="address-level2" required />
+          </Field>
+          <Field label="כתובת העסק (לא חובה)">
+            <Input name="address" autoComplete="street-address" placeholder="רחוב ומספר" />
           </Field>
           <Field label="אזור אספקה">
             <Select name="regionId" required defaultValue="">
@@ -58,6 +62,16 @@ export function RegisterForm({
               {regions.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="היקף רכש חודשי כולל, מכל הספקים (לא חובה)">
+            <Select name="totalVolume" defaultValue="">
+              <option value="">מעדיפים לא לציין כרגע</option>
+              {VOLUME_RANGES.map((r) => (
+                <option key={r.key} value={r.key}>
+                  {r.label}
                 </option>
               ))}
             </Select>

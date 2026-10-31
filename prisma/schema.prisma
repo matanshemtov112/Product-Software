@@ -128,25 +128,30 @@ model Region {
 }
 
 model Customer {
-  id                  String               @id @default(cuid())
-  businessName        String
-  businessType        String
-  city                String
-  regionId            String
-  region              Region               @relation(fields: [regionId], references: [id])
-  monthlyBudgetAgorot Int?
-  preference          PricePreference      @default(BALANCED)
+  id                   String               @id @default(cuid())
+  businessName         String
+  businessType         String
+  city                 String
+  /// כתובת העסק (רחוב ומספר)
+  address              String?
+  regionId             String
+  region               Region               @relation(fields: [regionId], references: [id])
+  /// היקף הרכש החודשי הכולל מכל הספקים, כפי שהוצהר בהרשמה (מידע לספקים; המדרגה אצל כל ספק נקבעת לפי הסל)
+  totalVolumeMinAgorot Int?
+  totalVolumeMaxAgorot Int?
+  monthlyBudgetAgorot  Int?
+  preference           PricePreference      @default(BALANCED)
   /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
-  cuisine             String?
-  users               User[]
-  baskets             Basket[]
-  reviews             Review[]
-  reviewsBySuppliers  CustomerReview[]
-  invoices            Invoice[]
-  negotiations        NegotiationRequest[]
-  matchRequests       MatchRequest[]
-  alerts              PriceAlert[]
-  createdAt           DateTime             @default(now())
+  cuisine              String?
+  users                User[]
+  baskets              Basket[]
+  reviews              Review[]
+  reviewsBySuppliers   CustomerReview[]
+  invoices             Invoice[]
+  negotiations         NegotiationRequest[]
+  matchRequests        MatchRequest[]
+  alerts               PriceAlert[]
+  createdAt            DateTime             @default(now())
 }
 
 model Supplier {

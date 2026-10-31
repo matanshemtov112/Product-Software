@@ -119,7 +119,7 @@ export function CustomerSidebar({
           </li>
           <li>
             <Link href="/customer/profile" className={item(pathname === "/customer/profile")}>
-              סוג המסעדה
+              פרטי העסק
             </Link>
           </li>
         </ul>

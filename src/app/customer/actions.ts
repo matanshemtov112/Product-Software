@@ -32,6 +32,35 @@ export async function saveCuisine(_: FormState, form: FormData): Promise<FormSta
   redirect(String(form.get("next") ?? "") === "new" ? "/customer/baskets/new" : "/customer");
 }
 
+const businessSchema = z.object({
+  city: z.string().trim().min(2, "נא למלא עיר").max(60),
+  address: z.string().trim().max(120, "הכתובת ארוכה מדי"),
+  totalVolume: z.string(),
+});
+
+/** עדכון פרטי העסק: עיר, כתובת והיקף רכש כולל */
+export async function saveBusinessDetails(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const customer = await currentCustomer();
+  const parsed = businessSchema.safeParse({
+    city: form.get("city") ?? "",
+    address: form.get("address") ?? "",
+    totalVolume: form.get("totalVolume") ?? "",
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
+  const range = VOLUME_RANGES.find((r) => r.key === parsed.data.totalVolume);
+  await db.customer.update({
+    where: { id: customer.id },
+    data: {
+      city: parsed.data.city,
+      address: parsed.data.address || null,
+      totalVolumeMinAgorot: range ? range.min * 100 : null,
+      totalVolumeMaxAgorot: range?.max ? range.max * 100 : null,
+    },
+  });
+  revalidatePath("/customer", "layout");
+  return { saved: true };
+}
+
 const basketSchema = z.object({
   basketId: z.string().optional(),
   name: z.string().trim().min(2, "נא לתת שם לסל").max(60),

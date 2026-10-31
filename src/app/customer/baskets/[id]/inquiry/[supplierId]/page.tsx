@@ -90,9 +90,9 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           ))}
         </dl>
         <p className="mt-3 text-xs text-muted">
-          הפרטים נלקחים מההרשמה ומהסל. לעדכון סוג המסעדה:{" "}
+          הפרטים נלקחים מההרשמה ומהסל. לעדכון פרטי העסק:{" "}
           <Link href="/customer/profile" className="text-accent">
-            סוג המסעדה
+            פרטי העסק
           </Link>
           ; לעדכון ההיקף והאספקות:{" "}
           <Link href={`/customer/baskets/${basket.id}/edit`} className="text-accent">

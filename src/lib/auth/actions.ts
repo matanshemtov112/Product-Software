@@ -3,6 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "./password";
 import { HOME_BY_ROLE, SESSION_COOKIE, SESSION_MAX_AGE, type Session, signSession } from "./session";
@@ -37,10 +38,10 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   }
   // צוות הפלטפורמה נכנס מכל אחת מהלשוניות
   if (parsed.data.kind === "supplier" && user.role === "CUSTOMER") {
-    return { error: "החשבון הזה שייך למסעדה. נא לבחור \"כניסה כמסעדה\"" };
+    return { error: 'החשבון הזה שייך למסעדה. נא לבחור "כניסה כמסעדה"' };
   }
   if (parsed.data.kind === "customer" && user.role === "SUPPLIER") {
-    return { error: "החשבון הזה שייך לספק. נא לבחור \"כניסה כספק\"" };
+    return { error: 'החשבון הזה שייך לספק. נא לבחור "כניסה כספק"' };
   }
   await startSession({ userId: user.id, role: user.role, name: user.name });
   redirect(HOME_BY_ROLE[user.role]);
@@ -65,6 +66,8 @@ const customerSchema = z.object({
   businessName: z.string().trim().min(2, "נא למלא שם עסק"),
   businessType: z.string().trim().min(2, "נא לבחור סוג עסק"),
   city: z.string().trim().min(2, "נא למלא עיר"),
+  address: z.string().trim().max(120, "הכתובת ארוכה מדי").optional(),
+  totalVolume: z.string().optional(),
   regionId: z.string().min(1, "נא לבחור אזור"),
   preference: z.enum(["PRICE", "BALANCED", "SERVICE"]),
 });
@@ -73,8 +76,20 @@ const supplierSchema = z.object({
   ...accountFields,
   kind: z.literal("supplier"),
   companyName: z.string().trim().min(2, "נא למלא שם חברה"),
-  companyNumber: z.string().trim().regex(/^\d{9}$/, "ח.פ. צריך להיות 9 ספרות"),
+  companyNumber: z
+    .string()
+    .trim()
+    .regex(/^\d{9}$/, "ח.פ. צריך להיות 9 ספרות"),
 });
+
+/** היקף הרכש הכולל שנבחר בהרשמה, כשדות לשמירה */
+function totalVolumeFields(key: string | undefined) {
+  const range = VOLUME_RANGES.find((r) => r.key === key);
+  return {
+    totalVolumeMinAgorot: range ? range.min * 100 : null,
+    totalVolumeMaxAgorot: range?.max ? range.max * 100 : null,
+  };
+}
 
 const registerSchema = z.discriminatedUnion("kind", [customerSchema, supplierSchema]);
 
@@ -99,6 +114,8 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
             businessName: data.businessName,
             businessType: data.businessType,
             city: data.city,
+            address: data.address || null,
+            ...totalVolumeFields(data.totalVolume),
             regionId: data.regionId,
             preference: data.preference,
           },

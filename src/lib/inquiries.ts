@@ -45,12 +45,16 @@ export interface CustomerProfileSnapshot {
   businessType: string;
   cuisine: string | null;
   city: string;
+  /** כתובת העסק; חסרה בפניות שנשלחו לפני שנוספה */
+  address?: string | null;
   region: string;
   contactName: string | null;
   phone: string | null;
   email: string | null;
   /** טווח היקף הרכש החודשי שהלקוח הצהיר, למשל "₪20,000–50,000"; null אם לא הצהיר */
   monthlyVolume: string | null;
+  /** היקף הרכש הכולל מכל הספקים, כפי שהוצהר בהרשמה */
+  totalVolume?: string | null;
   deliveriesPerMonth: number;
   basketName: string;
   itemCount: number;
@@ -69,10 +73,12 @@ export function profileRows(p: CustomerProfileSnapshot): [string, string][] {
     ["שם העסק", p.businessName],
     ["סוג העסק", p.cuisine ? `${p.businessType} · ${p.cuisine}` : p.businessType],
     ["עיר ואזור", `${p.city} · ${p.region}`],
+    ["כתובת", p.address ?? null],
     ["איש קשר", p.contactName],
     ["טלפון", p.phone],
     ["אימייל", p.email],
     ["היקף רכש חודשי", p.monthlyVolume ? `${p.monthlyVolume} (ללא מע״מ)` : "לא צוין"],
+    ["היקף רכש כולל", p.totalVolume ? `${p.totalVolume} בחודש, מכל הספקים` : null],
     ["אספקות בחודש", String(p.deliveriesPerMonth)],
     ["הסל", `${p.basketName} · ${p.itemCount} מוצרים`],
     ["לקוח במערכת מאז", p.customerSince],
