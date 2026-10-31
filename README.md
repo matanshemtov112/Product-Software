@@ -13,6 +13,24 @@
 
 ## הרצה מקומית
 
+### הדרך הקלה: Docker (בלי להתקין Node או מסד נתונים)
+
+1. מתקינים [Docker Desktop](https://www.docker.com/products/docker-desktop/) ופותחים אותו.
+2. מורידים את הקוד: ב-GitHub, בענף `mvp-build`, לוחצים Code ← Download ZIP ומחלצים (או `git clone -b mvp-build https://github.com/matanshemtov112/Product-Software.git`).
+3. פותחים טרמינל בתיקייה (ב-Windows: PowerShell) ומריצים:
+
+```bash
+docker compose up
+```
+
+4. בהרצה הראשונה זה לוקח כמה דקות. כשמופיע `Ready` נכנסים ל-http://localhost:3000.
+5. לעצירה: Ctrl+C. בפעם הבאה שוב `docker compose up`, והנתונים נשמרים.
+
+- להתחלה מחדש עם נתוני הדמו: `docker compose down -v` ואז שוב `docker compose up`.
+- לא חובה: כדי להפעיל חיפוש בצילום וקריאת חשבוניות, יוצרים בתיקייה קובץ `.env` עם השורה `ANTHROPIC_API_KEY="..."`.
+
+### בלי Docker
+
 דרוש Node.js 22 ו-PostgreSQL 16.
 
 ```bash
