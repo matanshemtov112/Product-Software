@@ -1,5 +1,6 @@
 import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
+import { comparePaidPrices, type PaidComparison } from "./paid-prices";
 import { pricedPerPack, packPriceLabel } from "@/lib/pack";
 import {
   optimizeBasket,
@@ -114,4 +115,37 @@ function snapshot(
     totalAgorot: share.totalAgorot,
     missingProducts: quote.missingProductIds.map((id) => names.get(id) ?? id),
   };
+}
+
+/** המחירים שהלקוח משלם היום בסל מול ההצעות במערכת לכל מוצר, לפי ההצעה של כל ספק בניתוח */
+export function paidComparison(
+  basket: {
+    items: {
+      productId: string;
+      monthlyQuantity: number;
+      currentUnitPriceAgorot: number | null;
+      product: { name: string; unit: Unit };
+    }[];
+  },
+  analysis: BasketAnalysis,
+): PaidComparison {
+  return comparePaidPrices(
+    basket.items.map((i) => ({
+      productId: i.productId,
+      productName: i.product.name,
+      unit: i.product.unit,
+      quantity: i.monthlyQuantity,
+      paidAgorot: i.currentUnitPriceAgorot,
+    })),
+    analysis.rows.flatMap((r) =>
+      r.quote.share.lines.map((l) => ({
+        supplierId: r.supplierId,
+        supplierName: r.supplierName,
+        productId: l.productId,
+        unitPriceAgorot: l.unitPriceAgorot,
+        priceKind: l.priceKind,
+        priceUpdatedAt: l.priceUpdatedAt,
+      })),
+    ),
+  );
 }

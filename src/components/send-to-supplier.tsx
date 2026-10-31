@@ -2,7 +2,7 @@ import Link from "next/link";
 
 /** הצבע הצהוב הבולט של כפתורי "שליחת הודעה לספק"; טקסט שחור כדי שיהיה קריא גם במצב כהה */
 export const SEND_TO_SUPPLIER_CLASS =
-  "inline-flex items-center justify-center gap-2 rounded-md bg-[#ffd400] px-4 py-2 text-sm font-semibold text-black shadow-sm ring-1 ring-black/10 hover:bg-[#ffc400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b38f00] disabled:opacity-60";
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-[#ffd400] px-4 py-2 text-sm font-semibold whitespace-nowrap text-black shadow-sm ring-1 ring-black/10 hover:bg-[#ffc400] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#b38f00] disabled:opacity-60";
 
 function Envelope() {
   return (

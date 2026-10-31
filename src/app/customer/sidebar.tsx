@@ -78,6 +78,11 @@ export function CustomerSidebar({
         <p className="px-3 pb-1 text-xs font-medium text-muted">חיפוש ספקים</p>
         <ul className="flex flex-col gap-0.5">
           <li>
+            <Link href="/customer/suppliers" className={item(pathname.startsWith("/customer/suppliers"))}>
+              הספקים שלי
+            </Link>
+          </li>
+          <li>
             <Link href="/customer/competitors" className={item(pathname === "/customer/competitors")}>
               מתחרים לספק שלי
             </Link>

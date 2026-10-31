@@ -19,6 +19,8 @@ export interface BasketLine {
 export interface TierPrice {
   unitPriceAgorot: number;
   kind: PriceKind;
+  /** מתי הספק עדכן או אישר את המחיר (ISO), להצגת סטטוס המחיר */
+  updatedAt?: string;
 }
 
 export interface Offer {
@@ -81,6 +83,7 @@ export interface PricedLine {
   unitPriceAgorot: number;
   lineTotalAgorot: number;
   priceKind: PriceKind;
+  priceUpdatedAt?: string;
 }
 
 export interface SupplierShare {

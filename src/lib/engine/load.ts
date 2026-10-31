@@ -69,12 +69,20 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
         const prices: SupplierInput["offers"][number]["prices"] = {};
         // מבצע בתוקף גובר על מחיר רגיל אם הוא זול יותר; אחרת המחיר העדכני ביותר
         for (const p of o.prices.filter((x) => x.kind === "REGULAR")) {
-          prices[p.tierId] ??= { unitPriceAgorot: p.unitPriceAgorot, kind: "REGULAR" };
+          prices[p.tierId] ??= {
+            unitPriceAgorot: p.unitPriceAgorot,
+            kind: "REGULAR",
+            updatedAt: p.validFrom.toISOString(),
+          };
         }
         for (const p of o.prices.filter((x) => x.kind === "PROMOTION")) {
           const current = prices[p.tierId];
           if (!current || p.unitPriceAgorot < current.unitPriceAgorot) {
-            prices[p.tierId] = { unitPriceAgorot: p.unitPriceAgorot, kind: "PROMOTION" };
+            prices[p.tierId] = {
+              unitPriceAgorot: p.unitPriceAgorot,
+              kind: "PROMOTION",
+              updatedAt: p.validFrom.toISOString(),
+            };
           }
         }
         const pack = { ...o, unit: o.product.unit };
