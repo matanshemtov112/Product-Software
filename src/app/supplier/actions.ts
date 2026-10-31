@@ -11,6 +11,7 @@ import { nominalPackSize } from "@/lib/pack";
 import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
 import { VALID_DAYS } from "@/lib/matches";
 import { parseTiers } from "@/lib/supplier/tiers";
+import { isManager } from "@/lib/auth/team";
 
 export interface FormState {
   error?: string;
@@ -36,6 +37,15 @@ const offerSchema = z.object({
 async function currentSupplier() {
   const session = await requireRole("SUPPLIER");
   return supplierForUser(session.userId);
+}
+
+const MANAGER_ONLY = "רק מנהל יכול לשנות את הפרטים האלה";
+
+/** פעולות של מנהל: פרטי הספק, התחומים והמדרגות */
+async function managedSupplier() {
+  const session = await requireRole("SUPPLIER");
+  const supplier = await supplierForUser(session.userId);
+  return { supplier, manager: await isManager(session.userId) };
 }
 
 export async function saveOffer(_: FormState, form: FormData): Promise<FormState> {
@@ -185,7 +195,8 @@ const profileSchema = z.object({
 });
 
 export async function updateProfile(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
-  const supplier = await currentSupplier();
+  const { supplier, manager } = await managedSupplier();
+  if (!manager) return { error: MANAGER_ONLY };
   const parsed = profileSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const d = parsed.data;
@@ -220,7 +231,8 @@ export async function updateProfile(_: FormState, form: FormData): Promise<FormS
 
 /** שמירת התחומים של הספק: בהגדרה הראשונה ומעמוד הפרופיל */
 export async function saveDomains(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
-  const supplier = await currentSupplier();
+  const { supplier, manager } = await managedSupplier();
+  if (!manager && supplier.categoriesSetAt !== null) return { error: MANAGER_ONLY };
   const all = form.get("all") === "on";
   const requested = form.getAll("categoryId").map(String);
   const valid = all
@@ -354,7 +366,8 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
  * במדרגה חדשה בלי מחיר, הלקוח מקבל את המחיר של המדרגה שמתחתיה.
  */
 export async function saveTiers(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
-  const supplier = await currentSupplier();
+  const { supplier, manager } = await managedSupplier();
+  if (!manager) return { error: MANAGER_ONLY };
   const ids = form.getAll("tierId").map(String);
   const names = form.getAll("tierName").map(String);
   const mins = form.getAll("tierMin").map(String);

@@ -113,6 +113,8 @@ model User {
   phone        String?
   passwordHash String
   role         Role
+  /// מנהל העסק או הספק: עורך את פרטי העסק, המדרגות והצוות
+  isManager    Boolean   @default(false)
   customerId   String?
   customer     Customer? @relation(fields: [customerId], references: [id])
   supplierId   String?

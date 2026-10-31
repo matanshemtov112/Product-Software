@@ -122,6 +122,11 @@ export function CustomerSidebar({
               פרטי העסק
             </Link>
           </li>
+          <li>
+            <Link href="/customer/team" className={item(pathname === "/customer/team")}>
+              משתמשים
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

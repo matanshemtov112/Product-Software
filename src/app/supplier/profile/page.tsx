@@ -1,5 +1,6 @@
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
+import { isManager } from "@/lib/auth/team";
 import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
@@ -23,8 +24,14 @@ export default async function SupplierProfile() {
       priceTiers: { orderBy: { minMonthlyAgorot: "asc" } },
     },
   });
+  const manager = await isManager(session.userId);
   return (
     <div className="flex flex-col gap-4">
+      {!manager && (
+        <p className="rounded-md bg-accent-soft px-4 py-3 text-sm">
+          אפשר לראות את הפרטים, אבל רק מנהל יכול לשנות אותם.
+        </p>
+      )}
       <div>
         <h1 className="text-2xl font-bold">פרטי פרופיל</h1>
         <p className="text-sm text-muted">

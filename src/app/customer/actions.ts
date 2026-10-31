@@ -10,6 +10,7 @@ import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes
 import { CUISINES } from "@/lib/customer/templates";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { db } from "@/lib/db";
+import { isManager } from "@/lib/auth/team";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
 
@@ -40,7 +41,9 @@ const businessSchema = z.object({
 
 /** עדכון פרטי העסק: עיר, כתובת והיקף רכש כולל */
 export async function saveBusinessDetails(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
-  const customer = await currentCustomer();
+  const session = await requireRole("CUSTOMER");
+  const customer = await customerForUser(session.userId);
+  if (!(await isManager(session.userId))) return { error: "רק מנהל יכול לשנות את פרטי העסק" };
   const parsed = businessSchema.safeParse({
     city: form.get("city") ?? "",
     address: form.get("address") ?? "",

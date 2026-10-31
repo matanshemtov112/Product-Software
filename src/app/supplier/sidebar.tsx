@@ -90,6 +90,11 @@ export function SupplierSidebar({
               פרטי פרופיל
             </Link>
           </li>
+          <li>
+            <Link href="/supplier/team" className={item(pathname === "/supplier/team")}>
+              משתמשים
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

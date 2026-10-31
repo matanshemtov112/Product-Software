@@ -562,6 +562,9 @@ async function main() {
     await db.customerReview.create({ data: { customerId: customer.id, supplierId, overall, payment, communication, text } });
   }
 
+  // משתמשי הדמו הם מנהלי העסק או הספק שלהם
+  await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });
+
   console.log(
     `Seeded ${REGIONS.length} regions, ${CATEGORIES.length} categories, ${PRODUCTS.length} products, ${SUPPLIERS.length} suppliers. Demo password: ${DEMO_PASSWORD}`,
   );

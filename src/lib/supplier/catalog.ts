@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { categoryTree, expandCategoryIds } from "@/lib/categories";
 import { db } from "@/lib/db";
@@ -7,12 +8,14 @@ export { UNIT_LABEL } from "@/lib/format";
 
 /** הספק של המשתמש המחובר, או שגיאה אם המשתמש אינו מקושר לספק */
 export async function supplierForUser(userId: string) {
-  const user = await db.user.findUniqueOrThrow({
+  const user = await db.user.findUnique({
     where: { id: userId },
     include: {
       supplier: { include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } }, categories: true } },
     },
   });
+  // משתמש שהמנהל הסיר מהצוות חוזר להתחברות
+  if (!user) redirect("/login");
   if (!user.supplier) throw new Error("User is not linked to a supplier");
   return user.supplier;
 }
@@ -63,7 +66,9 @@ export function offerSearchFields(offer: {
     aliases: [offer.supplierProductName, offer.brand, offer.supplierSku, ...offer.product.aliases].filter(
       (a): a is string => Boolean(a),
     ),
-    categories: [offer.product.category.name, offer.product.category.parent?.name].filter((c): c is string => Boolean(c)),
+    categories: [offer.product.category.name, offer.product.category.parent?.name].filter((c): c is string =>
+      Boolean(c),
+    ),
   };
 }
 

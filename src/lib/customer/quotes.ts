@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
 import { comparePaidPrices, type PaidComparison } from "./paid-prices";
@@ -14,10 +15,12 @@ import type { QuoteSnapshot } from "@/lib/inquiries";
 
 /** הלקוח של המשתמש המחובר, עם האזור שלו */
 export async function customerForUser(userId: string) {
-  const user = await db.user.findUniqueOrThrow({
+  const user = await db.user.findUnique({
     where: { id: userId },
     include: { customer: { include: { region: true } } },
   });
+  // משתמש שהמנהל הסיר מהצוות חוזר להתחברות
+  if (!user) redirect("/login");
   if (!user.customer) throw new Error("User is not linked to a customer");
   return user.customer;
 }
