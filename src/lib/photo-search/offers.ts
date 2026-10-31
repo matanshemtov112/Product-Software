@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { packLabel } from "@/lib/pack";
+import { hasPack, packLabel, packPriceLabel } from "@/lib/pack";
 import type { OfferRow } from "./match";
 
 /** הצעות פעילות למוצרים שזוהו, אצל ספקים מאושרים שמספקים לאזור, עם המחיר במדרגה הבסיסית */
@@ -27,14 +27,19 @@ export async function offersForProducts(names: string[], regionId: string, now =
       },
     },
   });
-  return offers.map((o) => ({
-    productId: o.product.id,
-    productName: o.product.name,
-    unit: o.product.unit,
-    category: o.product.category.name,
-    supplierId: o.supplier.id,
-    supplierName: o.supplier.companyName,
-    priceAgorot: o.prices.find((p) => p.tierId === o.supplier.priceTiers[0]?.id)?.unitPriceAgorot ?? null,
-    pack: packLabel({ ...o, unit: o.product.unit }),
-  }));
+  return offers.map((o) => {
+    const priceAgorot = o.prices.find((p) => p.tierId === o.supplier.priceTiers[0]?.id)?.unitPriceAgorot ?? null;
+    const pack = { ...o, unit: o.product.unit };
+    return {
+      productId: o.product.id,
+      productName: o.product.name,
+      unit: o.product.unit,
+      category: o.product.category.name,
+      supplierId: o.supplier.id,
+      supplierName: o.supplier.companyName,
+      priceAgorot,
+      // מחיר לאריזה כשיש, אחרת רק איך המוצר מגיע
+      pack: priceAgorot !== null && hasPack(pack) ? packPriceLabel(priceAgorot, pack) : packLabel(pack),
+    };
+  });
 }

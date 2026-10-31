@@ -21,6 +21,7 @@ export interface CatalogItem {
   /** איך המוצר מגיע אצל הספק והמינימום להזמנה (רק במחירון של ספק) */
   pack?: string;
   minOrder?: string;
+  packPrice?: string;
 }
 
 const searchFields = (p: CatalogItem) => ({
@@ -241,7 +242,7 @@ export function BasketBuilder({
                       <span className="block text-xs text-muted">
                         {p.supplierName && p.supplierName !== p.name ? `אצל הספק: ${p.supplierName} · ` : ""}
                         {p.category}
-                        {p.pack && ` · ${p.pack}`}
+                        {p.packPrice ? ` · ${p.packPrice}` : p.pack && ` · ${p.pack}`}
                         {p.minOrder && ` · מינימום ${p.minOrder}`}
                       </span>
                     </span>

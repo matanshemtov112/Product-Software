@@ -2,6 +2,8 @@
 // המנוע טהור: אין בו גישה למסד נתונים, כך שאפשר לבדוק אותו בבדיקות יחידה.
 // כל הסכומים באגורות, ללא מע״מ.
 
+import type { PackInfo } from "@/lib/pack";
+
 export type Preference = "PRICE" | "BALANCED" | "SERVICE";
 export type PriceKind = "REGULAR" | "PROMOTION";
 
@@ -27,6 +29,8 @@ export interface Offer {
   /** לתצוגה: איך המוצר מגיע והמינימום להזמנה, למשל "קרטון 15–20 ק״ג" */
   packLabel?: string;
   minOrderLabel?: string | null;
+  /** לתצוגה: נתוני האריזה, לחישוב המחיר לאריזה */
+  packInfo?: Pick<PackInfo, "unit" | "packType" | "packSize" | "packSizeMax">;
   /** מחיר לפי מזהה מדרגה */
   prices: Record<string, TierPrice>;
 }

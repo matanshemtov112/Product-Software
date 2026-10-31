@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
+import { nominalPackSize } from "@/lib/pack";
 import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
 
 export interface FormState {
@@ -26,6 +27,7 @@ const offerSchema = z.object({
   packSizeMax: z.union([z.literal(""), z.coerce.number().positive()]).optional(),
   minAmount: z.union([z.literal(""), z.coerce.number().min(0)]).optional(),
   minIn: z.enum(["packs", "units"]).default("units"),
+  pricePer: z.enum(["unit", "pack"]).default("unit"),
   available: z.literal("on").optional(),
 });
 
@@ -46,11 +48,19 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   const tiers = supplier.priceTiers.length
     ? supplier.priceTiers
     : [await db.priceTier.create({ data: { supplierId: supplier.id, name: "רגיל", minMonthlyAgorot: 0 } })];
+  // מחיר לאריזה נשמר כמחיר ליחידת בסיס, כדי שההשוואה תהיה תמיד לפי ק״ג/ליטר/יחידה
+  const perPack = data.pricePer === "pack" && data.packSize > 0;
+  const packDivisor = perPack
+    ? nominalPackSize({
+        packSize: data.packSize,
+        packSizeMax: typeof data.packSizeMax === "number" ? data.packSizeMax : null,
+      })
+    : 1;
   // לספק בלי מדרגות הטופס שולח את המחיר בשדה price_new
-  const prices = tiers.map((t) => ({
-    tier: t,
-    agorot: parseShekels(form.get(`price_${t.id}`) ?? form.get("price_new")),
-  }));
+  const prices = tiers.map((t) => {
+    const entered = parseShekels(form.get(`price_${t.id}`) ?? form.get("price_new"));
+    return { tier: t, agorot: entered === null ? null : Math.round(entered / packDivisor) };
+  });
   if (prices[0].agorot === null) return { error: `נא למלא מחיר למדרגה "${tiers[0].name}"` };
 
   const existing = data.offerId
@@ -99,6 +109,7 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     minPacks: data.minIn === "packs" && minAmount > 0 ? Math.ceil(minAmount) : null,
     minQuantity: data.minIn === "units" ? minAmount : 0,
     available: data.available === "on",
+    pricePerPack: perPack,
   };
   const offer = existing
     ? await db.supplierOffer.update({ where: { id: existing.id }, data: offerData })

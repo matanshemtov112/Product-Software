@@ -1,3 +1,4 @@
+import { nominalPackSize } from "@/lib/pack";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
 import { categoryTree, selectableCategories } from "@/lib/categories";
@@ -15,7 +16,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const prices = Object.fromEntries(
     supplier.priceTiers.map((t) => {
       const p = byTier.get(t.id);
-      const agorot = p?.live;
+      // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
+      const agorot = p?.live ? (offer.pricePerPack ? p.live * nominalPackSize(offer) : p.live) : null;
       return [t.id, agorot ? (agorot / 100).toFixed(2) : ""];
     }),
   );
@@ -37,6 +39,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             packSizeMax: offer.packSizeMax,
             minQuantity: offer.minQuantity,
             minPacks: offer.minPacks,
+            pricePerPack: offer.pricePerPack,
             available: offer.available,
             prices,
             imageSrc: offerImageUrl(offer),

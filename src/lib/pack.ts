@@ -1,4 +1,4 @@
-import { UNIT_LABEL } from "@/lib/format";
+import { shekels, UNIT_LABEL } from "@/lib/format";
 
 export const PACK_LABEL = {
   UNIT: "יחידה",
@@ -54,4 +54,23 @@ export function minOrderLabel(p: PackInfo) {
   if (p.minPacks) return `${p.minPacks} × ${p.packType ? PACK_LABEL[p.packType] : "אריזה"} (${packContent(p)})`;
   if (p.minQuantity > 0) return `${num(p.minQuantity)} ${UNIT_LABEL[p.unit]}`;
   return null;
+}
+
+/** האם המוצר נמכר באריזה שיש טעם להציג לה מחיר (ולא בתפזורת לפי יחידת המידה) */
+export function hasPack(p: Pick<PackInfo, "packType" | "packSize" | "packSizeMax">) {
+  return p.packSize !== 1 || Boolean(p.packSizeMax) || (p.packType !== null && p.packType !== "UNIT");
+}
+
+/** מחיר לאריזה לפי מחיר ליחידה, למשל "₪72.00 לפח 4 ליטר"; במשקל משתנה טווח מחירים */
+export function packPriceLabel(
+  unitPriceAgorot: number,
+  p: Pick<PackInfo, "unit" | "packType" | "packSize" | "packSizeMax">,
+) {
+  const name = p.packType ? PACK_LABEL[p.packType] : "אריזה";
+  const low = shekels(Math.round(unitPriceAgorot * p.packSize), 2);
+  const price =
+    p.packSizeMax && p.packSizeMax > p.packSize
+      ? `${low}–${shekels(Math.round(unitPriceAgorot * p.packSizeMax), 2)}`
+      : low;
+  return `${price} ל${name} ${packContent(p)}`;
 }

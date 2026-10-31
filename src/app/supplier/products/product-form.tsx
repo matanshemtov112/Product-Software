@@ -4,7 +4,8 @@ import { ActionForm } from "@/components/action-form";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
-import { PACK_LABEL, type PackTypeKey } from "@/lib/pack";
+import { shekels } from "@/lib/format";
+import { nominalPackSize, PACK_LABEL, packContent, type PackTypeKey } from "@/lib/pack";
 import { saveOffer } from "../actions";
 import { ImageField } from "./image-field";
 
@@ -27,6 +28,8 @@ export interface OfferFormValues {
   packSizeMax: number | null;
   minQuantity: number;
   minPacks: number | null;
+  /** הספק מזין מחיר לאריזה ולא ליחידה */
+  pricePerPack: boolean;
   available: boolean;
   /** מחיר בשקלים לפי מזהה מדרגה */
   prices: Record<string, string>;
@@ -57,6 +60,23 @@ export function ProductForm({
   const [unit, setUnit] = useState(initial.unit);
   const [packType, setPackType] = useState(initial.packType);
   const unitLabel = UNITS.find((u) => u.value === unit)?.label ?? "";
+  const [packSize, setPackSize] = useState(String(initial.packSize));
+  const [packSizeMax, setPackSizeMax] = useState(initial.packSizeMax ? String(initial.packSizeMax) : "");
+  const [pricePer, setPricePer] = useState<"unit" | "pack">(initial.pricePerPack ? "pack" : "unit");
+  const [prices, setPrices] = useState(initial.prices);
+  const pack = { unit, packSize: Number(packSize) || 0, packSizeMax: Number(packSizeMax) || null };
+  const nominal = nominalPackSize(pack);
+  const packName = packType ? PACK_LABEL[packType] : "אריזה";
+  const packText = pack.packSize > 0 ? `${packName} ${packContent(pack)}` : packName;
+  // המחיר המקביל: ליחידה כשמזינים לאריזה, ולאריזה כשמזינים ליחידה
+  const converted = (value: string | undefined) => {
+    const n = Number(value);
+    if (!value || !(n > 0) || !(nominal > 0)) return null;
+    const agorot = Math.round(n * 100);
+    return pricePer === "pack"
+      ? `= ${shekels(Math.round(agorot / nominal), 2)} ל${unitLabel}${pack.packSizeMax ? " (לפי משקל ממוצע)" : ""}`
+      : `= ${shekels(Math.round(agorot * nominal), 2)} ל${packText}`;
+  };
 
   // בחירת מוצר קיים מהקטלוג ממלאת את סוג המוצר והיחידה שלו
   const onProductName = (name: string) => {
@@ -170,7 +190,8 @@ export function ProductForm({
                 type="number"
                 step="any"
                 min="0"
-                defaultValue={initial.packSize}
+                value={packSize}
+                onChange={(e) => setPackSize(e.target.value)}
                 dir="ltr"
                 required
                 aria-label="גודל אריזה"
@@ -181,7 +202,8 @@ export function ProductForm({
                 type="number"
                 step="any"
                 min="0"
-                defaultValue={initial.packSizeMax ?? ""}
+                value={packSizeMax}
+                onChange={(e) => setPackSizeMax(e.target.value)}
                 dir="ltr"
                 placeholder="משקל משתנה"
                 aria-label="גודל אריזה מקסימלי"
@@ -224,7 +246,30 @@ export function ProductForm({
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="mb-2 font-semibold">מחיר ליחידה, ללא מע״מ</legend>
+        <legend className="mb-2 font-semibold">מחיר, ללא מע״מ</legend>
+        <div role="radiogroup" aria-label="המחיר שאתם מזינים" className="flex flex-wrap gap-2 text-sm">
+          {(
+            [
+              ["unit", `מחיר ל${unitLabel}`],
+              ["pack", `מחיר ל${packText}`],
+            ] as const
+          ).map(([value, label]) => (
+            <label
+              key={value}
+              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${pricePer === value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
+            >
+              <input
+                type="radio"
+                name="pricePer"
+                value={value}
+                checked={pricePer === value}
+                onChange={() => setPricePer(value)}
+                className="accent-accent"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(tiers.length ? tiers : [{ id: "new", name: "רגיל", minMonthlyAgorot: 0 }]).map((t, i) => (
             <Field
@@ -236,10 +281,12 @@ export function ProductForm({
                 type="number"
                 step="0.01"
                 min="0"
-                defaultValue={initial.prices[t.id] ?? ""}
+                value={prices[t.id] ?? ""}
+                onChange={(e) => setPrices((current) => ({ ...current, [t.id]: e.target.value }))}
                 dir="ltr"
                 required={i === 0}
               />
+              {converted(prices[t.id]) && <span className="text-xs text-muted">{converted(prices[t.id])}</span>}
             </Field>
           ))}
         </div>

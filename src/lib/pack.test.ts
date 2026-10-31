@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel, type PackInfo } from "./pack";
+import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel, packPriceLabel, type PackInfo } from "./pack";
 
 const entrecote: PackInfo = {
   unit: "KG",
@@ -35,5 +35,13 @@ describe("pack math", () => {
     expect(nominalPackSize(entrecote)).toBe(17.5);
     expect(minBaseQuantity({ ...entrecote, minPacks: 2 })).toBe(35);
     expect(minBaseQuantity({ ...entrecote, minPacks: null, minQuantity: 10 })).toBe(10);
+  });
+});
+
+describe("packPriceLabel", () => {
+  it("shows the price of a whole pack, and a range for variable weight", () => {
+    const tin = { unit: "LITER", packType: "TIN", packSize: 4, packSizeMax: null } as const;
+    expect(packPriceLabel(1800, tin)).toBe("₪72.00 לפח 4 ליטר");
+    expect(packPriceLabel(13900, entrecote)).toBe("₪2,085.00–₪2,780.00 לקרטון 15–20 ק״ג");
   });
 });

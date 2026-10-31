@@ -1,5 +1,6 @@
 import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
+import { hasPack, packPriceLabel } from "@/lib/pack";
 import {
   optimizeBasket,
   quoteForSupplier,
@@ -81,6 +82,10 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
   };
 }
 
+function packPriceFor(unitPriceAgorot: number, pack: SupplierInput["offers"][number]["packInfo"]) {
+  return pack && hasPack(pack) ? packPriceLabel(unitPriceAgorot, pack) : undefined;
+}
+
 function snapshot(
   quote: SupplierQuote,
   units: Map<string, Unit>,
@@ -102,6 +107,7 @@ function snapshot(
       customerPaidAgorot: paid.get(l.productId) ?? null,
       pack: offers.get(l.productId)?.packLabel,
       minOrder: offers.get(l.productId)?.minOrderLabel,
+      packPrice: packPriceFor(l.unitPriceAgorot, offers.get(l.productId)?.packInfo),
     })),
     productsAgorot: share.productsAgorot,
     deliveryAgorot: share.deliveryAgorot,

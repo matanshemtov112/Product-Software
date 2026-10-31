@@ -38,6 +38,7 @@ export default async function NewProductPage() {
             packSizeMax: null,
             minQuantity: 0,
             minPacks: null,
+            pricePerPack: false,
             available: true,
             prices: {},
             imageSrc: null,

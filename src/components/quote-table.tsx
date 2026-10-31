@@ -37,7 +37,10 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                     <span className="block text-xs text-muted">ביקוש {l.quantity}, מעוגל לאריזות</span>
                   )}
                 </td>
-                <td className="py-2">{shekels(l.unitPriceAgorot, 2)}</td>
+                <td className="py-2">
+                  {shekels(l.unitPriceAgorot, 2)}
+                  {l.packPrice && <span className="block text-xs text-muted">{l.packPrice}</span>}
+                </td>
                 {showPaid && (
                   <td className="py-2">
                     {l.customerPaidAgorot != null ? (

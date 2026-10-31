@@ -93,7 +93,7 @@ interface DemoSupplier {
 /** איך כל מוצר מגיע אצל ספקי הדמו: סוג אריזה, משקל משתנה ומינימום באריזות */
 const DEMO_PACKS: Record<
   string,
-  { packType: PackType; packSize?: number; packSizeMax?: number; minPacks?: number; minQuantity?: number }
+  { packType: PackType; packSize?: number; packSizeMax?: number; minPacks?: number; minQuantity?: number; pricePerPack?: boolean }
 > = {
   אנטריקוט: { packType: "CARTON", packSize: 15, packSizeMax: 20, minPacks: 1 },
   "חזה עוף טרי": { packType: "CARTON", packSize: 5, packSizeMax: 6 },
@@ -113,9 +113,9 @@ const DEMO_PACKS: Record<
   "קמח לבן": { packType: "SACK" },
   "אורז פרסי": { packType: "SACK" },
   "סוכר לבן": { packType: "SACK" },
-  "שמן קנולה": { packType: "TIN" },
-  "שמן סויה": { packType: "TIN" },
-  "שמן זית": { packType: "TIN" },
+  "שמן קנולה": { packType: "TIN", pricePerPack: true },
+  "שמן סויה": { packType: "TIN", pricePerPack: true },
+  "שמן זית": { packType: "TIN", pricePerPack: true },
   "שמן חמניות": { packType: "BOTTLE" },
   "גבינה צהובה 28%": { packType: "PACK", minQuantity: 5 },
   "חלב 3%": { packType: "CARTON" },

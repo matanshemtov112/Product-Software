@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
-import { packLabel } from "@/lib/pack";
+import { hasPack, packLabel, packPriceLabel } from "@/lib/pack";
 import {
   listOffers,
   offerImageUrl,
@@ -155,8 +155,17 @@ export default async function SupplierProducts({
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
-                  <span className="whitespace-nowrap font-semibold">
-                    {price.live !== null ? `${shekels(price.live, 2)} / ${UNIT_LABEL[offer.product.unit]}` : "אין מחיר"}
+                  <span className="whitespace-nowrap text-end">
+                    <span className="block font-semibold">
+                      {price.live !== null
+                        ? `${shekels(price.live, 2)} / ${UNIT_LABEL[offer.product.unit]}`
+                        : "אין מחיר"}
+                    </span>
+                    {price.live !== null && hasPack(offer) && (
+                      <span className="block text-xs text-muted">
+                        {packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}
+                      </span>
+                    )}
                   </span>
                   <Actions offer={offer} />
                 </div>
@@ -179,7 +188,10 @@ export default async function SupplierProducts({
                 <div>
                   <p className="text-xl font-bold">{price.live !== null ? shekels(price.live, 2) : "אין מחיר"}</p>
                   <p className="text-xs text-muted">
-                    ל{UNIT_LABEL[offer.product.unit]} · {packLabel({ ...offer, unit: offer.product.unit })}
+                    ל{UNIT_LABEL[offer.product.unit]}
+                    {price.live !== null && hasPack(offer)
+                      ? ` · ${packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}`
+                      : ` · ${packLabel({ ...offer, unit: offer.product.unit })}`}
                   </p>
                 </div>
                 <div className="mt-auto border-t border-border pt-3">

@@ -219,6 +219,8 @@ model SupplierOffer {
   minQuantity         Float        @default(0)
   /// כמות מינימלית להזמנה באריזות (למשל 2 קרטונים); גובר על minQuantity כשמוגדר
   minPacks            Int?
+  /// הספק מזין מחיר לאריזה (למשל לפח 4 ליטר); נשמר תמיד כמחיר ליחידת בסיס
+  pricePerPack        Boolean      @default(false)
   available           Boolean      @default(true)
   prices              OfferPrice[]
   image               OfferImage?
