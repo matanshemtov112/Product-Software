@@ -1,50 +1,109 @@
-import { Card } from "@/components/form";
+import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
+import { shekels } from "@/lib/format";
+import { offeredPrice } from "@/lib/matches";
 
-export const dynamic = "force-dynamic";
+const DAY = 86_400_000;
+
+function Stat({ label, value, note, href }: { label: string; value: string | number; note?: string; href?: string }) {
+  const body = (
+    <div className={`h-full rounded-lg border border-border bg-surface p-4 ${href ? "hover:border-accent" : ""}`}>
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-2xl font-bold">{value}</p>
+      {note && <p className="text-xs text-muted">{note}</p>}
+    </div>
+  );
+  return href ? <Link href={href}>{body}</Link> : body;
+}
 
 export default async function AdminHome() {
   await requireRole("ADMIN");
-  const [customers, approved, pending, products, pendingPrices, pendingSuppliers] = await Promise.all([
+  const since = new Date(Date.now() - 30 * DAY);
+  const [
+    customers,
+    newCustomers,
+    suppliers,
+    pendingSuppliers,
+    products,
+    pendingProducts,
+    pendingPrices,
+    pendingReviews,
+    baskets,
+    checks,
+    invoices,
+    inquiries,
+    matches,
+    accepted,
+    activeCustomers,
+  ] = await Promise.all([
     db.customer.count(),
+    db.customer.count({ where: { createdAt: { gte: since } } }),
     db.supplier.count({ where: { status: "APPROVED" } }),
     db.supplier.count({ where: { status: "PENDING" } }),
     db.product.count(),
+    db.product.count({ where: { pendingReview: true } }),
     db.offerPrice.count({ where: { status: "PENDING_APPROVAL" } }),
-    db.supplier.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" }, take: 10 }),
+    db.review.count({ where: { status: "PENDING" } }),
+    db.basket.count({ where: { createdAt: { gte: since } } }),
+    db.optimizationRun.count({ where: { createdAt: { gte: since } } }),
+    db.invoice.count({ where: { createdAt: { gte: since } } }),
+    db.negotiationRequest.count({ where: { createdAt: { gte: since } } }),
+    db.matchRequest.count({ where: { createdAt: { gte: since } } }),
+    db.matchRequestLine.findMany({ where: { decision: "ACCEPTED", decidedAt: { gte: since } } }),
+    db.basket.groupBy({ by: ["customerId"], where: { runs: { some: { createdAt: { gte: since } } } } }),
   ]);
-  const stats = [
-    { label: "לקוחות", value: customers },
-    { label: "ספקים מאושרים", value: approved },
-    { label: "ספקים ממתינים", value: pending },
-    { label: "מוצרים בקטלוג", value: products },
-    { label: "שינויי מחיר לאישור", value: pendingPrices },
-  ];
+  const saved = accepted.reduce((sum, l) => {
+    const price = offeredPrice(l);
+    return price === null ? sum : sum + Math.max(0, Math.round((l.currentPriceAgorot - price) * l.monthlyQuantity));
+  }, 0);
+  const waiting = pendingSuppliers + pendingPrices + pendingProducts + pendingReviews;
+
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-bold">ניהול הפלטפורמה</h1>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <p className="text-3xl font-bold">{s.value}</p>
-            <p className="text-sm text-muted">{s.label}</p>
-          </Card>
-        ))}
+      <div>
+        <h1 className="text-2xl font-bold">ניהול הפלטפורמה</h1>
+        <p className="text-sm text-muted">
+          {waiting > 0 ? `${waiting} דברים ממתינים לטיפול שלכם.` : "אין שום דבר שממתין לטיפול."}
+        </p>
       </div>
-      <Card title="ספקים שממתינים לאישור">
-        {pendingSuppliers.length === 0 ? (
-          <p className="text-sm text-muted">אין ספקים בהמתנה.</p>
-        ) : (
-          <ul className="text-sm">
-            {pendingSuppliers.map((s) => (
-              <li key={s.id}>
-                {s.companyName} · ח.פ. {s.companyNumber}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold">ממתין לטיפול</h2>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Stat label="ספקים לאישור" value={pendingSuppliers} href="/admin/suppliers" />
+          <Stat label="שינויי מחיר לאישור" value={pendingPrices} note="שינוי של יותר מ-30%" href="/admin/prices" />
+          <Stat
+            label="מוצרים חדשים לבדיקה"
+            value={pendingProducts}
+            note="לא מוצגים ללקוחות עד הבדיקה"
+            href="/admin/products?pending=1"
+          />
+          <Stat label="ביקורות לאישור" value={pendingReviews} href="/admin/reviews" />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold">הפלטפורמה</h2>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <Stat label="לקוחות" value={customers} note={`${newCustomers} חדשים ב-30 הימים האחרונים`} />
+          <Stat label="ספקים מאושרים" value={suppliers} />
+          <Stat label="מוצרים בקטלוג" value={products} />
+          <Stat label="לקוחות פעילים" value={activeCustomers.length} note="הריצו בדיקה ב-30 הימים האחרונים" />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="font-semibold">פעילות ב-30 הימים האחרונים</h2>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <Stat label="סלים חדשים" value={baskets} />
+          <Stat label="בדיקות מחיר" value={checks} />
+          <Stat label="חשבוניות שהועלו" value={invoices} />
+          <Stat label="פניות לספקים" value={inquiries} />
+          <Stat label="בקשות השוואה" value={matches} />
+          <Stat label="חיסכון שלקוחות אישרו" value={shekels(saved)} note="בחודש, ממחירים שספקים השוו" />
+        </div>
+      </section>
     </div>
   );
 }

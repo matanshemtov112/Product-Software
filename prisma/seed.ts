@@ -682,6 +682,83 @@ async function main() {
     },
   });
 
+  // דברים שממתינים לאדמין, כדי שיהיה מה לראות בממשק הניהול
+  const pendingSupplier = await db.supplier.create({
+    data: {
+      companyName: "ספק דמו: דגי הים התיכון",
+      companyNumber: "510000007",
+      status: "PENDING",
+      minOrderAgorot: ils(300),
+      contactEmail: "supplier7@demo.local",
+      allCategories: false,
+      categoriesSetAt: new Date(),
+      categories: { create: [{ categoryId: categories.get("דגים ופירות ים")! }] },
+      deliveryZones: { create: [{ regionId: regions.get("מרכז")!, feeAgorot: ils(50), deliveryDays: "ב,ה" }] },
+      priceTiers: { create: [{ name: "רגיל", minMonthlyAgorot: 0 }] },
+    },
+  });
+  await db.user.create({
+    data: {
+      email: "supplier7@demo.local",
+      name: "נציג דגי הים התיכון",
+      phone: "050-0000007",
+      role: "SUPPLIER",
+      passwordHash,
+      supplierId: pendingSupplier.id,
+    },
+  });
+  // מחיר קפה שקפץ ביותר מ-30%: כנראה מחיר לשק במקום לק״ג
+  const coffee = await db.supplierOffer.findFirstOrThrow({
+    where: { supplierId: supplierIds["510000003"].id, productId: products.get("קפה פולים")! },
+    include: { supplier: { include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1 } } } },
+  });
+  await db.offerPrice.create({
+    data: {
+      offerId: coffee.id,
+      tierId: coffee.supplier.priceTiers[0].id,
+      unitPriceAgorot: ils(99),
+      status: "PENDING_APPROVAL",
+    },
+  });
+  // ספק הוסיף מוצר שכבר קיים בקטלוג בשם אחר
+  const duplicate = await db.product.create({
+    data: {
+      name: "עגבניה",
+      unit: "KG",
+      categoryId: (await db.product.findUniqueOrThrow({ where: { name: "עגבניות" } })).categoryId,
+      pendingReview: true,
+    },
+  });
+  const greens = await db.supplier.findUniqueOrThrow({
+    where: { companyNumber: "510000005" },
+    include: { priceTiers: true },
+  });
+  await db.supplierOffer.create({
+    data: {
+      supplierId: greens.id,
+      productId: duplicate.id,
+      supplierProductName: "עגבניה טריה",
+      packSize: 10,
+      prices: { create: greens.priceTiers.map((t) => ({ tierId: t.id, unitPriceAgorot: ils(5.9) })) },
+    },
+  });
+  await db.review.create({
+    data: {
+      customerId: businesses[1].id,
+      supplierId: greens.id,
+      overall: 2,
+      quality: 3,
+      price: 2,
+      reliability: 2,
+      service: 2,
+      responsiveness: 2,
+      accuracy: 2,
+      resolution: 2,
+      text: "המשלוח הגיע באיחור פעמיים החודש, והכוסברה הייתה נבולה.",
+      status: "PENDING",
+    },
+  });
+
   // משתמשי הדמו הם מנהלי העסק או הספק שלהם
   await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });
 

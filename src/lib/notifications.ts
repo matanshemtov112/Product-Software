@@ -131,4 +131,7 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   NEW_MATCH_REQUEST: "🤝",
   MATCH_DECIDED: "✅",
   MONTHLY_REPORT: "🗓️",
+  PRICE_APPROVED: "✅",
+  PRICE_REJECTED: "⛔",
+  ACCOUNT_STATUS: "🏷️",
 };
