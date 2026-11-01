@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/current";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { UNIT_LABEL } from "@/lib/format";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
@@ -141,6 +142,12 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     const status = priceChangeStatus(current, agorot);
     if (status === "PENDING_APPROVAL") held++;
     await db.offerPrice.create({ data: { offerId: offer.id, tierId: tier.id, unitPriceAgorot: agorot, status } });
+    await audit({
+      action: status === "LIVE" ? "price.changed" : "price.held",
+      targetType: "offer",
+      targetId: offer.id,
+      details: { supplier: supplier.companyName, tier: tier.name, from: current, to: agorot },
+    });
     // התראות ללקוחות לפי המחיר הבסיסי, כשהמחיר נכנס לתוקף מיד
     if (status === "LIVE" && tier.minMonthlyAgorot === 0) {
       const product = await db.product.findUniqueOrThrow({ where: { id: offer.productId } });

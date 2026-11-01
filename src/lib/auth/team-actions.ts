@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { hashPassword } from "./password";
 import { currentMember } from "./team";
 
@@ -46,6 +47,7 @@ export async function addMember(_: TeamFormState, form: FormData): Promise<TeamF
       ...me.org,
     },
   });
+  await audit({ action: "team.added", targetType: "user", details: { email: d.email, manager: d.isManager === "on" } });
   revalidatePath(PATH[me.role]);
   return { added: d.email };
 }
@@ -61,5 +63,12 @@ export async function updateMember(form: FormData) {
   if (action === "remove") await db.user.delete({ where: { id: target.id } });
   else if (action === "manager" || action === "member")
     await db.user.update({ where: { id: target.id }, data: { isManager: action === "manager" } });
+  else return;
+  await audit({
+    action: "team.updated",
+    targetType: "user",
+    targetId: target.id,
+    details: { email: target.email, action },
+  });
   revalidatePath(PATH[me.role]);
 }

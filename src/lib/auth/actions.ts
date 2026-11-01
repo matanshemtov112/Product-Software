@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
+import { audit, clientIp } from "@/lib/audit";
 import { db } from "@/lib/db";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { hashPassword, verifyPassword } from "./password";
 import { HOME_BY_ROLE, SESSION_COOKIE, SESSION_MAX_AGE, type Session, signSession } from "./session";
 
@@ -32,10 +34,20 @@ const loginSchema = z.object({
 export async function login(_: FormState, form: FormData): Promise<FormState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "נא למלא אימייל וסיסמה" };
-  const user = await db.user.findUnique({ where: { email: parsed.data.email } });
+  const { email } = parsed.data;
+  // אחרי כמה ניסיונות שגויים, אותו אימייל מאותה כתובת נחסם לזמן קצר
+  const key = `login:${email}:${await clientIp()}`;
+  if (rateLimit.blocked(key, LIMITS.loginFailures)) {
+    await audit({ action: "login.blocked", actor: email });
+    return { error: `יותר מדי ניסיונות. נסו שוב בעוד ${rateLimit.retryMinutes(key, LIMITS.loginFailures)} דקות.` };
+  }
+  const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+    rateLimit.hit(key, LIMITS.loginFailures);
+    await audit({ action: "login.failed", actor: email, userId: user?.id });
     return { error: "אימייל או סיסמה שגויים" };
   }
+  rateLimit.reset(key);
   // צוות הפלטפורמה נכנס מכל אחת מהלשוניות
   if (parsed.data.kind === "supplier" && user.role === "CUSTOMER") {
     return { error: 'החשבון הזה שייך למסעדה. נא לבחור "כניסה כמסעדה"' };
@@ -44,6 +56,7 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     return { error: 'החשבון הזה שייך לספק. נא לבחור "כניסה כספק"' };
   }
   await startSession({ userId: user.id, role: user.role, name: user.name });
+  await audit({ action: "login.success", userId: user.id, actor: user.name });
   redirect(HOME_BY_ROLE[user.role]);
 }
 
@@ -97,6 +110,9 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const data = parsed.data;
+  if (!rateLimit.hit(`register:${await clientIp()}`, LIMITS.register)) {
+    return { error: "יותר מדי הרשמות מהכתובת הזו. נסו שוב מאוחר יותר." };
+  }
 
   if (await db.user.findUnique({ where: { email: data.email } })) {
     return { error: "כבר קיים חשבון עם האימייל הזה" };
@@ -124,6 +140,13 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
       },
     });
     await startSession({ userId: user.id, role: user.role, name: user.name });
+    await audit({
+      action: "register",
+      userId: user.id,
+      actor: user.name,
+      targetType: "customer",
+      details: { email: user.email },
+    });
     redirect(HOME_BY_ROLE.CUSTOMER);
   }
 
@@ -146,5 +169,12 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
     },
   });
   await startSession({ userId: user.id, role: user.role, name: user.name });
+  await audit({
+    action: "register",
+    userId: user.id,
+    actor: user.name,
+    targetType: "supplier",
+    details: { email: user.email, companyNumber: data.companyNumber },
+  });
   redirect(HOME_BY_ROLE.SUPPLIER);
 }

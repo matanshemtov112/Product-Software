@@ -8,6 +8,7 @@ interface Pending {
   prices: number;
   products: number;
   reviews: number;
+  reports: number;
 }
 
 const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
@@ -17,7 +18,9 @@ const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
   { href: "/admin/products", label: "מוצרים ושמות נרדפים", pending: "products" },
   { href: "/admin/categories", label: "קטגוריות" },
   { href: "/admin/reviews", label: "ביקורות", pending: "reviews" },
+  { href: "/admin/reports", label: "דיווחים", pending: "reports" },
   { href: "/admin/users", label: "משתמשים" },
+  { href: "/admin/audit", label: "יומן פעולות" },
 ];
 
 export function AdminSidebar({ pending }: { pending: Pending }) {

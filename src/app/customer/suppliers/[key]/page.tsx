@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReportButton } from "@/components/report/report-button";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { ProductComparison } from "@/components/product-comparison";
@@ -133,6 +134,13 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
           קודם ועלול להשתנות.
         </p>
       </Card>
+      {supplier.supplierId && (
+        <ReportButton
+          targetId={supplier.supplierId}
+          targetName={supplier.name}
+          path={`/customer/suppliers/${encodeURIComponent(supplier.key)}`}
+        />
+      )}
     </div>
   );
 }

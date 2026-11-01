@@ -8,8 +8,10 @@ import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { db } from "@/lib/db";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { basketItemsFromInvoice, type ConfirmedLine } from "@/lib/invoices/basket";
 import { checkInvoiceFiles } from "@/lib/invoices/files";
+import { purgeOldInvoices } from "@/lib/invoices/retention";
 import { claudeInvoiceReader, parseInvoice, type ReadResult } from "@/lib/invoices/read";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
 
@@ -35,6 +37,10 @@ function fakeReading(catalogNames: string[]): ReadResult | null {
 /** קריאת החשבונית ושמירת השורות, ואז מעבר למסך הבדיקה */
 export async function readInvoice(_: InvoiceFormState, form: FormData): Promise<InvoiceFormState> {
   const customer = await currentCustomer();
+  if (!rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests)) {
+    return { error: "הגעתם למספר הקריאות המרבי לשעה. נסו שוב בעוד קצת." };
+  }
+  await purgeOldInvoices();
   const checked = await checkInvoiceFiles(form.getAll("pages"));
   if (!checked.ok) return { error: checked.error };
 

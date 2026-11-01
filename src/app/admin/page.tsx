@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
+import { purgeOldInvoices } from "@/lib/invoices/retention";
 import { offeredPrice } from "@/lib/matches";
 
 const DAY = 86_400_000;
@@ -19,6 +20,8 @@ function Stat({ label, value, note, href }: { label: string; value: string | num
 
 export default async function AdminHome() {
   await requireRole("ADMIN");
+  // מדיניות השמירה רצה כשאדמין נכנס; אין צורך בתזמון נפרד בפיילוט
+  await purgeOldInvoices();
   const since = new Date(Date.now() - 30 * DAY);
   const [
     customers,
@@ -29,6 +32,7 @@ export default async function AdminHome() {
     pendingProducts,
     pendingPrices,
     pendingReviews,
+    openReports,
     baskets,
     checks,
     invoices,
@@ -45,6 +49,7 @@ export default async function AdminHome() {
     db.product.count({ where: { pendingReview: true } }),
     db.offerPrice.count({ where: { status: "PENDING_APPROVAL" } }),
     db.review.count({ where: { status: "PENDING" } }),
+    db.abuseReport.count({ where: { status: "OPEN" } }),
     db.basket.count({ where: { createdAt: { gte: since } } }),
     db.optimizationRun.count({ where: { createdAt: { gte: since } } }),
     db.invoice.count({ where: { createdAt: { gte: since } } }),
@@ -57,7 +62,7 @@ export default async function AdminHome() {
     const price = offeredPrice(l);
     return price === null ? sum : sum + Math.max(0, Math.round((l.currentPriceAgorot - price) * l.monthlyQuantity));
   }, 0);
-  const waiting = pendingSuppliers + pendingPrices + pendingProducts + pendingReviews;
+  const waiting = pendingSuppliers + pendingPrices + pendingProducts + pendingReviews + openReports;
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,7 +75,7 @@ export default async function AdminHome() {
 
       <section className="flex flex-col gap-3">
         <h2 className="font-semibold">ממתין לטיפול</h2>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
           <Stat label="ספקים לאישור" value={pendingSuppliers} href="/admin/suppliers" />
           <Stat label="שינויי מחיר לאישור" value={pendingPrices} note="שינוי של יותר מ-30%" href="/admin/prices" />
           <Stat
@@ -80,6 +85,7 @@ export default async function AdminHome() {
             href="/admin/products?pending=1"
           />
           <Stat label="ביקורות לאישור" value={pendingReviews} href="/admin/reviews" />
+          <Stat label="דיווחים פתוחים" value={openReports} href="/admin/reports" />
         </div>
       </section>
 

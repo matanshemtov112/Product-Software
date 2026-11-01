@@ -1,6 +1,7 @@
 import type { SupplierStatus } from "@prisma/client";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
+import { isValidIsraeliNumber } from "@/lib/business-number";
 import { db } from "@/lib/db";
 import { setSupplierStatus } from "../actions";
 
@@ -54,6 +55,27 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
     },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
   });
+  // סימנים לבדיקה: ח.פ. עם ספרת ביקורת שגויה, טלפון שכבר שייך לספק אחר, ודיווחים פתוחים
+  const [allContacts, openReports] = await Promise.all([
+    db.supplier.findMany({
+      select: { id: true, companyName: true, contactPhone: true, users: { select: { phone: true } } },
+    }),
+    db.abuseReport.groupBy({ by: ["targetId"], where: { status: "OPEN", targetType: "SUPPLIER" }, _count: true }),
+  ]);
+  const phonesOf = (c: (typeof allContacts)[number]) =>
+    new Set([c.contactPhone, ...c.users.map((u) => u.phone)].map((p) => p?.replace(/\D/g, "")).filter(Boolean));
+  const warnings = (s: (typeof suppliers)[number]) => {
+    const out: string[] = [];
+    if (!isValidIsraeliNumber(s.companyNumber)) out.push("ח.פ. לא עובר בדיקת ספרת ביקורת");
+    const mine = phonesOf(allContacts.find((c) => c.id === s.id)!);
+    for (const other of allContacts) {
+      if (other.id === s.id) continue;
+      if ([...phonesOf(other)].some((p) => mine.has(p))) out.push(`אותו טלפון כמו ${other.companyName}`);
+    }
+    const reports = openReports.find((r) => r.targetId === s.id)?._count ?? 0;
+    if (reports) out.push(`${reports} דיווחים פתוחים`);
+    return out;
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,6 +112,15 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
                   <span className="font-semibold">{s.companyName}</span>
                   <span className={`rounded px-2 py-0.5 text-xs ${STYLE[s.status]}`}>{LABEL[s.status]}</span>
                 </div>
+                {warnings(s).length > 0 ? (
+                  <ul className="flex flex-col gap-1 rounded-md bg-[#fbebeb] px-3 py-2 text-sm text-danger">
+                    {warnings(s).map((w) => (
+                      <li key={w}>⚠️ {w}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-accent">✓ ח.פ. תקין, בלי טלפון כפול ובלי דיווחים</p>
+                )}
                 <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                   <div>
                     <dt className="inline text-muted">ח.פ.: </dt>

@@ -4,6 +4,7 @@ import type { SupplierStatus, Unit } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
+import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { notify, notifyPriceChange } from "@/lib/notifications";
@@ -25,6 +26,12 @@ export async function setSupplierStatus(form: FormData) {
   const supplier = await db.supplier.findUnique({ where: { id } });
   if (!supplier || supplier.status === status) return;
   await db.supplier.update({ where: { id }, data: { status } });
+  await audit({
+    action: "supplier.status",
+    targetType: "supplier",
+    targetId: id,
+    details: { supplier: supplier.companyName, from: supplier.status, to: status },
+  });
   await notify([{ supplierId: id, kind: "ACCOUNT_STATUS", title: STATUS_TEXT[status], href: "/supplier" }]);
   revalidatePath("/admin", "layout");
 }
@@ -51,6 +58,17 @@ export async function decidePrice(form: FormData) {
   await db.offerPrice.update({
     where: { id },
     data: approve ? { status: "LIVE", validFrom: now } : { status: "REJECTED" },
+  });
+  await audit({
+    action: approve ? "price.approved" : "price.rejected",
+    targetType: "offer",
+    targetId: offer.id,
+    details: {
+      supplier: offer.supplier.companyName,
+      product: offer.product.name,
+      from: previous?.unitPriceAgorot ?? null,
+      to: price.unitPriceAgorot,
+    },
   });
   const unit = UNIT_LABEL[offer.product.unit];
   await notify([
@@ -103,6 +121,7 @@ export async function updateProduct(form: FormData) {
     where: { id },
     data: { name, categoryId, unit, spec: str(form, "spec") || null, aliases, pendingReview: false },
   });
+  await audit({ action: "product.updated", targetType: "product", targetId: id, details: { name, aliases } });
   revalidatePath("/admin", "layout");
   redirect(`${back}?saved=1`);
 }
@@ -145,6 +164,12 @@ export async function mergeProduct(form: FormData) {
     });
     await tx.product.delete({ where: { id: sourceId } });
   });
+  await audit({
+    action: "product.merged",
+    targetType: "product",
+    targetId,
+    details: { from: source.name, into: target.name },
+  });
   revalidatePath("/admin", "layout");
   redirect(`/admin/products/${targetId}?merged=1`);
 }
@@ -160,7 +185,8 @@ export async function createCategory(form: FormData) {
     // שתי רמות בלבד: תחום ראשי ותת-תחום
     if (!parent || parent.parentId) redirect("/admin/categories?error=parent");
   }
-  await db.category.create({ data: { name, parentId } });
+  const created = await db.category.create({ data: { name, parentId } });
+  await audit({ action: "category.created", targetType: "category", targetId: created.id, details: { name } });
   revalidatePath("/admin/categories");
   redirect("/admin/categories?saved=1");
 }
@@ -173,6 +199,7 @@ export async function renameCategory(form: FormData) {
   const clash = await db.category.findFirst({ where: { name, id: { not: id } } });
   if (clash) redirect("/admin/categories?error=duplicate");
   await db.category.update({ where: { id }, data: { name } });
+  await audit({ action: "category.renamed", targetType: "category", targetId: id, details: { name } });
   revalidatePath("/admin/categories");
   redirect("/admin/categories?saved=1");
 }
@@ -189,6 +216,7 @@ export async function deleteCategory(form: FormData) {
   const { products, children, suppliers } = category._count;
   if (products + children + suppliers > 0) redirect("/admin/categories?error=not-empty");
   await db.category.delete({ where: { id } });
+  await audit({ action: "category.deleted", targetType: "category", targetId: id, details: { name: category.name } });
   revalidatePath("/admin/categories");
   redirect("/admin/categories?saved=1");
 }
@@ -198,5 +226,19 @@ export async function setReviewStatus(form: FormData) {
   const id = str(form, "reviewId");
   const status = form.get("status") === "PUBLISHED" ? "PUBLISHED" : "REJECTED";
   await db.review.update({ where: { id }, data: { status } });
+  await audit({ action: "review.status", targetType: "review", targetId: id, details: { status } });
+  revalidatePath("/admin", "layout");
+}
+
+/** סגירת דיווח: טופל או נסגר בלי פעולה, עם הערה פנימית */
+export async function closeReport(form: FormData) {
+  await requireRole("ADMIN");
+  const id = str(form, "reportId");
+  const status = form.get("status") === "RESOLVED" ? "RESOLVED" : "DISMISSED";
+  const resolution = str(form, "resolution").slice(0, 1000) || null;
+  const report = await db.abuseReport.findUnique({ where: { id } });
+  if (!report || report.status !== "OPEN") return;
+  await db.abuseReport.update({ where: { id }, data: { status, resolution, resolvedAt: new Date() } });
+  await audit({ action: "report.closed", targetType: "report", targetId: id, details: { status, resolution } });
   revalidatePath("/admin", "layout");
 }

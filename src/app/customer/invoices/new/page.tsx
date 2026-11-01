@@ -1,3 +1,4 @@
+import { INVOICE_RETENTION_DAYS } from "@/lib/invoices/retention";
 import Link from "next/link";
 import { invoiceReadingEnabled } from "@/lib/invoices/read";
 import { InvoiceUpload } from "./invoice-upload";
@@ -14,7 +15,8 @@ export default function NewInvoicePage() {
         <h1 className="text-2xl font-bold">העלאת חשבונית</h1>
         <p className="text-sm text-muted">
           נקרא מהחשבונית את המוצרים, הכמויות והמחירים שאתם משלמים היום, ונשווה אותם למחירים של ספקים אחרים. לפני ההשוואה
-          תוכלו לבדוק ולתקן כל שורה. הקובץ עצמו לא נשמר אצלנו.
+          תוכלו לבדוק ולתקן כל שורה. הקובץ עצמו לא נשמר אצלנו, ומה שנקרא ממנו נמחק אחרי {INVOICE_RETENTION_DAYS} יום
+          (הסל שתבנו נשאר).
         </p>
       </div>
       {enabled ? (

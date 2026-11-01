@@ -560,3 +560,60 @@ model Notification {
   @@index([customerId, read, createdAt])
   @@index([supplierId, read, createdAt])
 }
+
+/// יומן פעולות: מי עשה מה ומתי. לא נמחק מהממשק.
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  /// שם או אימייל ברגע הפעולה, כדי שהרשומה תישאר ברורה גם אם המשתמש נמחק
+  actor      String?
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+}
+
+enum ReportTarget {
+  SUPPLIER
+  CUSTOMER
+}
+
+enum ReportReason {
+  WRONG_PRICE
+  FAKE_BUSINESS
+  ABUSIVE
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+/// דיווח של משתמש על ספק או על לקוח, לטיפול צוות הפלטפורמה
+model AbuseReport {
+  id             String       @id @default(cuid())
+  reporterUserId String
+  reporterName   String
+  targetType     ReportTarget
+  targetId       String
+  targetName     String
+  reason         ReportReason
+  text           String?
+  /// הדף שממנו דווח
+  path           String?
+  status         ReportStatus @default(OPEN)
+  resolution     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([status, createdAt])
+}

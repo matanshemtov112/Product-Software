@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
+import { ReportButton } from "@/components/report/report-button";
 import { QuoteTable } from "@/components/quote-table";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
@@ -50,8 +51,8 @@ export default async function SupplierInquiry({
         </Link>
         <h1 className="text-2xl font-bold">פנייה מ{customer.businessName}</h1>
         <p className="text-sm text-muted">
-          {customer.businessType} · {customer.city} · {customer.region.name} · {inquiry.createdAt.toLocaleDateString("he-IL")} ·{" "}
-          {INQUIRY_STATUS_LABEL[inquiry.status]}
+          {customer.businessType} · {customer.city} · {customer.region.name} ·{" "}
+          {inquiry.createdAt.toLocaleDateString("he-IL")} · {INQUIRY_STATUS_LABEL[inquiry.status]}
         </p>
       </div>
 
@@ -139,9 +140,21 @@ export default async function SupplierInquiry({
         <CustomerReviewForm
           inquiryId={inquiry.id}
           customerId={customer.id}
-          existing={myReview && { overall: myReview.overall, payment: myReview.payment, communication: myReview.communication, text: myReview.text }}
+          existing={
+            myReview && {
+              overall: myReview.overall,
+              payment: myReview.payment,
+              communication: myReview.communication,
+              text: myReview.text,
+            }
+          }
         />
       </Card>
+      <ReportButton
+        targetId={customer.id}
+        targetName={customer.businessName}
+        path={`/supplier/inquiries/${inquiry.id}`}
+      />
     </div>
   );
 }

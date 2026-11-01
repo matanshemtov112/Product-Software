@@ -125,7 +125,7 @@ const DEMO_PACKS: Record<
 const SUPPLIERS: DemoSupplier[] = [
   {
     companyName: "ספק דמו: בשרים הגליל",
-    companyNumber: "510000001",
+    companyNumber: "510000011",
     categories: ["בשר ועוף", "קפואים"],
     minOrder: 400,
     reliability: 0.96,
@@ -141,7 +141,7 @@ const SUPPLIERS: DemoSupplier[] = [
   },
   {
     companyName: "ספק דמו: הירקן הסיטונאי",
-    companyNumber: "510000002",
+    companyNumber: "510000029",
     categories: ["פירות וירקות", "ביצים"],
     // ספק ירקות אדמה ופרי: זול שם, יקר בירוקים
     minOrder: 120,
@@ -167,7 +167,7 @@ const SUPPLIERS: DemoSupplier[] = [
   },
   {
     companyName: "ספק דמו: מרכז המזון",
-    companyNumber: "510000003",
+    companyNumber: "510000037",
     categories: null,
     minOrder: 600,
     reliability: 0.88,
@@ -208,7 +208,7 @@ const SUPPLIERS: DemoSupplier[] = [
   },
   {
     companyName: "ספק דמו: מחלבות השרון",
-    companyNumber: "510000004",
+    companyNumber: "510000045",
     categories: ["מוצרי חלב"],
     minOrder: 120,
     reliability: 0.97,
@@ -224,7 +224,7 @@ const SUPPLIERS: DemoSupplier[] = [
   },
   {
     companyName: "ספק דמו: ירוקי השדה",
-    companyNumber: "510000005",
+    companyNumber: "510000052",
     categories: ["ירוקים, עשבי תיבול ופטריות"],
     minOrder: 60,
     reliability: 0.94,
@@ -241,7 +241,7 @@ const SUPPLIERS: DemoSupplier[] = [
   {
     // ספק בדרום בלבד: לא משנה את ההשוואות של לקוחות הדמו במרכז, אבל נותן לספקים "מיקום מול השוק"
     companyName: "ספק דמו: סיטונאות הנגב",
-    companyNumber: "510000006",
+    companyNumber: "510000060",
     categories: ["בשר ועוף", "קפואים", "פירות וירקות", "מוצרי חלב", "ביצים"],
     minOrder: 500,
     reliability: 0.9,
@@ -324,6 +324,8 @@ async function main() {
   }
   await db.$transaction([
     db.user.deleteMany(),
+    db.abuseReport.deleteMany(),
+    db.auditLog.deleteMany(),
     db.negotiationRequest.deleteMany(),
     db.matchRequest.deleteMany(),
     db.priceAlert.deleteMany(),
@@ -469,7 +471,7 @@ async function main() {
     },
   });
   // סל שני, שהספק הנוכחי שלו רשום במערכת: כך אפשר לנסות "בקש מהספק שלי להשוות"
-  const foodCenter = await db.supplier.findFirstOrThrow({ where: { companyNumber: "510000003" } });
+  const foodCenter = await db.supplier.findFirstOrThrow({ where: { companyNumber: "510000037" } });
   await db.basket.create({
     data: {
       customerId: customer.id,
@@ -503,9 +505,9 @@ async function main() {
     ]),
   );
   const lastMonth: [string, number, number][] = [
-    ["510000001", 3575, 2],
-    ["510000003", 6020, 10],
-    ["510000004", 623, 1],
+    ["510000011", 3575, 2],
+    ["510000037", 6020, 10],
+    ["510000045", 623, 1],
   ];
   await db.optimizationRun.create({
     data: {
@@ -532,7 +534,7 @@ async function main() {
   await db.user.create({ data: { email: "admin@demo.local", name: "אדמין", role: "ADMIN", passwordHash } });
 
   // פנייה לדוגמה אצל ספק הבשר: בית קפה שמעדיף אותו למרות פער קטן
-  const meat = await db.supplier.findUniqueOrThrow({ where: { companyNumber: "510000001" } });
+  const meat = await db.supplier.findUniqueOrThrow({ where: { companyNumber: "510000011" } });
   const quoteLines = [
     { productName: "חזה עוף טרי", unit: "KG", quantity: 40, billedQuantity: 40, unitPrice: 31.9 },
     { productName: "שוקיים עוף", unit: "KG", quantity: 20, billedQuantity: 20, unitPrice: 21.5 },
@@ -573,8 +575,8 @@ async function main() {
 
   // מסעדת הדמו פנתה בעבר לשני ספקים, והם כתבו עליה ביקורת
   const pastInquiries: [string, string, string, number, number, number, string][] = [
-    ["510000001", "נשמח לשמוע על מחיר קבוע לחזה עוף.", "נוכל לתת ₪33 לק״ג בהתחייבות חודשית.", 5, 5, 4, "לקוח מסודר, משלמים בזמן ומזמינים יום מראש."],
-    ["510000003", "יש אפשרות למשלוח פעמיים בשבוע?", "כן, ללא תוספת מעל ₪1,500 להזמנה.", 4, 4, 5, "תקשורת מצוינת. פעם אחת התשלום התעכב בשבוע."],
+    ["510000011", "נשמח לשמוע על מחיר קבוע לחזה עוף.", "נוכל לתת ₪33 לק״ג בהתחייבות חודשית.", 5, 5, 4, "לקוח מסודר, משלמים בזמן ומזמינים יום מראש."],
+    ["510000037", "יש אפשרות למשלוח פעמיים בשבוע?", "כן, ללא תוספת מעל ₪1,500 להזמנה.", 4, 4, 5, "תקשורת מצוינת. פעם אחת התשלום התעכב בשבוע."],
   ];
   for (const [number, message, reply, overall, payment, communication, text] of pastInquiries) {
     const supplierId = supplierIds[number].id;
@@ -607,7 +609,7 @@ async function main() {
         createdAt: new Date(Date.now() - 5 * 86_400_000),
       },
       {
-        supplierId: supplierIds["510000001"].id,
+        supplierId: supplierIds["510000011"].id,
         kind: "NEW_INQUIRY",
         title: "פנייה חדשה מקפה דמו",
         body: "לקוח מבקש הצעה לסל חודשי של בשר ועוף.",
@@ -630,9 +632,9 @@ async function main() {
     data: { createdAt: new Date(longAgo.getTime() + 86_400_000) },
   });
   const history: [string, string, number][] = [
-    ["510000003", "שמן קנולה", 0.95], // מרכז המזון העלה ב-5%
-    ["510000003", "בקר טחון", 1.04], // מרכז המזון הוריד ב-4%
-    ["510000001", "חזה עוף טרי", 1.06], // בשרים הגליל הוריד ב-6%
+    ["510000037", "שמן קנולה", 0.95], // מרכז המזון העלה ב-5%
+    ["510000037", "בקר טחון", 1.04], // מרכז המזון הוריד ב-4%
+    ["510000011", "חזה עוף טרי", 1.06], // בשרים הגליל הוריד ב-6%
   ];
   for (const [number, productName, factor] of history) {
     const offer = await db.supplierOffer.findFirst({
@@ -659,7 +661,7 @@ async function main() {
   await db.matchRequest.create({
     data: {
       customerId: customer.id,
-      supplierId: supplierIds["510000003"].id,
+      supplierId: supplierIds["510000037"].id,
       basketId: meatAndOil.id,
       status: "CLOSED",
       supplierNote: "בשמחה, המחיר בתוקף מההזמנה הבאה.",
@@ -686,7 +688,7 @@ async function main() {
   const pendingSupplier = await db.supplier.create({
     data: {
       companyName: "ספק דמו: דגי הים התיכון",
-      companyNumber: "510000007",
+      companyNumber: "510000078",
       status: "PENDING",
       minOrderAgorot: ils(300),
       contactEmail: "supplier7@demo.local",
@@ -709,7 +711,7 @@ async function main() {
   });
   // מחיר קפה שקפץ ביותר מ-30%: כנראה מחיר לשק במקום לק״ג
   const coffee = await db.supplierOffer.findFirstOrThrow({
-    where: { supplierId: supplierIds["510000003"].id, productId: products.get("קפה פולים")! },
+    where: { supplierId: supplierIds["510000037"].id, productId: products.get("קפה פולים")! },
     include: { supplier: { include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1 } } } },
   });
   await db.offerPrice.create({
@@ -730,7 +732,7 @@ async function main() {
     },
   });
   const greens = await db.supplier.findUniqueOrThrow({
-    where: { companyNumber: "510000005" },
+    where: { companyNumber: "510000052" },
     include: { priceTiers: true },
   });
   await db.supplierOffer.create({
@@ -756,6 +758,21 @@ async function main() {
       resolution: 2,
       text: "המשלוח הגיע באיחור פעמיים החודש, והכוסברה הייתה נבולה.",
       status: "PENDING",
+    },
+  });
+
+  // דיווח פתוח לדוגמה: מסעדת הדמו חושבת שמחיר אצל מרכז המזון לא נכון
+  const demoUser = await db.user.findUniqueOrThrow({ where: { email: "customer@demo.local" } });
+  await db.abuseReport.create({
+    data: {
+      reporterUserId: demoUser.id,
+      reporterName: demoUser.name,
+      targetType: "SUPPLIER",
+      targetId: supplierIds["510000037"].id,
+      targetName: supplierIds["510000037"].companyName,
+      reason: "WRONG_PRICE",
+      text: "המחיר של בקר טחון במערכת נמוך ממה שהם גובים בפועל בחשבונית.",
+      path: "/customer/suppliers",
     },
   });
 

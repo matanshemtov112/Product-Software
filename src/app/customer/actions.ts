@@ -12,6 +12,8 @@ import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { notify } from "@/lib/notifications";
 import { shekels } from "@/lib/format";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { isManager } from "@/lib/auth/team";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
@@ -62,6 +64,7 @@ export async function saveBusinessDetails(_: FormState, form: FormData): Promise
       totalVolumeMaxAgorot: range?.max ? range.max * 100 : null,
     },
   });
+  await audit({ action: "business.updated", targetType: "customer", targetId: customer.id, details: parsed.data });
   revalidatePath("/customer", "layout");
   return { saved: true };
 }
@@ -177,6 +180,9 @@ export async function sendInquiry(_: FormState, form: FormData): Promise<FormSta
   const parsed = inquirySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { basketId, supplierId, message } = parsed.data;
+  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+    return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
+  }
 
   const basket = await getBasket(customer.id, basketId);
   if (!basket) return { error: "הסל לא נמצא" };

@@ -3,9 +3,15 @@
 import { requireRole } from "@/lib/auth/current";
 import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
-import { claudeIdentifier, parseIdentification, type Identification, type PhotoImage } from "@/lib/photo-search/identify";
+import {
+  claudeIdentifier,
+  parseIdentification,
+  type Identification,
+  type PhotoImage,
+} from "@/lib/photo-search/identify";
 import { groupMatches, type PhotoMatches } from "@/lib/photo-search/match";
 import { offersForProducts } from "@/lib/photo-search/offers";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { checkImage } from "@/lib/supplier/images";
 
 export interface PhotoSearchState {
@@ -27,6 +33,9 @@ function fakeIdentification(catalogNames: string[]): Identification | null {
 export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promise<PhotoSearchState> {
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
+  if (!rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests)) {
+    return { error: "הגעתם למספר החיפושים המרבי לשעה. נסו שוב בעוד קצת." };
+  }
   const image = await checkImage(form.get("photo"));
   if (!image) return { error: "נא לצלם או לבחור תמונה" };
   if (!image.ok) return { error: image.error };

@@ -7,6 +7,7 @@ import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerProfile } from "@/lib/customer/profile";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
+import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { notify } from "@/lib/notifications";
 import { isValid, matchCandidates, offeredPrice, OPEN_MATCH } from "@/lib/matches";
 
@@ -28,6 +29,9 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
   const chosen = new Set(form.getAll("product").map(String));
   const lines = matchCandidates(supplier.lines).filter((c) => chosen.has(c.productId));
   if (lines.length === 0) return { error: "נא לסמן לפחות מוצר אחד" };
+  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+    return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
+  }
   const open = await db.matchRequest.findFirst({
     where: { customerId: customer.id, supplierId: supplier.supplierId, status: { in: OPEN_MATCH } },
   });
