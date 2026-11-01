@@ -248,7 +248,7 @@ export function BasketBuilder({
                     </span>
                   </label>
                   {r.included && <input type="hidden" name="productId" value={r.productId} />}
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-1.5 text-sm">
                       <input
                         name={r.included ? `quantity_${r.productId}` : undefined}
@@ -260,10 +260,10 @@ export function BasketBuilder({
                         disabled={!r.included && !checklist}
                         required={r.included && visible.has(r.productId)}
                         aria-label={`כמות חודשית של ${p.name}`}
-                        className="w-24 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent"
+                        className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent sm:w-24"
                         dir="ltr"
                       />
-                      <span className="w-12 text-muted">{unit}</span>
+                      <span className="w-10 text-muted sm:w-12">{unit}</span>
                     </label>
                     <label className="flex items-center gap-1.5 text-sm">
                       <span className="text-muted">₪</span>
@@ -276,7 +276,7 @@ export function BasketBuilder({
                         onChange={(e) => update(r.productId, { price: e.target.value })}
                         placeholder="מחיר היום"
                         aria-label={`המחיר שאתם משלמים היום ל${unit} ${p.name}`}
-                        className="w-28 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent"
+                        className="w-24 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent sm:w-28"
                         dir="ltr"
                       />
                     </label>
