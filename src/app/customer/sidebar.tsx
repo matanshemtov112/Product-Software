@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BellLink } from "@/components/notifications/bell-link";
 
 /** כמה זמן עבר מהבדיקה האחרונה, בניסוח קצר */
 function since(iso: string | null) {
@@ -18,12 +19,14 @@ export function CustomerSidebar({
   saved,
   replies,
   reviewsAboutMe,
+  unread,
 }: {
   businessName: string;
   cuisine: string;
   saved: { id: string; name: string; lastCheck: string | null }[];
   replies: number;
   reviewsAboutMe: number;
+  unread: number;
 }) {
   const pathname = usePathname();
   const item = (selected: boolean) =>
@@ -35,6 +38,7 @@ export function CustomerSidebar({
         <p className="font-semibold">{businessName}</p>
         <p className="text-xs text-muted">{cuisine}</p>
       </div>
+      <BellLink href="/customer/notifications" unread={unread} />
       <Link
         href="/customer/baskets/new"
         className="mx-1 rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-white"

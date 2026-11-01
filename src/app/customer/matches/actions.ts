@@ -7,6 +7,7 @@ import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerProfile } from "@/lib/customer/profile";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
+import { notify } from "@/lib/notifications";
 import { isValid, matchCandidates, offeredPrice, OPEN_MATCH } from "@/lib/matches";
 
 export interface MatchFormState {
@@ -57,6 +58,15 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       },
     },
   });
+  await notify([
+    {
+      supplierId: supplier.supplierId,
+      kind: "NEW_MATCH_REQUEST",
+      title: `${customer.businessName} מבקשים שתשוו מחירים ל-${lines.length} מוצרים`,
+      body: "לקוח קיים שלכם מצא מחירים זולים יותר ורוצה להמשיך לעבוד איתכם.",
+      href: `/supplier/matches/${request.id}`,
+    },
+  ]);
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${request.id}?sent=1`);
 }
@@ -90,7 +100,20 @@ export async function decideMatchLine(form: FormData) {
   const pending = line.request.lines.some(
     (l) => l.id !== line.id && l.decision === "PENDING" && offeredPrice(l) !== null,
   );
-  if (!pending) await db.matchRequest.update({ where: { id: line.requestId }, data: { status: "CLOSED" } });
+  if (!pending) {
+    await db.matchRequest.update({ where: { id: line.requestId }, data: { status: "CLOSED" } });
+    const lines = line.request.lines.map((l) => (l.id === line.id ? { ...l, decision } : l));
+    const accepted = lines.filter((l) => l.decision === "ACCEPTED").length;
+    await notify([
+      {
+        supplierId: line.request.supplierId,
+        kind: "MATCH_DECIDED",
+        title: `${customer.businessName} ${accepted ? `אישרו ${accepted} מחירים מההצעה שלכם` : "לא אישרו את ההצעה שלכם"}`,
+        href: `/supplier/matches/${line.requestId}`,
+        dedupeKey: `match-decided:${line.requestId}`,
+      },
+    ]);
+  }
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${line.requestId}`);
 }

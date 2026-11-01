@@ -29,7 +29,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
     );
   }
 
-  const [saved, inquiryReplies, matchReplies, reviewsAboutMe] = await Promise.all([
+  const [saved, inquiryReplies, matchReplies, reviewsAboutMe, unread] = await Promise.all([
     db.basket.findMany({
       where: { customerId: customer.id, savedAt: { not: null } },
       select: { id: true, name: true, runs: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
@@ -38,6 +38,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
     db.negotiationRequest.count({ where: { customerId: customer.id, status: { in: ["OFFERED", "CLOSED"] } } }),
     db.matchRequest.count({ where: { customerId: customer.id, status: "ANSWERED" } }),
     db.customerReview.count({ where: { customerId: customer.id } }),
+    db.notification.count({ where: { customerId: customer.id, read: false } }),
   ]);
 
   return (
@@ -49,6 +50,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
           saved={saved.map((b) => ({ id: b.id, name: b.name, lastCheck: b.runs[0]?.createdAt.toISOString() ?? null }))}
           replies={inquiryReplies + matchReplies}
           reviewsAboutMe={reviewsAboutMe}
+          unread={unread}
         />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">{children}</div>

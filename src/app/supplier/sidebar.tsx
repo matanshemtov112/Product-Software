@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BellLink } from "@/components/notifications/bell-link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export function SupplierSidebar({
@@ -8,11 +9,13 @@ export function SupplierSidebar({
   total,
   newInquiries,
   rating,
+  unread,
 }: {
   categories: { id: string; name: string; count: number }[];
   total: number;
   newInquiries: number;
   rating: { average: number; count: number } | null;
+  unread: number;
 }) {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -32,6 +35,7 @@ export function SupplierSidebar({
 
   return (
     <nav aria-label="תפריט ספק" className="flex flex-col gap-4">
+      <BellLink href="/supplier/notifications" unread={unread} />
       <div>
         <p className="px-3 pb-1 text-xs font-medium text-muted">המוצרים שלי</p>
         <ul className="flex flex-col gap-0.5">

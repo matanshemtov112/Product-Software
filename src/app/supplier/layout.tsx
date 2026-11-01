@@ -37,10 +37,11 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     );
   }
 
-  const [categories, newInquiries, newMatches, ratingAgg] = await Promise.all([
+  const [categories, newInquiries, newMatches, unread, ratingAgg] = await Promise.all([
     categoryCounts(supplier.id),
     db.negotiationRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
     db.matchRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
+    db.notification.count({ where: { supplierId: supplier.id, read: false } }),
     db.review.aggregate({
       where: { supplierId: supplier.id, status: "PUBLISHED" },
       _avg: { overall: true },
@@ -60,6 +61,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
             total={total}
             newInquiries={newInquiries + newMatches}
             rating={rating}
+            unread={unread}
           />
         </Suspense>
       </aside>

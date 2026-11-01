@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
+import { notify, notifyPriceChange } from "@/lib/notifications";
+import { UNIT_LABEL } from "@/lib/format";
 import { db } from "@/lib/db";
 import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
@@ -139,6 +141,19 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     const status = priceChangeStatus(current, agorot);
     if (status === "PENDING_APPROVAL") held++;
     await db.offerPrice.create({ data: { offerId: offer.id, tierId: tier.id, unitPriceAgorot: agorot, status } });
+    // התראות ללקוחות לפי המחיר הבסיסי, כשהמחיר נכנס לתוקף מיד
+    if (status === "LIVE" && tier.minMonthlyAgorot === 0) {
+      const product = await db.product.findUniqueOrThrow({ where: { id: offer.productId } });
+      await notifyPriceChange({
+        supplierId: supplier.id,
+        supplierName: supplier.companyName,
+        productId: product.id,
+        productName: product.name,
+        unitLabel: UNIT_LABEL[product.unit],
+        oldAgorot: current,
+        newAgorot: agorot,
+      });
+    }
   }
 
   revalidatePath("/supplier");
@@ -271,6 +286,16 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
     data: { reply, status, repliedAt: new Date() },
   });
   if (!count) return { error: "הפנייה לא נמצאה" };
+  const inquiry = await db.negotiationRequest.findUniqueOrThrow({ where: { id: inquiryId } });
+  await notify([
+    {
+      customerId: inquiry.customerId,
+      kind: "SUPPLIER_REPLIED",
+      title: `${supplier.companyName} השיב לפנייה שלכם`,
+      body: reply.length > 140 ? `${reply.slice(0, 140)}…` : reply,
+      href: "/customer/inquiries",
+    },
+  ]);
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/inquiries/${inquiryId}`);
 }
@@ -356,6 +381,15 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
       where: { id: request.id },
       data: { status: "ANSWERED", supplierNote: note, validUntil, answeredAt: new Date() },
     }),
+  ]);
+  await notify([
+    {
+      customerId: request.customerId,
+      kind: "MATCH_ANSWERED",
+      title: `${supplier.companyName} השיב לבקשת ההשוואה שלכם`,
+      body: "אשרו או דחו את המחירים שהספק הציע.",
+      href: `/customer/matches/${request.id}`,
+    },
   ]);
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/matches/${request.id}?answered=1`);

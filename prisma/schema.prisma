@@ -153,6 +153,7 @@ model Customer {
   negotiations         NegotiationRequest[]
   matchRequests        MatchRequest[]
   alerts               PriceAlert[]
+  notifications        Notification[]
   createdAt            DateTime             @default(now())
 }
 
@@ -174,6 +175,7 @@ model Supplier {
   deliveryTerms    String?
   logo             SupplierLogo?
   views            SupplierView[]
+  notifications    Notification[]
   /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
   allCategories    Boolean              @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
@@ -519,4 +521,36 @@ model SupplierView {
 
   @@id([supplierId, basketId, day])
   @@index([supplierId, day])
+}
+
+enum NotificationKind {
+  PRICE_INCREASE
+  PRICE_DROP
+  CHEAPER_SUPPLIER
+  SUPPLIER_REPLIED
+  MATCH_ANSWERED
+  NEW_INQUIRY
+  NEW_MATCH_REQUEST
+  MATCH_DECIDED
+}
+
+/// התראה במערכת ללקוח או לספק
+model Notification {
+  id            String           @id @default(cuid())
+  customerId    String?
+  customer      Customer?        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId    String?
+  supplier      Supplier?        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  kind          NotificationKind
+  title         String
+  body          String?
+  href          String
+  savingsAgorot Int?
+  read          Boolean          @default(false)
+  /// מונע התראה כפולה על אותו אירוע
+  dedupeKey     String?          @unique
+  createdAt     DateTime         @default(now())
+
+  @@index([customerId, read, createdAt])
+  @@index([supplierId, read, createdAt])
 }

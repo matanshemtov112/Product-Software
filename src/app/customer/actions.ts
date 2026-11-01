@@ -9,6 +9,8 @@ import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
+import { notify } from "@/lib/notifications";
+import { shekels } from "@/lib/format";
 import { db } from "@/lib/db";
 import { isManager } from "@/lib/auth/team";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
@@ -186,7 +188,7 @@ export async function sendInquiry(_: FormState, form: FormData): Promise<FormSta
   });
   if (open) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
 
-  await db.negotiationRequest.create({
+  const inquiry = await db.negotiationRequest.create({
     data: {
       customerId: customer.id,
       supplierId,
@@ -197,6 +199,15 @@ export async function sendInquiry(_: FormState, form: FormData): Promise<FormSta
       message,
     },
   });
+  await notify([
+    {
+      supplierId,
+      kind: "NEW_INQUIRY",
+      title: `פנייה חדשה מ${customer.businessName}`,
+      body: row.quote.gapAgorot ? `פער של ${shekels(row.quote.gapAgorot)} בחודש מול ספק מתחרה.` : undefined,
+      href: `/supplier/inquiries/${inquiry.id}`,
+    },
+  ]);
   revalidatePath("/customer", "layout");
   redirect("/customer/inquiries?sent=1");
 }

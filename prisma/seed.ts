@@ -562,6 +562,38 @@ async function main() {
     await db.customerReview.create({ data: { customerId: customer.id, supplierId, overall, payment, communication, text } });
   }
 
+  // התראות לדוגמה, כדי שיהיה מה לראות במסך ההתראות
+  const monthly = await db.basket.findFirstOrThrow({ where: { customerId: customer.id, name: "הסל החודשי" } });
+  await db.notification.createMany({
+    data: [
+      {
+        customerId: customer.id,
+        kind: "CHEAPER_SUPPLIER",
+        title: "נמצא מחיר זול יותר לחזה עוף טרי",
+        body: "ספק דמו: בשרים הגליל מוכר ב-₪31.90 לק״ג, ואתם משלמים היום ₪37.00 לק״ג.",
+        href: `/customer/baskets/${monthly.id}`,
+        savingsAgorot: ils(255),
+        createdAt: new Date(Date.now() - 2 * 86_400_000),
+      },
+      {
+        customerId: customer.id,
+        kind: "PRICE_INCREASE",
+        title: "ספק דמו: מרכז המזון העלה את המחיר של שמן קנולה",
+        body: "מ-₪9.20 לליטר ל-₪9.50 לליטר במחירון.",
+        href: `/customer/baskets/${monthly.id}`,
+        createdAt: new Date(Date.now() - 5 * 86_400_000),
+      },
+      {
+        supplierId: supplierIds["510000001"].id,
+        kind: "NEW_INQUIRY",
+        title: "פנייה חדשה מקפה דמו",
+        body: "לקוח מבקש הצעה לסל חודשי של בשר ועוף.",
+        href: "/supplier/inquiries",
+        createdAt: new Date(Date.now() - 86_400_000),
+      },
+    ],
+  });
+
   // משתמשי הדמו הם מנהלי העסק או הספק שלהם
   await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });
 
