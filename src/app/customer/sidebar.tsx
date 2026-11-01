@@ -107,6 +107,11 @@ export function CustomerSidebar({
             </Link>
           </li>
           <li>
+            <Link href="/customer/reports" className={item(pathname.startsWith("/customer/reports"))}>
+              דוח חודשי
+            </Link>
+          </li>
+          <li>
             <Link
               href="/customer/inquiries"
               className={item(pathname === "/customer/inquiries" || pathname.startsWith("/customer/matches"))}

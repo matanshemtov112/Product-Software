@@ -501,6 +501,8 @@ model MatchRequestLine {
   response           MatchResponse @default(PENDING)
   counterPriceAgorot Int?
   decision           MatchDecision @default(PENDING)
+  /// מתי הלקוח אישר או דחה את ההצעה
+  decidedAt          DateTime?
 }
 
 model SupplierLogo {
@@ -532,6 +534,7 @@ enum NotificationKind {
   NEW_INQUIRY
   NEW_MATCH_REQUEST
   MATCH_DECIDED
+  MONTHLY_REPORT
 }
 
 /// התראה במערכת ללקוח או לספק

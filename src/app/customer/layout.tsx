@@ -1,7 +1,9 @@
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
+import { lastFullMonth } from "@/lib/customer/monthly-report";
 import { db } from "@/lib/db";
+import { notify } from "@/lib/notifications";
 import { CuisinePicker } from "./cuisine-picker";
 import { CustomerSidebar } from "./sidebar";
 
@@ -27,6 +29,21 @@ export default async function CustomerLayout({ children }: { children: React.Rea
         </div>
       </div>
     );
+  }
+
+  // כשחודש נגמר, הלקוח מקבל התראה שהדוח שלו מוכן (פעם אחת לכל חודש)
+  const reportMonth = lastFullMonth(customer.createdAt);
+  if (reportMonth) {
+    await notify([
+      {
+        customerId: customer.id,
+        kind: "MONTHLY_REPORT",
+        title: `הדוח החודשי ל${reportMonth.label} מוכן`,
+        body: "מה בדקנו בשבילכם, אילו מחירים עלו וירדו, וכמה אפשר לחסוך.",
+        href: `/customer/reports/${reportMonth.key}`,
+        dedupeKey: `monthly-report:${customer.id}:${reportMonth.key}`,
+      },
+    ]);
   }
 
   const [saved, inquiryReplies, matchReplies, reviewsAboutMe, unread] = await Promise.all([

@@ -153,6 +153,9 @@ export default async function CustomerHome() {
           <Link href="/customer/suppliers" className="rounded-md border border-border px-4 py-2 text-center text-sm">
             הספקים שלי
           </Link>
+          <Link href="/customer/reports" className="rounded-md border border-border px-4 py-2 text-center text-sm">
+            הדוח החודשי
+          </Link>
         </section>
       </div>
 

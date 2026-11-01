@@ -594,6 +594,71 @@ async function main() {
     ],
   });
 
+  // היסטוריית מחירים לדוח החודשי: המחירון קיים כבר חודשיים, ובאמצע החודש הקודם כמה ספקים שינו מחיר.
+  // המחירים של היום לא משתנים: נוספת שורה ישנה עם המחיר שהיה לפני השינוי.
+  const now = new Date();
+  const longAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  const midLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 15);
+  await db.offerPrice.updateMany({ data: { validFrom: longAgo, createdAt: longAgo } });
+  await db.customer.update({ where: { id: customer.id }, data: { createdAt: longAgo } });
+  await db.basket.updateMany({ where: { customerId: customer.id, name: "הסל החודשי" }, data: { createdAt: longAgo } });
+  await db.basket.updateMany({
+    where: { customerId: customer.id, name: "בשר ושמן" },
+    data: { createdAt: new Date(longAgo.getTime() + 86_400_000) },
+  });
+  const history: [string, string, number][] = [
+    ["510000003", "שמן קנולה", 0.95], // מרכז המזון העלה ב-5%
+    ["510000003", "בקר טחון", 1.04], // מרכז המזון הוריד ב-4%
+    ["510000001", "חזה עוף טרי", 1.06], // בשרים הגליל הוריד ב-6%
+  ];
+  for (const [number, productName, factor] of history) {
+    const offer = await db.supplierOffer.findFirst({
+      where: { supplierId: supplierIds[number].id, productId: products.get(productName)! },
+      include: { prices: true },
+    });
+    if (!offer) continue;
+    for (const p of offer.prices) {
+      await db.offerPrice.update({ where: { id: p.id }, data: { validFrom: midLastMonth, createdAt: midLastMonth } });
+      await db.offerPrice.create({
+        data: {
+          offerId: offer.id,
+          tierId: p.tierId,
+          unitPriceAgorot: Math.round(p.unitPriceAgorot * factor),
+          validFrom: longAgo,
+          createdAt: longAgo,
+        },
+      });
+    }
+  }
+  // בקשת השוואה מהחודש הקודם: מרכז המזון השווה את מחיר חזה העוף והלקוח אישר
+  const decided = new Date(now.getFullYear(), now.getMonth() - 1, 20);
+  const meatAndOil = await db.basket.findFirstOrThrow({ where: { customerId: customer.id, name: "בשר ושמן" } });
+  await db.matchRequest.create({
+    data: {
+      customerId: customer.id,
+      supplierId: supplierIds["510000003"].id,
+      basketId: meatAndOil.id,
+      status: "CLOSED",
+      supplierNote: "בשמחה, המחיר בתוקף מההזמנה הבאה.",
+      validUntil: new Date(decided.getTime() + 30 * 86_400_000),
+      answeredAt: new Date(decided.getTime() - 86_400_000),
+      createdAt: new Date(decided.getTime() - 2 * 86_400_000),
+      lines: {
+        create: {
+          productId: products.get("חזה עוף טרי")!,
+          productName: "חזה עוף טרי",
+          unit: "KG",
+          monthlyQuantity: 50,
+          currentPriceAgorot: ils(36),
+          targetPriceAgorot: ils(34.5),
+          response: "MATCHED",
+          decision: "ACCEPTED",
+          decidedAt: decided,
+        },
+      },
+    },
+  });
+
   // משתמשי הדמו הם מנהלי העסק או הספק שלהם
   await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });
 

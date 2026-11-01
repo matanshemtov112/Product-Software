@@ -88,7 +88,7 @@ export async function decideMatchLine(form: FormData) {
   if (price === null) return;
   if (decision === "ACCEPTED" && !isValid(line.request.validUntil)) return;
 
-  await db.matchRequestLine.update({ where: { id: line.id }, data: { decision } });
+  await db.matchRequestLine.update({ where: { id: line.id }, data: { decision, decidedAt: new Date() } });
   const basketId = line.request.basketId;
   if (decision === "ACCEPTED" && basketId) {
     await db.basketItem.updateMany({
