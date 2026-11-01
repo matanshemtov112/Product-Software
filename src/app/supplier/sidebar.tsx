@@ -59,6 +59,11 @@ export function SupplierSidebar({
         <p className="px-3 pb-1 text-xs font-medium text-muted">לקוחות</p>
         <ul className="flex flex-col gap-0.5">
           <li>
+            <Link href="/supplier/market" className={item(pathname === "/supplier/market")}>
+              מיקום מול השוק
+            </Link>
+          </li>
+          <li>
             <Link
               href="/supplier/inquiries"
               className={item(pathname.startsWith("/supplier/inquiries") || pathname.startsWith("/supplier/matches"))}
