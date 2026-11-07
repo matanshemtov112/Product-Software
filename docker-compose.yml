@@ -1,0 +1,38 @@
+# הרצה מקומית בפקודה אחת: docker compose up
+# מרים מסד נתונים ואת האפליקציה, ובהרצה הראשונה ממלא נתוני דמו. אחר כך: http://localhost:3000
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: procurement
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d procurement"]
+      interval: 2s
+      retries: 30
+
+  app:
+    image: node:22
+    working_dir: /app
+    command: sh scripts/docker-start.sh
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://app:app@db:5432/procurement
+      SESSION_SECRET: local-only-session-secret-change-me-123456
+      # לא חובה: מפעיל חיפוש בצילום וקריאת חשבוניות. אפשר לשים בקובץ .env ליד הקובץ הזה
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - .:/app
+      # התלויות נשמרות בנפרד, כדי שלא יתערבבו עם מערכת ההפעלה של המחשב
+      - node-modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  node-modules:
