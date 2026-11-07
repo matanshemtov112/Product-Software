@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ReportButton } from "@/components/report/report-button";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
+import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { ProductComparison } from "@/components/product-comparison";
 import { SendToSupplierLink } from "@/components/send-to-supplier";
 import { SupplierStatusBadge } from "@/components/supplier-status";
@@ -98,18 +99,19 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         <Card title="הזדמנויות לחיסכון">
           {supplier.opportunities.length === 0 ? (
             <p className="text-sm text-muted">
-              לא מצאנו כרגע ספק במערכת שמוכר זול יותר את המוצרים שאתם קונים אצל {supplier.name}.
+              לא מצאנו כרגע ספק במערכת שאצלו המוצרים שאתם קונים אצל {supplier.name} יוצאים זולים יותר, כולל משלוח
+              ומינימום הזמנה.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-sm">
-                חיסכון של עד <strong className="text-accent">{shekels(score.monthlySavingAgorot)}</strong> בחודש (
-                {shekels(score.monthlySavingAgorot * 12)} בשנה), לפי מחיר ליחידה ולפני משלוח.
+                חיסכון של עד <strong className="text-accent">{shekels(supplier.monthlySavingAgorot)}</strong> בחודש (
+                {shekels(supplier.monthlySavingAgorot * 12)} בשנה), כולל משלוח ומינימום הזמנה של כל ספק.
               </p>
               <ul className="flex flex-col gap-2">
                 {supplier.opportunities.map((o) => (
                   <li
-                    key={o.supplierId}
+                    key={`${o.supplierId}:${o.basketId}`}
                     className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
@@ -117,6 +119,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
                       <p className="text-sm text-muted">
                         חיסכון של {shekels(o.monthlySavingAgorot)} בחודש על {o.products.join(", ")}
                       </p>
+                      <CostBreakdown cost={o.cost} />
                     </div>
                     <SendToSupplierLink href={`/customer/baskets/${o.basketId}/inquiry/${o.supplierId}`} />
                   </li>
@@ -124,6 +127,9 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
               </ul>
             </div>
           )}
+          <div className="mt-3">
+            <BlockedList items={supplier.blocked} />
+          </div>
         </Card>
       </div>
 

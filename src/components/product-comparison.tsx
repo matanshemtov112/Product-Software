@@ -75,7 +75,7 @@ export function ProductComparison({
                   )}
                 </span>
                 <span>
-                  <span className="block text-xs text-muted">חיסכון בחודש</span>
+                  <span className="block text-xs text-muted">הפרש מחיר בחודש</span>
                   {l.monthlySavingAgorot > 0 ? (
                     <span className="font-semibold text-accent">{shekels(l.monthlySavingAgorot)}</span>
                   ) : l.best ? (

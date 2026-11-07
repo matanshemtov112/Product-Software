@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { effectiveCost } from "./customer/effective-cost";
 import { priceChangeNotifications, type PriceChange, type WatchedItem } from "./notifications";
 
 const change = (oldAgorot: number | null, newAgorot: number): PriceChange => ({
@@ -48,5 +49,15 @@ describe("priceChangeNotifications", () => {
     const list = priceChangeNotifications(change(null, 3200), [item({}), item({ basketId: "b2" })]);
     expect(list).toHaveLength(1);
     expect(list[0].savingsAgorot).toBe(10000);
+  });
+
+  it("skips a cheaper supplier that is not worth it after minimum order and delivery", () => {
+    const lines = [{ quantity: 10, unitPriceAgorot: 3200, paidAgorot: 3700 }];
+    const blocked = effectiveCost(lines, { minOrderAgorot: 100000, feeAgorot: 0, freeAboveAgorot: null }, 4);
+    expect(priceChangeNotifications(change(3800, 3200), [item({ switchCost: blocked })])).toEqual([]);
+    const ok = effectiveCost(lines, { minOrderAgorot: 0, feeAgorot: 500, freeAboveAgorot: null }, 4);
+    const [n] = priceChangeNotifications(change(3800, 3200), [item({ switchCost: ok })]);
+    expect(n.savingsAgorot).toBe(3000);
+    expect(n.body).toContain("כולל משלוח");
   });
 });

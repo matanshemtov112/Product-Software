@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { reportMonth, reportMonths, type PriceMove } from "@/lib/customer/monthly-report";
@@ -106,7 +107,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
         <Stat
           label="אפשר לחסוך"
           value={shekels(r.potentialSavingAgorot)}
-          note={`בחודש, ב-${r.opportunities.length} מוצרים`}
+          note={`בחודש, כולל משלוח, ב-${r.opportunities.reduce((n, o) => n + o.products.length, 0)} מוצרים`}
         />
         <Stat
           label="חסכתם בפועל"
@@ -127,19 +128,23 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
       <Card title="איפה אפשר לחסוך">
         {r.opportunities.length === 0 ? (
           <p className="text-sm text-muted">
-            לא מצאנו מחיר זול ממה שאתם משלמים. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם משלמים היום לכל מוצר.
+            לא מצאנו ספק שיוצא זול ממה שאתם משלמים, כולל משלוח ומינימום הזמנה. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם
+            משלמים היום לכל מוצר.
           </p>
         ) : (
           <>
             <ul className="divide-y divide-border">
               {r.opportunities.map((o) => (
-                <li key={o.productName} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between">
+                <li key={o.supplierName} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between">
                   <div className="min-w-0">
-                    <span className="font-medium">{o.productName}</span>
-                    <p className="text-sm text-muted">
-                      משלמים {shekels(o.paidAgorot, 2)} · {o.supplierName} מוכר ב-{shekels(o.bestAgorot, 2)} ל
-                      {o.unitLabel}
-                    </p>
+                    <span className="font-medium">{o.supplierName}</span>
+                    {o.products.map((p) => (
+                      <p key={p.productName} className="text-sm text-muted">
+                        {p.productName}: משלמים {shekels(p.paidAgorot, 2)}, אצלו {shekels(p.bestAgorot, 2)} ל
+                        {p.unitLabel}
+                      </p>
+                    ))}
+                    <CostBreakdown cost={o.cost} />
                   </div>
                   <p className="shrink-0 text-sm font-medium text-accent">{shekels(o.monthlySavingAgorot)} בחודש</p>
                 </li>
@@ -188,7 +193,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
 
       <p className="text-xs text-muted">
         החודש הרצתם {count(r.checks, "בדיקת סל אחת", "בדיקות סל")} וקיבלתם {count(r.alerts, "התראה אחת", "התראות")} על
-        מחירים. החיסכון מחושב לפי הכמויות החודשיות בסל, לפני משלוח ומינימום הזמנה.
+        מחירים. החיסכון מחושב לפי הכמויות החודשיות בסל. ב״איפה אפשר לחסוך״ הוא כולל משלוח ומינימום הזמנה של כל ספק.
       </p>
     </div>
   );

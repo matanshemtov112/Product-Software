@@ -1,5 +1,7 @@
 import type { NotificationKind, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { effectiveCost, type EffectiveCost } from "@/lib/customer/effective-cost";
+import { priceAt } from "@/lib/customer/monthly-report";
 import { shekels } from "@/lib/format";
 
 export interface NewNotification {
@@ -30,6 +32,11 @@ export interface WatchedItem {
   monthlyQuantity: number;
   /** הספק מספק לאזור של הלקוח */
   delivers: boolean;
+  /**
+   * העלות האפקטיבית אם הלקוח מעביר לספק את כל המוצרים מהסל שזולים אצלו (כולל משלוח ומינימום הזמנה).
+   * בלי זה ההשוואה לפי מחיר ליחידה בלבד.
+   */
+  switchCost?: EffectiveCost;
 }
 
 export interface PriceChange {
@@ -71,8 +78,12 @@ export function priceChangeNotifications(change: PriceChange, items: WatchedItem
     }
     if (!item.delivers || item.paidAgorot === null || newAgorot >= item.paidAgorot) continue;
     if (oldAgorot !== null && oldAgorot < item.paidAgorot) continue; // כבר היה זול יותר, הלקוח יודע
+    // זול ליחידה אבל לא משתלם אחרי משלוח ומינימום הזמנה: לא מתריעים
+    if (item.switchCost && !item.switchCost.worthIt) continue;
     const key = `cheaper:${item.customerId}:${supplierId}:${productId}:${newAgorot}`;
-    const saving = Math.round((item.paidAgorot - newAgorot) * item.monthlyQuantity);
+    const saving = item.switchCost
+      ? item.switchCost.netSavingAgorot
+      : Math.round((item.paidAgorot - newAgorot) * item.monthlyQuantity);
     const prev = out.get(key);
     if (prev) {
       prev.savingsAgorot = (prev.savingsAgorot ?? 0) + saving;
@@ -82,7 +93,9 @@ export function priceChangeNotifications(change: PriceChange, items: WatchedItem
       customerId: item.customerId,
       kind: "CHEAPER_SUPPLIER",
       title: `נמצא מחיר זול יותר ל${productName}`,
-      body: `${supplierName} מוכר ב-${price(newAgorot)}, ואתם משלמים היום ${price(item.paidAgorot)}.`,
+      body: `${supplierName} מוכר ב-${price(newAgorot)}, ואתם משלמים היום ${price(item.paidAgorot)}.${
+        item.switchCost ? ` כולל משלוח ומינימום הזמנה: חיסכון של ${shekels(saving)} בחודש.` : ""
+      }`,
       href,
       savingsAgorot: saving,
       dedupeKey: key,
@@ -93,30 +106,90 @@ export function priceChangeNotifications(change: PriceChange, items: WatchedItem
 
 /** בודק שינוי מחיר במדרגה הבסיסית של ספק ושולח התראות ללקוחות הרלוונטיים */
 export async function notifyPriceChange(change: PriceChange) {
-  const [items, zones] = await Promise.all([
+  const [items, supplier] = await Promise.all([
     db.basketItem.findMany({
       where: { productId: change.productId },
       select: {
         basketId: true,
         monthlyQuantity: true,
         currentUnitPriceAgorot: true,
-        basket: { select: { customerId: true, currentSupplierId: true, customer: { select: { regionId: true } } } },
+        basket: {
+          select: {
+            customerId: true,
+            currentSupplierId: true,
+            deliveriesPerMonth: true,
+            customer: { select: { regionId: true } },
+            items: { select: { productId: true, monthlyQuantity: true, currentUnitPriceAgorot: true } },
+          },
+        },
       },
     }),
-    db.deliveryZone.findMany({ where: { supplierId: change.supplierId }, select: { regionId: true } }),
+    db.supplier.findUnique({
+      where: { id: change.supplierId },
+      select: {
+        minOrderAgorot: true,
+        deliveryZones: { select: { regionId: true, feeAgorot: true, freeAboveAgorot: true } },
+        priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1, select: { id: true } },
+        offers: {
+          where: { available: true },
+          select: {
+            productId: true,
+            prices: {
+              where: { status: "LIVE" },
+              select: { tierId: true, unitPriceAgorot: true, kind: true, validFrom: true, validTo: true },
+            },
+          },
+        },
+      },
+    }),
   ]);
-  const regions = new Set(zones.map((z) => z.regionId));
+  if (!supplier) return;
+  // המחיר הנוכחי של הספק לכל מוצר, במחירון הבסיסי; המוצר שהשתנה לפי המחיר החדש
+  const now = new Date();
+  const baseTier = supplier.priceTiers[0]?.id;
+  const prices = new Map<string, number>();
+  for (const o of supplier.offers) {
+    const points = o.prices
+      .filter((p) => p.tierId === baseTier)
+      .map((p) => ({ ...p, supplierId: change.supplierId, productId: o.productId }));
+    const price = priceAt(points, now);
+    if (price !== null) prices.set(o.productId, price);
+  }
+  prices.set(change.productId, change.newAgorot);
+  const zones = new Map(supplier.deliveryZones.map((z) => [z.regionId, z]));
+
   await notify(
     priceChangeNotifications(
       change,
-      items.map((i) => ({
-        customerId: i.basket.customerId,
-        basketId: i.basketId,
-        currentSupplierId: i.basket.currentSupplierId,
-        paidAgorot: i.currentUnitPriceAgorot,
-        monthlyQuantity: i.monthlyQuantity,
-        delivers: regions.has(i.basket.customer.regionId),
-      })),
+      items.map((i) => {
+        const zone = zones.get(i.basket.customer.regionId);
+        const lines = i.basket.items.flatMap((b) => {
+          const price = prices.get(b.productId);
+          return price !== undefined && b.currentUnitPriceAgorot !== null && price < b.currentUnitPriceAgorot
+            ? [{ quantity: b.monthlyQuantity, unitPriceAgorot: price, paidAgorot: b.currentUnitPriceAgorot }]
+            : [];
+        });
+        return {
+          customerId: i.basket.customerId,
+          basketId: i.basketId,
+          currentSupplierId: i.basket.currentSupplierId,
+          paidAgorot: i.currentUnitPriceAgorot,
+          monthlyQuantity: i.monthlyQuantity,
+          delivers: !!zone,
+          switchCost:
+            zone && lines.length
+              ? effectiveCost(
+                  lines,
+                  {
+                    minOrderAgorot: supplier.minOrderAgorot,
+                    feeAgorot: zone.feeAgorot,
+                    freeAboveAgorot: zone.freeAboveAgorot,
+                  },
+                  i.basket.deliveriesPerMonth,
+                )
+              : undefined,
+        };
+      }),
     ),
   );
 }

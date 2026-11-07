@@ -123,6 +123,8 @@ function snapshot(
 /** המחירים שהלקוח משלם היום בסל מול ההצעות במערכת לכל מוצר, לפי ההצעה של כל ספק בניתוח */
 export function paidComparison(
   basket: {
+    deliveriesPerMonth: number;
+    currentSupplierId: string | null;
     items: {
       productId: string;
       monthlyQuantity: number;
@@ -150,5 +152,19 @@ export function paidComparison(
         priceUpdatedAt: l.priceUpdatedAt,
       })),
     ),
+    {
+      terms: Object.fromEntries(
+        analysis.rows.map((r) => [
+          r.supplierId,
+          {
+            minOrderAgorot: r.supplier.minOrderAgorot,
+            feeAgorot: r.supplier.delivery.feeAgorot,
+            freeAboveAgorot: r.supplier.delivery.freeAboveAgorot,
+          },
+        ]),
+      ),
+      deliveriesPerMonth: basket.deliveriesPerMonth,
+      currentSupplierId: basket.currentSupplierId,
+    },
   );
 }

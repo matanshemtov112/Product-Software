@@ -55,8 +55,8 @@ export default async function MySuppliersPage() {
                 </span>
                 <span className="text-sm">
                   <span className="block text-xs text-muted">חיסכון אפשרי בחודש</span>
-                  {s.score.monthlySavingAgorot > 0 ? (
-                    <span className="font-semibold text-accent">{shekels(s.score.monthlySavingAgorot)}</span>
+                  {s.monthlySavingAgorot > 0 ? (
+                    <span className="font-semibold text-accent">{shekels(s.monthlySavingAgorot)}</span>
                   ) : (
                     <span className="text-muted">אין כרגע</span>
                   )}

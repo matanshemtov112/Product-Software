@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
 import { ProductComparison } from "@/components/product-comparison";
@@ -201,23 +202,21 @@ export default async function BasketPage({
             {paid.monthlySavingAgorot > 0 ? (
               <div className="rounded-lg bg-accent-soft p-4">
                 <p className="text-sm">
-                  מצאנו מחיר טוב יותר ל-{paid.lines.filter((l) => l.monthlySavingAgorot > 0).length} מתוך{" "}
+                  מצאנו מחיר טוב יותר ל-{paid.suppliers.reduce((n, s) => n + s.products.length, 0)} מתוך{" "}
                   {paid.lines.length} המוצרים שמילאתם להם מחיר{yourSupplier ? ` (מול ${yourSupplier})` : ""}
                 </p>
                 <p className="text-3xl font-bold text-accent">חיסכון של עד {shekels(paid.monthlySavingAgorot)} בחודש</p>
                 <p className="text-sm text-muted">
-                  {shekels(paid.monthlySavingAgorot * 12)} בשנה, לפי מחיר ליחידה ולפני משלוח
+                  {shekels(paid.monthlySavingAgorot * 12)} בשנה. כולל משלוח ומינימום הזמנה של כל ספק, לפי{" "}
+                  {basket.deliveriesPerMonth} אספקות בחודש.
                 </p>
-                {result.monthlySavingsAgorot !== null && result.monthlySavingsAgorot > 0 && (
-                  <p className="mt-1 text-sm">
-                    כולל משלוחים ומינימום הזמנה, לפי האפשרות המומלצת: חיסכון של{" "}
-                    <strong>{shekels(result.monthlySavingsAgorot)}</strong> בחודש.
-                  </p>
-                )}
               </div>
             ) : (
               <p className="rounded-lg bg-background px-4 py-3 text-sm">
-                המחירים שאתם משלמים היום טובים או שווים למה שיש כרגע במערכת. אפשר עדיין לפנות לספק ולבקש הצעה.
+                {paid.blocked.length > 0
+                  ? "יש ספקים שזולים יותר ליחידה, אבל אחרי משלוח ומינימום הזמנה זה לא משתלם כרגע (פירוט למטה)."
+                  : "המחירים שאתם משלמים היום טובים או שווים למה שיש כרגע במערכת."}{" "}
+                אפשר עדיין לפנות לספק ולבקש הצעה.
               </p>
             )}
 
@@ -246,6 +245,7 @@ export default async function BasketPage({
                         <p className="text-sm text-muted">
                           חיסכון של {shekels(s.monthlySavingAgorot)} בחודש על {s.products.join(", ")}
                         </p>
+                        <CostBreakdown cost={s.cost} />
                       </div>
                       <SendToSupplierLink href={`/customer/baskets/${basket.id}/inquiry/${s.supplierId}`} />
                     </li>
@@ -257,6 +257,7 @@ export default async function BasketPage({
                 </p>
               </div>
             )}
+            <BlockedList items={paid.blocked} />
           </div>
         </Card>
       )}

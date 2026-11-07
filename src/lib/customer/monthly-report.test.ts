@@ -103,7 +103,11 @@ describe("buildMonthlyReport", () => {
       expect.objectContaining({ supplierName: "ספק זול", beforeAgorot: 3300, afterAgorot: 3100 }),
     ]);
     expect(report.opportunities).toEqual([
-      expect.objectContaining({ supplierName: "ספק זול", bestAgorot: 3100, monthlySavingAgorot: 15000 }),
+      expect.objectContaining({
+        supplierName: "ספק זול",
+        products: [expect.objectContaining({ bestAgorot: 3100 })],
+        monthlySavingAgorot: 15000,
+      }),
     ]);
     expect(report.potentialSavingAgorot).toBe(15000);
   });
@@ -135,7 +139,7 @@ describe("buildMonthlyReport", () => {
       ],
     });
     expect(report.marketMoves).toEqual([]);
-    expect(report.opportunities[0].bestAgorot).toBe(3300);
+    expect(report.opportunities[0].products[0].bestAgorot).toBe(3300);
     expect(report.accepted).toHaveLength(1);
     expect(report.actualSavingAgorot).toBe(10000);
   });
@@ -148,5 +152,23 @@ describe("buildMonthlyReport", () => {
       accepted: [],
     });
     expect(report.opportunities).toEqual([]);
+  });
+
+  it("drops a cheaper supplier whose minimum order the customer does not reach", () => {
+    const input = {
+      ...base,
+      products: [{ ...product, currentSupplierId: null }],
+      prices: [point("other", 3000, "2026-09-01")],
+      accepted: [],
+      deliveriesPerMonth: 4,
+    };
+    const terms = (min: number) => ({ other: { minOrderAgorot: min, feeAgorot: 5000, freeAboveAgorot: null } });
+    // 50 ק״ג × 30 ₪ = 1500 ₪ בחודש, 375 ₪ בהזמנה
+    expect(buildMonthlyReport({ ...input, terms: terms(100000) }).opportunities).toEqual([]);
+    const ok = buildMonthlyReport({ ...input, terms: terms(30000) });
+    // 200 ₪ חיסכון במוצר פחות 4 משלוחים של 50 ₪
+    expect(ok.opportunities).toEqual([]);
+    const cheaper = buildMonthlyReport({ ...input, terms: terms(30000), deliveriesPerMonth: 2 });
+    expect(cheaper.potentialSavingAgorot).toBe(10000);
   });
 });

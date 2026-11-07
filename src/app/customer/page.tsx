@@ -56,8 +56,8 @@ export default async function CustomerHome() {
     }),
   ]);
   const products = suppliers.reduce((n, s) => n + s.lines.length, 0);
-  const opportunities = suppliers.reduce((n, s) => n + s.lines.filter((l) => l.monthlySavingAgorot > 0).length, 0);
-  const saving = suppliers.reduce((n, s) => n + s.score.monthlySavingAgorot, 0);
+  const opportunities = suppliers.reduce((n, s) => n + s.opportunities.reduce((m, o) => m + o.products.length, 0), 0);
+  const saving = suppliers.reduce((n, s) => n + s.monthlySavingAgorot, 0);
 
   const alerts: Alert[] = [];
   for (const m of answeredMatches) {
@@ -81,7 +81,10 @@ export default async function CustomerHome() {
     if (s.score.status === "expensive" && matchCandidates(s.lines).length)
       alerts.push({
         href: `/customer/suppliers/${encodeURIComponent(s.key)}`,
-        text: `${s.name} יקר יחסית: אפשר לחסוך עד ${shekels(s.score.monthlySavingAgorot)} בחודש`,
+        text:
+          s.monthlySavingAgorot > 0
+            ? `${s.name} יקר יחסית: אפשר לחסוך עד ${shekels(s.monthlySavingAgorot)} בחודש`
+            : `${s.name} יקר יחסית: כדאי לבקש ממנו להשוות מחיר`,
         action: "לפרטים",
         tone: "warn",
       });
@@ -106,8 +109,13 @@ export default async function CustomerHome() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="מוצרים במעקב" value={String(products)} note="עם מחיר שאתם משלמים היום" />
         <Stat label="הספקים שלי" value={String(suppliers.length)} />
-        <Stat label="הזדמנויות" value={String(opportunities)} note="מוצרים שיש להם מחיר זול יותר" />
-        <Stat label="חיסכון אפשרי" value={shekels(saving)} note={`בחודש · ${shekels(saving * 12)} בשנה`} highlight />
+        <Stat label="הזדמנויות" value={String(opportunities)} note="מוצרים שמשתלם לקנות אצל ספק אחר" />
+        <Stat
+          label="חיסכון אפשרי"
+          value={shekels(saving)}
+          note={`בחודש, כולל משלוח · ${shekels(saving * 12)} בשנה`}
+          highlight
+        />
       </div>
 
       <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
@@ -175,7 +183,7 @@ export default async function CustomerHome() {
                   </span>
                   <span className="text-muted">
                     {s.lines.length} מוצרים · ציון {s.score.score}/100
-                    {s.score.monthlySavingAgorot > 0 ? ` · חיסכון ${shekels(s.score.monthlySavingAgorot)} בחודש` : ""}
+                    {s.monthlySavingAgorot > 0 ? ` · חיסכון ${shekels(s.monthlySavingAgorot)} בחודש` : ""}
                   </span>
                 </Link>
               </li>

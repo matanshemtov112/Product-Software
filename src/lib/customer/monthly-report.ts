@@ -1,3 +1,6 @@
+import { comparePaidPrices } from "./paid-prices";
+import type { EffectiveCost, SupplierTerms } from "./effective-cost";
+
 /**
  * הדוח החודשי של הלקוח: מה בדקנו בשבילו בחודש, מה השתנה במחירים, כמה אפשר לחסוך וכמה כבר חסך.
  * החישוב כאן טהור; הטעינה מהמסד ב-monthly-report-load.ts.
@@ -125,6 +128,10 @@ export interface ReportInput {
   checks: number;
   /** כמה התראות על מחירים קיבל בחודש */
   alerts: number;
+  /** תנאי ההזמנה של כל ספק באזור של הלקוח; בלי זה החיסכון לפי מחיר ליחידה בלבד */
+  terms?: Record<string, SupplierTerms>;
+  /** אספקות בחודש, לפי הסל העדכני */
+  deliveriesPerMonth?: number;
 }
 
 export interface PriceMove {
@@ -138,12 +145,11 @@ export interface PriceMove {
 }
 
 export interface Opportunity {
-  productName: string;
-  unitLabel: string;
   supplierName: string;
-  paidAgorot: number;
-  bestAgorot: number;
+  products: { productName: string; unitLabel: string; paidAgorot: number; bestAgorot: number }[];
+  /** החיסכון האמיתי בחודש, אחרי משלוח ומינימום הזמנה */
   monthlySavingAgorot: number;
+  cost: EffectiveCost;
 }
 
 export interface MonthlyReport {
@@ -192,7 +198,6 @@ export function buildMonthlyReport(input: ReportInput): MonthlyReport {
   const increases: PriceMove[] = [];
   const decreases: PriceMove[] = [];
   const marketMoves: PriceMove[] = [];
-  const opportunities: Opportunity[] = [];
   const compared = new Set<string>();
 
   for (const p of products) {
@@ -225,14 +230,53 @@ export function buildMonthlyReport(input: ReportInput): MonthlyReport {
         monthlyImpactAgorot: impact(low0.price, low1.price, p.monthlyQuantity),
       });
     }
+  }
 
-    if (p.paidAgorot !== null && low1 && low1.supplierId !== p.currentSupplierId && low1.price < p.paidAgorot) {
-      opportunities.push({
-        ...base,
-        supplierName: supplierNames[low1.supplierId] ?? "",
+  // איפה אפשר לחסוך: לפי עלות אפקטיבית בסוף החודש, לכל ספק נוכחי בנפרד
+  const opportunities: Opportunity[] = [];
+  const byCurrent = new Map<string, WatchedProduct[]>();
+  for (const p of products)
+    byCurrent.set(p.currentSupplierId ?? "", [...(byCurrent.get(p.currentSupplierId ?? "") ?? []), p]);
+  for (const [current, group] of byCurrent) {
+    const offers = group.flatMap((p) =>
+      [...(suppliersByProduct.get(p.productId) ?? [])].flatMap((s) => {
+        const price = at(s, p.productId, after);
+        return price === null
+          ? []
+          : [{ supplierId: s, supplierName: supplierNames[s] ?? "", productId: p.productId, unitPriceAgorot: price }];
+      }),
+    );
+    const info = new Map(group.map((p) => [p.productId, p]));
+    const paid = comparePaidPrices(
+      group.map((p) => ({
+        productId: p.productId,
+        productName: p.productName,
+        unit: p.unitLabel,
+        quantity: p.monthlyQuantity,
         paidAgorot: p.paidAgorot,
-        bestAgorot: low1.price,
-        monthlySavingAgorot: Math.round((p.paidAgorot - low1.price) * p.monthlyQuantity),
+      })),
+      offers,
+      {
+        terms: input.terms ?? {},
+        deliveriesPerMonth: input.deliveriesPerMonth ?? 1,
+        currentSupplierId: current || null,
+      },
+    );
+    for (const s of paid.suppliers) {
+      if (s.supplierId === current) continue;
+      opportunities.push({
+        supplierName: s.supplierName,
+        products: s.productIds.map((id) => {
+          const p = info.get(id)!;
+          return {
+            productName: p.productName,
+            unitLabel: p.unitLabel,
+            paidAgorot: p.paidAgorot!,
+            bestAgorot: offers.find((o) => o.productId === id && o.supplierId === s.supplierId)!.unitPriceAgorot,
+          };
+        }),
+        monthlySavingAgorot: s.monthlySavingAgorot,
+        cost: s.cost,
       });
     }
   }

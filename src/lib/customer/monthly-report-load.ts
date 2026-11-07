@@ -39,6 +39,8 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
       select: {
         id: true,
         companyName: true,
+        minOrderAgorot: true,
+        deliveryZones: { where: { regionId: customer.regionId }, select: { feeAgorot: true, freeAboveAgorot: true } },
         priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1, select: { id: true } },
         offers: {
           where: { productId: { in: productIds }, available: true },
@@ -100,5 +102,16 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
     }),
     checks,
     alerts,
+    terms: Object.fromEntries(
+      suppliers.map((s) => [
+        s.id,
+        {
+          minOrderAgorot: s.minOrderAgorot,
+          feeAgorot: s.deliveryZones[0]?.feeAgorot ?? 0,
+          freeAboveAgorot: s.deliveryZones[0]?.freeAboveAgorot ?? null,
+        },
+      ]),
+    ),
+    deliveriesPerMonth: baskets[0]?.deliveriesPerMonth ?? 4,
   });
 }

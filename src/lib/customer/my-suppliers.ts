@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import type { PaidComparisonLine } from "./paid-prices";
+import type { EffectiveCost } from "./effective-cost";
+import type { BlockedSaving, PaidComparisonLine } from "./paid-prices";
 import { analyzeBasket, paidComparison } from "./quotes";
 import { scoreSupplier, type SupplierScore } from "./supplier-score";
 
@@ -7,9 +8,17 @@ export interface Opportunity {
   supplierId: string;
   supplierName: string;
   products: string[];
+  /** החיסכון האמיתי בחודש, אחרי משלוח ומינימום הזמנה */
   monthlySavingAgorot: number;
+  cost: EffectiveCost;
   /** הסל שממנו נשלחת הפנייה לספק */
   basketId: string;
+}
+
+/** ספק זול ליחידה שלא משתלם בפועל */
+export interface BlockedOpportunity extends Opportunity {
+  reason: BlockedSaving["reason"];
+  currentShortfallPerOrderAgorot: number;
 }
 
 export interface MySupplier {
@@ -21,6 +30,9 @@ export interface MySupplier {
   lines: PaidComparisonLine[];
   score: SupplierScore;
   opportunities: Opportunity[];
+  blocked: BlockedOpportunity[];
+  /** החיסכון האמיתי בחודש אם עוברים לספקים בהזדמנויות */
+  monthlySavingAgorot: number;
   baskets: { id: string; name: string }[];
 }
 
@@ -56,6 +68,8 @@ export async function mySuppliers(customerId: string): Promise<MySupplier[]> {
       lines: [],
       score: scoreSupplier([]),
       opportunities: [],
+      blocked: [],
+      monthlySavingAgorot: 0,
       baskets: [],
       lineBasket: new Map<string, string>(),
     };
@@ -67,31 +81,25 @@ export async function mySuppliers(customerId: string): Promise<MySupplier[]> {
       group.lineBasket.set(line.productId, basket.id);
       group.lines.push(line);
     }
+    // ההזדמנויות לפי עלות אפקטיבית, מכל סל בנפרד (לכל סל יש מספר אספקות משלו)
+    for (const o of paid.suppliers) {
+      if (o.supplierId === group.supplierId) continue;
+      group.opportunities.push({ ...o, basketId: basket.id });
+    }
+    for (const o of paid.blocked) {
+      if (o.supplierId === group.supplierId) continue;
+      group.blocked.push({ ...o, basketId: basket.id });
+    }
     groups.set(key, group);
   }
 
   return [...groups.values()]
-    .map(({ lineBasket, ...g }) => {
-      const bySupplier = new Map<string, Opportunity>();
-      for (const l of g.lines) {
-        if (!l.best || l.monthlySavingAgorot <= 0 || l.best.supplierId === g.supplierId) continue;
-        const o = bySupplier.get(l.best.supplierId) ?? {
-          supplierId: l.best.supplierId,
-          supplierName: l.best.supplierName,
-          products: [],
-          monthlySavingAgorot: 0,
-          basketId: lineBasket.get(l.productId)!,
-        };
-        o.products.push(l.productName);
-        o.monthlySavingAgorot += l.monthlySavingAgorot;
-        bySupplier.set(l.best.supplierId, o);
-      }
-      return {
-        ...g,
-        lines: g.lines.sort((a, b) => b.monthlySavingAgorot - a.monthlySavingAgorot),
-        score: scoreSupplier(g.lines),
-        opportunities: [...bySupplier.values()].sort((a, b) => b.monthlySavingAgorot - a.monthlySavingAgorot),
-      };
-    })
-    .sort((a, b) => b.score.monthlySavingAgorot - a.score.monthlySavingAgorot);
+    .map(({ lineBasket, ...g }) => ({
+      ...(void lineBasket, g),
+      lines: g.lines.sort((a, b) => b.monthlySavingAgorot - a.monthlySavingAgorot),
+      score: scoreSupplier(g.lines),
+      opportunities: g.opportunities.sort((a, b) => b.monthlySavingAgorot - a.monthlySavingAgorot),
+      monthlySavingAgorot: g.opportunities.reduce((sum, o) => sum + o.monthlySavingAgorot, 0),
+    }))
+    .sort((a, b) => b.monthlySavingAgorot - a.monthlySavingAgorot || a.score.score - b.score.score);
 }
