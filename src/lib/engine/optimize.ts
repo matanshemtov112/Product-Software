@@ -296,7 +296,9 @@ function scoreAndExplain(plan: Plan, minCost: number, opts: EngineOptions, byId:
   const names = plan.suppliers.map((s) => s.supplierName).join(", ");
   plan.explanation = [
     `${plan.suppliers.length === 1 ? "ספק" : "ספקים"}: ${names}`,
-    `מוצרים ${shekel(plan.productsAgorot)}, משלוחים ${shekel(plan.deliveryAgorot)}, סה״כ ${shekel(plan.totalAgorot)} לחודש`,
+    plan.deliveryAgorot
+      ? `מוצרים ${shekel(plan.productsAgorot)}, משלוחים ${shekel(plan.deliveryAgorot)}, סה״כ ${shekel(plan.totalAgorot)} לחודש`
+      : `סה״כ ${shekel(plan.totalAgorot)} לחודש, משלוח חינם`,
     `דירוג משוקלל ${rating.toFixed(1)}/5, אמינות ${Math.round(reliability * 100)}%`,
   ];
   const gap = plan.totalAgorot - minCost;

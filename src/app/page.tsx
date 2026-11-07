@@ -3,7 +3,10 @@ import { Card } from "@/components/form";
 
 const steps = [
   { title: "בונים סל", body: "מזינים את המוצרים והכמויות שהעסק קונה בחודש." },
-  { title: "משווים", body: "המערכת מחשבת את המחיר שמגיע לכם לפי היקף הרכש אצל כל ספק, כולל משלוח ומינימום הזמנה." },
+  {
+    title: "משווים",
+    body: "המערכת מחשבת את המחיר שמגיע לכם לפי היקף הרכש אצל כל ספק, כולל מינימום ההזמנה של כל ספק. המשלוח תמיד חינם.",
+  },
   { title: "חוסכים", body: "מקבלים שלוש אפשרויות: הזולה ביותר, ספק יחיד, ושילוב מומלץ, עם הסבר למה." },
 ];
 
@@ -21,7 +24,10 @@ export default function Home() {
           <Link href="/register?kind=customer" className="rounded-md bg-accent px-4 py-2 font-medium text-white">
             הרשמה לעסק
           </Link>
-          <Link href="/register?kind=supplier" className="rounded-md border border-border bg-surface px-4 py-2 font-medium">
+          <Link
+            href="/register?kind=supplier"
+            className="rounded-md border border-border bg-surface px-4 py-2 font-medium"
+          >
             הרשמה לספק
           </Link>
         </div>

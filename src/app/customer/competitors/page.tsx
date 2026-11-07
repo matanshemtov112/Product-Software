@@ -84,7 +84,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="rounded-lg bg-accent-soft p-4 text-sm">
-        <p>לחישוב מדויק לפי הכמויות וההיקף החודשי שלכם, כולל משלוח ומינימום הזמנה:</p>
+        <p>לחישוב מדויק לפי הכמויות וההיקף החודשי שלכם, כולל מינימום הזמנה:</p>
         <Link
           href={`/customer/baskets/new?mode=supplier&supplier=${current.id}`}
           className="mt-2 inline-block rounded-md bg-accent px-4 py-2 font-medium text-white"

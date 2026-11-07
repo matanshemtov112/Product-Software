@@ -199,8 +199,9 @@ model DeliveryZone {
   supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   regionId        String
   region          Region   @relation(fields: [regionId], references: [id])
-  feeAgorot       Int
-  freeAboveAgorot Int? // סף למשלוח חינם
+  // אין דמי משלוח: המשלוח תמיד חינם, ויש רק מינימום הזמנה. השדות נשארים לתאימות ותמיד 0 / ריק
+  feeAgorot       Int  @default(0)
+  freeAboveAgorot Int?
   deliveryDays    String // למשל "א,ג,ה"
 
   @@unique([supplierId, regionId])

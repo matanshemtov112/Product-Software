@@ -107,7 +107,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
         <Stat
           label="אפשר לחסוך"
           value={shekels(r.potentialSavingAgorot)}
-          note={`בחודש, כולל משלוח, ב-${r.opportunities.reduce((n, o) => n + o.products.length, 0)} מוצרים`}
+          note={`בחודש, אחרי מינימום הזמנה, ב-${r.opportunities.reduce((n, o) => n + o.products.length, 0)} מוצרים`}
         />
         <Stat
           label="חסכתם בפועל"
@@ -128,7 +128,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
       <Card title="איפה אפשר לחסוך">
         {r.opportunities.length === 0 ? (
           <p className="text-sm text-muted">
-            לא מצאנו ספק שיוצא זול ממה שאתם משלמים, כולל משלוח ומינימום הזמנה. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם
+            לא מצאנו ספק שיוצא זול ממה שאתם משלמים, כולל מינימום הזמנה. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם
             משלמים היום לכל מוצר.
           </p>
         ) : (
@@ -193,7 +193,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
 
       <p className="text-xs text-muted">
         החודש הרצתם {count(r.checks, "בדיקת סל אחת", "בדיקות סל")} וקיבלתם {count(r.alerts, "התראה אחת", "התראות")} על
-        מחירים. החיסכון מחושב לפי הכמויות החודשיות בסל. ב״איפה אפשר לחסוך״ הוא כולל משלוח ומינימום הזמנה של כל ספק.
+        מחירים. החיסכון מחושב לפי הכמויות החודשיות בסל. ב״איפה אפשר לחסוך״ הוא כולל את מינימום ההזמנה של כל ספק.
       </p>
     </div>
   );

@@ -207,14 +207,14 @@ export default async function BasketPage({
                 </p>
                 <p className="text-3xl font-bold text-accent">חיסכון של עד {shekels(paid.monthlySavingAgorot)} בחודש</p>
                 <p className="text-sm text-muted">
-                  {shekels(paid.monthlySavingAgorot * 12)} בשנה. כולל משלוח ומינימום הזמנה של כל ספק, לפי{" "}
+                  {shekels(paid.monthlySavingAgorot * 12)} בשנה. כולל מינימום ההזמנה של כל ספק, לפי{" "}
                   {basket.deliveriesPerMonth} אספקות בחודש.
                 </p>
               </div>
             ) : (
               <p className="rounded-lg bg-background px-4 py-3 text-sm">
                 {paid.blocked.length > 0
-                  ? "יש ספקים שזולים יותר ליחידה, אבל אחרי משלוח ומינימום הזמנה זה לא משתלם כרגע (פירוט למטה)."
+                  ? "יש ספקים שזולים יותר ליחידה, אבל בגלל מינימום ההזמנה זה לא משתלם כרגע (פירוט למטה)."
                   : "המחירים שאתם משלמים היום טובים או שווים למה שיש כרגע במערכת."}{" "}
                 אפשר עדיין לפנות לספק ולבקש הצעה.
               </p>
@@ -268,7 +268,7 @@ export default async function BasketPage({
             <p className="text-sm text-muted">הספק שלכם היום</p>
             <p className="font-medium">{current.supplierName}</p>
             <p className="text-2xl font-bold">{shekels(current.quote.share.totalAgorot)}</p>
-            <p className="text-xs text-muted">לחודש לפי המחירון שלו, כולל משלוחים</p>
+            <p className="text-xs text-muted">לחודש לפי המחירון שלו, משלוח חינם</p>
           </div>
           <div className="rounded-lg border border-border bg-surface p-4">
             <p className="text-sm text-muted">החלופה הזולה ביותר לאותם מוצרים</p>
@@ -308,7 +308,7 @@ export default async function BasketPage({
                 </div>
                 <div className="text-end">
                   <p>{g.suppliers.join(" + ")}</p>
-                  <p className="text-xs text-muted">{shekels(g.totalAgorot)} לחודש, לפני משלוח</p>
+                  <p className="text-xs text-muted">{shekels(g.totalAgorot)} לחודש</p>
                 </div>
               </li>
             ))}

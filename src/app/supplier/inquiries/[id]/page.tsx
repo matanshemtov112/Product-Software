@@ -84,7 +84,7 @@ export default async function SupplierInquiry({
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted">ההצעה שלכם ללקוח</p>
               <p className="text-2xl font-bold">{shekels(inquiry.totalAgorot)}</p>
-              <p className="text-xs text-muted">לחודש, כולל משלוחים, ללא מע״מ</p>
+              <p className="text-xs text-muted">לחודש, משלוח חינם, ללא מע״מ</p>
             </div>
             <div className="rounded-lg bg-accent-soft p-4">
               <p className="text-sm">הפער מול ספק מתחרה</p>

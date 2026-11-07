@@ -94,7 +94,7 @@ export function priceChangeNotifications(change: PriceChange, items: WatchedItem
       kind: "CHEAPER_SUPPLIER",
       title: `נמצא מחיר זול יותר ל${productName}`,
       body: `${supplierName} מוכר ב-${price(newAgorot)}, ואתם משלמים היום ${price(item.paidAgorot)}.${
-        item.switchCost ? ` כולל משלוח ומינימום הזמנה: חיסכון של ${shekels(saving)} בחודש.` : ""
+        item.switchCost ? ` כולל מינימום הזמנה: חיסכון של ${shekels(saving)} בחודש.` : ""
       }`,
       href,
       savingsAgorot: saving,

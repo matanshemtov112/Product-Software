@@ -130,7 +130,7 @@ const SUPPLIERS: DemoSupplier[] = [
     minOrder: 400,
     reliability: 0.96,
     tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 100000]],
-    zones: [{ region: "מרכז", fee: 60, freeAbove: 800 }, { region: "שרון", fee: 80, freeAbove: 1200 }],
+    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
     offers: {
       "חזה עוף טרי": [5, 31.9],
       "שוקיים עוף": [5, 21.5],
@@ -147,7 +147,7 @@ const SUPPLIERS: DemoSupplier[] = [
     minOrder: 120,
     reliability: 0.9,
     tiers: [["רגיל", 0], ["עסקי", 5000]],
-    zones: [{ region: "מרכז", fee: 45, freeAbove: 150 }],
+    zones: [{ region: "מרכז", fee: 0, freeAbove: null }],
     offers: {
       "עגבניות": [10, 6.2],
       "בצל יבש": [10, 4.1],
@@ -174,8 +174,8 @@ const SUPPLIERS: DemoSupplier[] = [
     tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 50000], ["ארגוני", 100000]],
     zones: [
       { region: "מרכז", fee: 0, freeAbove: null },
-      { region: "שרון", fee: 50, freeAbove: 1500 },
-      { region: "ירושלים", fee: 90, freeAbove: 2500 },
+      { region: "שרון", fee: 0, freeAbove: null },
+      { region: "ירושלים", fee: 0, freeAbove: null },
     ],
     offers: {
       "חזה עוף טרי": [5, 33.5],
@@ -213,7 +213,7 @@ const SUPPLIERS: DemoSupplier[] = [
     minOrder: 120,
     reliability: 0.97,
     tiers: [["רגיל", 0], ["עסקי", 10000]],
-    zones: [{ region: "מרכז", fee: 40, freeAbove: 150 }, { region: "שרון", fee: 30, freeAbove: 150 }],
+    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
     offers: {
       "גבינה צהובה 28%": [1, 41.5],
       "גבינה לבנה 5%": [1, 18.9],
@@ -229,7 +229,7 @@ const SUPPLIERS: DemoSupplier[] = [
     minOrder: 60,
     reliability: 0.94,
     tiers: [["רגיל", 0], ["עסקי", 5000]],
-    zones: [{ region: "מרכז", fee: 25, freeAbove: 100 }, { region: "שרון", fee: 25, freeAbove: 100 }],
+    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
     offers: {
       "חסה ערבית": [12, 3.4],
       "כוסברה": [10, 2.3],
@@ -246,7 +246,7 @@ const SUPPLIERS: DemoSupplier[] = [
     minOrder: 500,
     reliability: 0.9,
     tiers: [["רגיל", 0], ["עסקי", 20000]],
-    zones: [{ region: "דרום", fee: 70, freeAbove: 1500 }],
+    zones: [{ region: "דרום", fee: 0, freeAbove: null }],
     offers: {
       "חזה עוף טרי": [5, 32.9],
       "בקר טחון": [2, 66],
@@ -741,7 +741,7 @@ async function main() {
       allCategories: false,
       categoriesSetAt: new Date(),
       categories: { create: [{ categoryId: categories.get("דגים ופירות ים")! }] },
-      deliveryZones: { create: [{ regionId: regions.get("מרכז")!, feeAgorot: ils(50), deliveryDays: "ב,ה" }] },
+      deliveryZones: { create: [{ regionId: regions.get("מרכז")!, deliveryDays: "ב,ה" }] },
       priceTiers: { create: [{ name: "רגיל", minMonthlyAgorot: 0 }] },
     },
   });

@@ -72,13 +72,7 @@ export default async function DealPage({ params }: { params: Promise<{ offerId: 
             <dt className="text-muted">מינימום הזמנה</dt>
             <dd>{supplier.minOrderAgorot ? shekels(supplier.minOrderAgorot) : "אין"}</dd>
             <dt className="text-muted">משלוח לאזור שלכם</dt>
-            <dd>
-              {zone
-                ? zone.feeAgorot
-                  ? `${shekels(zone.feeAgorot)}${zone.freeAboveAgorot ? `, חינם מעל ${shekels(zone.freeAboveAgorot)}` : ""}`
-                  : "חינם"
-                : "—"}
-            </dd>
+            <dd>{zone ? "חינם" : "—"}</dd>
           </dl>
           <p className="mt-3 text-xs text-muted">המחירים ללא מע״מ. ההזמנה עצמה נעשית ישירות מול הספק.</p>
         </Card>

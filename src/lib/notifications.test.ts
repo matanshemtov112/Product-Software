@@ -58,6 +58,6 @@ describe("priceChangeNotifications", () => {
     const ok = effectiveCost(lines, { minOrderAgorot: 0, feeAgorot: 500, freeAboveAgorot: null }, 4);
     const [n] = priceChangeNotifications(change(3800, 3200), [item({ switchCost: ok })]);
     expect(n.savingsAgorot).toBe(3000);
-    expect(n.body).toContain("כולל משלוח");
+    expect(n.body).toContain("כולל מינימום הזמנה");
   });
 });

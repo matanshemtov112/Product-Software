@@ -106,7 +106,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         <div className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-muted">ההצעה של הספק</p>
           <p className="text-2xl font-bold">{shekels(row.quote.share.totalAgorot)}</p>
-          <p className="text-xs text-muted">לחודש, כולל משלוחים</p>
+          <p className="text-xs text-muted">לחודש, משלוח חינם</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-muted">החלופה הזולה לאותם מוצרים</p>

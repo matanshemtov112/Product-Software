@@ -76,16 +76,15 @@ export default async function SupplierProfile() {
           ) : (
             <ul className="text-sm">
               {supplier.deliveryZones.map((z) => (
-                <li key={z.id}>
-                  {z.region.name}: משלוח {shekels(z.feeAgorot)}
-                  {z.freeAboveAgorot !== null && `, חינם מעל ${shekels(z.freeAboveAgorot)}`}
-                </li>
+                <li key={z.id}>{z.region.name}: משלוח חינם</li>
               ))}
             </ul>
           )}
         </Card>
       </div>
-      <p className="text-xs text-muted">עריכת אזורי משלוח תתווסף בהמשך.</p>
+      <p className="text-xs text-muted">
+        המשלוח לכל האזורים חינם. מה שקובע הוא מינימום ההזמנה. עריכת אזורי משלוח תתווסף בהמשך.
+      </p>
     </div>
   );
 }

@@ -113,7 +113,7 @@ export default async function CustomerHome() {
         <Stat
           label="חיסכון אפשרי"
           value={shekels(saving)}
-          note={`בחודש, כולל משלוח · ${shekels(saving * 12)} בשנה`}
+          note={`בחודש, אחרי מינימום הזמנה · ${shekels(saving * 12)} בשנה`}
           highlight
         />
       </div>

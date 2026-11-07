@@ -74,14 +74,14 @@ export function WasPrice({
 }) {
   if (regularAgorot != null && regularAgorot > nowAgorot) {
     return (
-      <span className="me-1.5 text-xs text-muted">
+      <span className="block text-xs text-muted">
         <span className="line-through">{shekels(regularAgorot, 2)}</span> מחיר רגיל
       </span>
     );
   }
   if (paidAgorot != null && paidAgorot > nowAgorot) {
     return (
-      <span className="me-1.5 text-xs text-muted">
+      <span className="block text-xs text-muted">
         <span className="line-through">{shekels(paidAgorot, 2)}</span> אתם משלמים היום
       </span>
     );

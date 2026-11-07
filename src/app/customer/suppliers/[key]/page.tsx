@@ -99,14 +99,14 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         <Card title="הזדמנויות לחיסכון">
           {supplier.opportunities.length === 0 ? (
             <p className="text-sm text-muted">
-              לא מצאנו כרגע ספק במערכת שאצלו המוצרים שאתם קונים אצל {supplier.name} יוצאים זולים יותר, כולל משלוח
-              ומינימום הזמנה.
+              לא מצאנו כרגע ספק במערכת שאצלו המוצרים שאתם קונים אצל {supplier.name} יוצאים זולים יותר, כולל
+              מינימום הזמנה.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-sm">
                 חיסכון של עד <strong className="text-accent">{shekels(supplier.monthlySavingAgorot)}</strong> בחודש (
-                {shekels(supplier.monthlySavingAgorot * 12)} בשנה), כולל משלוח ומינימום הזמנה של כל ספק.
+                {shekels(supplier.monthlySavingAgorot * 12)} בשנה), כולל מינימום ההזמנה של כל ספק.
               </p>
               <ul className="flex flex-col gap-2">
                 {supplier.opportunities.map((o) => (
