@@ -86,7 +86,8 @@ export function profileRows(p: CustomerProfileSnapshot): [string, string][] {
     ["היקף רכש חודשי", p.monthlyVolume ? `${p.monthlyVolume} (ללא מע״מ)` : "לא צוין"],
     ["היקף רכש כולל", p.totalVolume ? `${p.totalVolume} בחודש, מכל הספקים` : null],
     ["אספקות בחודש", String(p.deliveriesPerMonth)],
-    ["הסל", `${p.basketName} · ${p.itemCount} מוצרים`],
+    // פנייה בעקבות מבצע נשלחת בלי סל, ופרטי המבצע מוצגים בנפרד
+    ["הסל", p.itemCount > 0 ? `${p.basketName} · ${p.itemCount} מוצרים` : null],
     ["לקוח במערכת מאז", p.customerSince],
   ];
   return rows.filter((r): r is [string, string] => Boolean(r[1]));
