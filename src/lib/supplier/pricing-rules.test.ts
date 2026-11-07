@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseShekels, priceChangeStatus } from "./pricing-rules";
+import { parseShekels, parseValidUntil, priceChangeStatus, validUntilInput } from "./pricing-rules";
 
 describe("priceChangeStatus", () => {
   it("publishes a first price immediately", () => {
@@ -28,5 +28,20 @@ describe("parseShekels", () => {
     expect(parseShekels("0")).toBeNull();
     expect(parseShekels("abc")).toBeNull();
     expect(parseShekels(null)).toBeNull();
+  });
+});
+
+describe("parseValidUntil", () => {
+  const now = new Date(2026, 10, 7, 12);
+  it("ends at the start of the day after the chosen date", () => {
+    expect(parseValidUntil("2026-11-30", now)).toEqual(new Date(2026, 11, 1));
+    expect(parseValidUntil("2026-11-07", now)).toEqual(new Date(2026, 10, 8));
+    expect(validUntilInput(new Date(2026, 11, 1))).toBe("2026-11-30");
+  });
+  it("rejects past, invalid and far dates", () => {
+    expect(parseValidUntil("2026-11-06", now)).toBeNull();
+    expect(parseValidUntil("2026-02-30", now)).toBeNull();
+    expect(parseValidUntil("", now)).toBeNull();
+    expect(parseValidUntil("2028-01-01", now)).toBeNull();
   });
 });

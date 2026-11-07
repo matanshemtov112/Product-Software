@@ -1,3 +1,4 @@
+import { lastValidDay, shortDate } from "@/lib/price-status";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
@@ -56,7 +57,11 @@ export default async function AdminPrices() {
                       </span>
                     )}
                   </p>
-                  <p className="text-xs text-muted">נשלח {p.createdAt.toLocaleString("he-IL")}</p>
+                  <p className="text-xs text-muted">
+                    {p.kind === "PROMOTION" ? "מבצע" : p.termEndsAt ? "מחיר עם תוקף" : "מחיר קבוע"}
+                    {p.termEndsAt ? ` עד ${shortDate(lastValidDay(p.termEndsAt))}` : ""} · נשלח{" "}
+                    {p.createdAt.toLocaleString("he-IL")}
+                  </p>
                 </div>
                 <form action={decidePrice} className="flex shrink-0 gap-2">
                   <input type="hidden" name="priceId" value={p.id} />

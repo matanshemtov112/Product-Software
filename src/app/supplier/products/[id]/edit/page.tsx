@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
 import { categoryTree, selectableCategories } from "@/lib/categories";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
+import { validUntilInput } from "@/lib/supplier/pricing-rules";
 import { ProductForm } from "../../product-form";
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,14 +14,15 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   if (!offer) notFound();
   const categories = selectableCategories(await categoryTree(), null);
   const byTier = pricesByTier(offer);
+  // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
+  const shown = (agorot: number | null | undefined) =>
+    agorot ? ((offer.pricePerPack ? agorot * nominalPackSize(offer) : agorot) / 100).toFixed(2) : "";
   const prices = Object.fromEntries(
-    supplier.priceTiers.map((t) => {
-      const p = byTier.get(t.id);
-      // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
-      const agorot = p?.live ? (offer.pricePerPack ? p.live * nominalPackSize(offer) : p.live) : null;
-      return [t.id, agorot ? (agorot / 100).toFixed(2) : ""];
-    }),
+    supplier.priceTiers.map((t) => [t.id, shown(byTier.get(t.id)?.live ?? byTier.get(t.id)?.expired?.price)]),
   );
+  const promoPrices = Object.fromEntries(supplier.priceTiers.map((t) => [t.id, shown(byTier.get(t.id)?.promo)]));
+  const base = supplier.priceTiers[0] ? byTier.get(supplier.priceTiers[0].id) : undefined;
+  const promoTier = [...byTier.values()].find((p) => p.promoValidTo);
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">עריכת {offer.product.name}</h1>
@@ -43,6 +45,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             available: offer.available,
             prices,
             imageSrc: offerImageUrl(offer),
+            priceType: base?.liveValidTo || base?.expired ? "UNTIL" : "FIXED",
+            validUntil: validUntilInput(base?.liveValidTo),
+            promoPrices,
+            promoUntil: validUntilInput(promoTier?.promoValidTo),
           }}
           categories={categories}
           catalog={[]}

@@ -655,6 +655,40 @@ async function main() {
       });
     }
   }
+  // סוגי מחיר לדמו: מחיר עם תוקף (מרכז המזון, שמן קנולה) ומבצע (בשרים הגליל, בקר טחון)
+  const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+  const canola = await db.supplierOffer.findFirst({
+    where: { supplierId: supplierIds["510000037"].id, productId: products.get("שמן קנולה")! },
+  });
+  if (canola) {
+    await db.offerPrice.updateMany({
+      where: { offerId: canola.id, validFrom: midLastMonth },
+      data: { validTo: endOfNextMonth, termEndsAt: endOfNextMonth },
+    });
+  }
+  const beefPromo = await db.supplierOffer.findFirst({
+    where: { supplierId: supplierIds["510000011"].id, productId: products.get("בקר טחון")! },
+    include: { prices: { where: { validTo: null } }, supplier: { include: { priceTiers: true } } },
+  });
+  if (beefPromo) {
+    const baseTier = [...beefPromo.supplier.priceTiers].sort((a, b) => a.minMonthlyAgorot - b.minMonthlyAgorot)[0];
+    const regular = beefPromo.prices.find((p) => p.tierId === baseTier.id);
+    const promoEnds = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 11);
+    if (regular) {
+      await db.offerPrice.create({
+        data: {
+          offerId: beefPromo.id,
+          tierId: baseTier.id,
+          unitPriceAgorot: Math.round(regular.unitPriceAgorot * 0.93),
+          kind: "PROMOTION",
+          validFrom: new Date(now.getTime() - 2 * 86_400_000),
+          createdAt: new Date(now.getTime() - 2 * 86_400_000),
+          validTo: promoEnds,
+          termEndsAt: promoEnds,
+        },
+      });
+    }
+  }
   // בקשת השוואה מהחודש הקודם: מרכז המזון השווה את מחיר חזה העוף והלקוח אישר
   const decided = new Date(now.getFullYear(), now.getMonth() - 1, 20);
   const meatAndOil = await db.basket.findFirstOrThrow({ where: { customerId: customer.id, name: "בשר ושמן" } });

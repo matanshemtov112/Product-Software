@@ -17,6 +17,7 @@ export interface SystemOffer {
   unitPriceAgorot: number;
   priceKind?: string;
   priceUpdatedAt?: string;
+  priceValidTo?: string;
 }
 
 export interface PaidComparisonLine extends PaidItem {

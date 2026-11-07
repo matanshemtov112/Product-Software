@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { notify, notifyPriceChange } from "@/lib/notifications";
+import { closePrevious } from "@/lib/supplier/prices";
 
 const str = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
@@ -55,10 +56,17 @@ export async function decidePrice(form: FormData) {
     orderBy: { validFrom: "desc" },
   });
   const now = new Date();
-  await db.offerPrice.update({
+  // מחיר עם תוקף או מבצע שהתאריך שלו כבר עבר לא נכנס לתוקף
+  if (approve && price.validTo && price.validTo <= now) {
+    await db.offerPrice.update({ where: { id }, data: { status: "REJECTED" } });
+    revalidatePath("/admin", "layout");
+    return;
+  }
+  const updated = await db.offerPrice.update({
     where: { id },
     data: approve ? { status: "LIVE", validFrom: now } : { status: "REJECTED" },
   });
+  if (approve) await closePrevious(updated);
   await audit({
     action: approve ? "price.approved" : "price.rejected",
     targetType: "offer",

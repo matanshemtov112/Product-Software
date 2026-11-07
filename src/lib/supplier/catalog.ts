@@ -91,18 +91,64 @@ export async function categoryCounts(supplierId: string) {
   return [...counts.values()].sort((a, b) => a.name.localeCompare(b.name, "he"));
 }
 
-/** המחיר הפעיל העדכני ביותר והמחיר הממתין לאישור (אם יש) לכל מדרגה */
+export interface TierPrices {
+  /** המחיר הרגיל בתוקף (קבוע או עם תוקף) */
+  live: number | null;
+  liveSince: Date | null;
+  /** עד מתי המחיר הרגיל תקף; null למחיר קבוע */
+  liveValidTo: Date | null;
+  /** מבצע בתוקף עכשיו */
+  promo: number | null;
+  promoSince: Date | null;
+  promoValidTo: Date | null;
+  /** מחיר שממתין לאישור (אם יש) */
+  pending: number | null;
+  pendingKind: "REGULAR" | "PROMOTION" | null;
+  /** המחיר הרגיל האחרון שתוקפו פג, כשאין מחיר רגיל בתוקף */
+  expired: { price: number; validTo: Date } | null;
+}
+
+/** המחירים של כל מדרגה: רגיל בתוקף, מבצע בתוקף, ממתין לאישור, ומחיר שתוקפו פג */
 export function pricesByTier(offer: OfferWithPrices, now = new Date()) {
-  const result = new Map<string, { live: number | null; pending: number | null; liveSince: Date | null }>();
+  const result = new Map<string, TierPrices>();
   for (const p of offer.prices) {
-    const entry = result.get(p.tierId) ?? { live: null, pending: null, liveSince: null };
+    const entry = result.get(p.tierId) ?? {
+      live: null,
+      liveSince: null,
+      liveValidTo: null,
+      promo: null,
+      promoSince: null,
+      promoValidTo: null,
+      pending: null,
+      pendingKind: null,
+      expired: null,
+    };
     const valid = p.validFrom <= now && (!p.validTo || p.validTo > now);
     if (p.status === "LIVE" && valid && p.kind === "REGULAR" && entry.live === null) {
       entry.live = p.unitPriceAgorot;
       entry.liveSince = p.validFrom;
+      entry.liveValidTo = p.validTo;
     }
-    if (p.status === "PENDING_APPROVAL" && entry.pending === null && entry.live === null) {
+    if (p.status === "LIVE" && valid && p.kind === "PROMOTION" && entry.promo === null) {
+      entry.promo = p.unitPriceAgorot;
+      entry.promoSince = p.validFrom;
+      entry.promoValidTo = p.validTo;
+    }
+    if (
+      p.status === "LIVE" &&
+      p.kind === "REGULAR" &&
+      p.termEndsAt &&
+      p.validTo &&
+      p.validTo.getTime() === p.termEndsAt.getTime() &&
+      p.validTo <= now &&
+      entry.live === null &&
+      entry.expired === null
+    ) {
+      entry.expired = { price: p.unitPriceAgorot, validTo: p.validTo };
+    }
+    if (p.status === "PENDING_APPROVAL" && entry.pending === null && entry.live === null && entry.promo === null) {
       entry.pending = p.unitPriceAgorot;
+      entry.pendingKind = p.kind;
     }
     result.set(p.tierId, entry);
   }

@@ -73,6 +73,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
             unitPriceAgorot: p.unitPriceAgorot,
             kind: "REGULAR",
             updatedAt: p.validFrom.toISOString(),
+            validTo: p.validTo?.toISOString(),
           };
         }
         for (const p of o.prices.filter((x) => x.kind === "PROMOTION")) {
@@ -82,6 +83,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
               unitPriceAgorot: p.unitPriceAgorot,
               kind: "PROMOTION",
               updatedAt: p.validFrom.toISOString(),
+              validTo: p.validTo?.toISOString(),
             };
           }
         }

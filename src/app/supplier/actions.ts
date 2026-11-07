@@ -11,7 +11,8 @@ import { audit } from "@/lib/audit";
 import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
-import { parseShekels, priceChangeStatus } from "@/lib/supplier/pricing-rules";
+import { closePrevious } from "@/lib/supplier/prices";
+import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
 import { VALID_DAYS } from "@/lib/matches";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
@@ -35,6 +36,7 @@ const offerSchema = z.object({
   minIn: z.enum(["packs", "units"]).default("units"),
   pricePer: z.enum(["unit", "pack"]).default("unit"),
   available: z.literal("on").optional(),
+  priceType: z.enum(["FIXED", "UNTIL", "PROMOTION"]).default("FIXED"),
 });
 
 async function currentSupplier() {
@@ -78,15 +80,40 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     const entered = parseShekels(form.get(`price_${t.id}`) ?? form.get("price_new"));
     return { tier: t, agorot: entered === null ? null : Math.round(entered / packDivisor) };
   });
-  if (prices[0].agorot === null) return { error: `נא למלא מחיר למדרגה "${tiers[0].name}"` };
+  const priceType: PriceType = data.priceType;
+  const promotion = priceType === "PROMOTION";
+  if (!promotion && prices[0].agorot === null) return { error: `נא למלא מחיר למדרגה "${tiers[0].name}"` };
+  if (promotion && prices.every((p) => p.agorot === null)) return { error: "נא למלא מחיר מבצע לפחות למדרגה אחת" };
+  const now = new Date();
+  const validTo = priceType === "FIXED" ? null : parseValidUntil(form.get("validUntil"), now);
+  if (priceType !== "FIXED" && !validTo) {
+    return { error: `נא לבחור עד מתי ${promotion ? "המבצע" : "המחיר"} בתוקף: מהיום ועד שנה קדימה` };
+  }
 
+  // המחירים שבתוקף עכשיו (רגיל ומבצע), מהחדש לישן
   const existing = data.offerId
     ? await db.supplierOffer.findFirst({
         where: { id: data.offerId, supplierId: supplier.id },
-        include: { prices: { where: { status: "LIVE", kind: "REGULAR" }, orderBy: { validFrom: "desc" } } },
+        include: {
+          prices: {
+            where: { status: "LIVE", validFrom: { lte: now }, OR: [{ validTo: null }, { validTo: { gt: now } }] },
+            orderBy: { validFrom: "desc" },
+          },
+        },
       })
     : null;
   if (data.offerId && !existing) return { error: "המוצר לא נמצא" };
+  if (promotion) {
+    if (!existing) return { error: "מבצע מגדירים למוצר קיים, אחרי שיש לו מחיר קבוע או מחיר עם תוקף" };
+    for (const { tier, agorot } of prices) {
+      if (agorot === null) continue;
+      const regular = existing.prices.find((p) => p.tierId === tier.id && p.kind === "REGULAR");
+      if (!regular) return { error: `אין מחיר רגיל למדרגה "${tier.name}", אז אי אפשר להגדיר לה מבצע` };
+      if (agorot >= regular.unitPriceAgorot) {
+        return { error: `מחיר המבצע במדרגה "${tier.name}" צריך להיות נמוך מהמחיר הרגיל` };
+      }
+    }
+  }
 
   let productId = existing?.productId;
   if (!existing) {
@@ -135,21 +162,49 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   if (image?.ok) await storeImage(offer.id, image);
 
   let held = 0;
+  const kind = promotion ? "PROMOTION" : "REGULAR";
   for (const { tier, agorot } of prices) {
     if (agorot === null) continue;
-    const current = existing?.prices.find((p) => p.tierId === tier.id)?.unitPriceAgorot ?? null;
-    if (current === agorot) continue;
-    const status = priceChangeStatus(current, agorot);
+    const tierPrices = existing?.prices.filter((p) => p.tierId === tier.id) ?? [];
+    const regular = tierPrices.find((p) => p.kind === "REGULAR") ?? null;
+    const promo = tierPrices.find((p) => p.kind === "PROMOTION") ?? null;
+    const same = promotion ? promo : regular;
+    if (same && same.unitPriceAgorot === agorot && same.validTo?.getTime() === validTo?.getTime()) continue;
+    // שינוי של יותר מ-30% ממתין לאישור; מבצע נבדק מול המחיר הרגיל
+    const current = regular?.unitPriceAgorot ?? null;
+    const status = priceChangeStatus(promotion ? current : (same?.unitPriceAgorot ?? null), agorot);
     if (status === "PENDING_APPROVAL") held++;
-    await db.offerPrice.create({ data: { offerId: offer.id, tierId: tier.id, unitPriceAgorot: agorot, status } });
+    const created = await db.offerPrice.create({
+      data: {
+        offerId: offer.id,
+        tierId: tier.id,
+        unitPriceAgorot: agorot,
+        status,
+        kind,
+        validFrom: now,
+        validTo,
+        termEndsAt: validTo,
+      },
+    });
+    // מחיר חדש שנכנס לתוקף מחליף את הקודם מאותו סוג, כדי שמחיר ישן לא יחזור כשהחדש יפוג
+    if (status === "LIVE") await closePrevious(created);
     await audit({
       action: status === "LIVE" ? "price.changed" : "price.held",
       targetType: "offer",
       targetId: offer.id,
-      details: { supplier: supplier.companyName, tier: tier.name, from: current, to: agorot },
+      details: {
+        supplier: supplier.companyName,
+        tier: tier.name,
+        from: same?.unitPriceAgorot ?? null,
+        to: agorot,
+        type: priceType,
+        validTo: validTo?.toISOString() ?? null,
+      },
     });
     // התראות ללקוחות לפי המחיר הבסיסי, כשהמחיר נכנס לתוקף מיד
-    if (status === "LIVE" && tier.minMonthlyAgorot === 0) {
+    const before = promo && regular ? Math.min(promo.unitPriceAgorot, regular.unitPriceAgorot) : current;
+    const after = !promotion && promo ? Math.min(promo.unitPriceAgorot, agorot) : agorot;
+    if (status === "LIVE" && tier.minMonthlyAgorot === 0 && before !== after) {
       const product = await db.product.findUniqueOrThrow({ where: { id: offer.productId } });
       await notifyPriceChange({
         supplierId: supplier.id,
@@ -157,8 +212,8 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
         productId: product.id,
         productName: product.name,
         unitLabel: UNIT_LABEL[product.unit],
-        oldAgorot: current,
-        newAgorot: agorot,
+        oldAgorot: before,
+        newAgorot: after,
       });
     }
   }
@@ -174,6 +229,37 @@ async function storeImage(offerId: string, image: { data: Buffer; contentType: s
     create: { offerId, data, contentType: image.contentType },
     update: { data, contentType: image.contentType },
   });
+}
+
+/** סיום מבצע לפני הזמן: המחיר הרגיל חוזר מיד */
+export async function endPromotion(form: FormData) {
+  const supplier = await currentSupplier();
+  const offerId = String(form.get("offerId") ?? "");
+  const offer = await db.supplierOffer.findFirst({
+    where: { id: offerId, supplierId: supplier.id },
+    include: { product: true },
+  });
+  if (!offer) return;
+  const now = new Date();
+  const ended = await db.offerPrice.updateMany({
+    where: {
+      offerId,
+      kind: "PROMOTION",
+      status: "LIVE",
+      validFrom: { lte: now },
+      OR: [{ validTo: null }, { validTo: { gt: now } }],
+    },
+    data: { validTo: now },
+  });
+  if (ended.count) {
+    await audit({
+      action: "price.promotion-ended",
+      targetType: "offer",
+      targetId: offerId,
+      details: { supplier: supplier.companyName, product: offer.product.name },
+    });
+  }
+  revalidatePath("/supplier", "layout");
 }
 
 /** העלאה או החלפה של תמונה ישירות מרשימת המוצרים או מעמוד הפרטים */

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PriceStatusBadge } from "@/components/price-badge";
+import { lastValidDay, shortDate } from "@/lib/price-status";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
 import { pricedPerPack, packLabel, packPriceLabel } from "@/lib/pack";
@@ -66,10 +68,35 @@ function Actions({ offer }: { offer: OfferWithPrices }) {
   );
 }
 
+/** המחיר שהלקוח רואה במדרגה הבסיסית (מבצע אם יש), וסוג המחיר */
 function basePrice(offer: OfferWithPrices, firstTierId: string | undefined) {
-  const entry = firstTierId ? pricesByTier(offer).get(firstTierId) : undefined;
-  const pending = [...pricesByTier(offer).values()].some((p) => p.pending !== null);
-  return { live: entry?.live ?? null, pending };
+  const byTier = pricesByTier(offer);
+  const entry = firstTierId ? byTier.get(firstTierId) : undefined;
+  const pending = [...byTier.values()].some((p) => p.pending !== null);
+  const promo = entry?.promo != null && entry.live != null && entry.promo < entry.live;
+  return {
+    live: promo ? entry!.promo : (entry?.live ?? null),
+    regular: promo ? entry!.live : null,
+    pending,
+    status:
+      entry?.live != null
+        ? promo
+          ? { kind: "PROMOTION", updatedAt: entry.promoSince, validTo: entry.promoValidTo }
+          : { kind: "REGULAR", updatedAt: entry.liveSince, validTo: entry.liveValidTo }
+        : null,
+    expired: entry?.live == null ? (entry?.expired ?? null) : null,
+  };
+}
+
+function PriceType({ price }: { price: ReturnType<typeof basePrice> }) {
+  if (price.status) return <PriceStatusBadge {...price.status} />;
+  if (price.expired)
+    return (
+      <span className="text-xs text-danger">
+        התוקף פג ב-{shortDate(lastValidDay(price.expired.validTo))}. עדכנו מחיר כדי לחזור להשוואות
+      </span>
+    );
+  return null;
 }
 
 function ViewToggle({ view, params }: { view: View; params: URLSearchParams }) {
@@ -209,11 +236,17 @@ export default async function SupplierProducts({
                         ? `${shekels(price.live, 2)} / ${UNIT_LABEL[offer.product.unit]}`
                         : "אין מחיר"}
                     </span>
+                    {price.regular !== null && (
+                      <span className="block text-xs text-muted line-through">{shekels(price.regular, 2)}</span>
+                    )}
                     {price.live !== null && pricedPerPack(offer) && (
                       <span className="block text-xs text-muted">
                         {packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}
                       </span>
                     )}
+                    <span className="mt-1 block">
+                      <PriceType price={price} />
+                    </span>
                   </span>
                   <Actions offer={offer} />
                 </div>
@@ -234,13 +267,23 @@ export default async function SupplierProducts({
                   <Badges offer={offer} pending={price.pending} />
                 </div>
                 <div>
-                  <p className="text-xl font-bold">{price.live !== null ? shekels(price.live, 2) : "אין מחיר"}</p>
+                  <p className="text-xl font-bold">
+                    {price.live !== null ? shekels(price.live, 2) : "אין מחיר"}
+                    {price.regular !== null && (
+                      <span className="ms-2 text-sm font-normal text-muted line-through">
+                        {shekels(price.regular, 2)}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-muted">
                     ל{UNIT_LABEL[offer.product.unit]}
                     {price.live !== null && pricedPerPack(offer)
                       ? ` · ${packPriceLabel(price.live, { ...offer, unit: offer.product.unit })}`
                       : ` · ${packLabel({ ...offer, unit: offer.product.unit })}`}
                   </p>
+                  <div className="mt-1">
+                    <PriceType price={price} />
+                  </div>
                 </div>
                 <div className="mt-auto border-t border-border pt-3">
                   <Actions offer={offer} />

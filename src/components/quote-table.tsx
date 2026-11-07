@@ -1,3 +1,4 @@
+import { PriceStatusBadge } from "./price-badge";
 import { shekels } from "@/lib/format";
 import type { QuoteSnapshot } from "@/lib/inquiries";
 import { UNIT_LABEL } from "@/lib/supplier/catalog";
@@ -40,6 +41,11 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                 <td className="py-2">
                   {shekels(l.unitPriceAgorot, 2)}
                   {l.packPrice && <span className="block text-xs text-muted">{l.packPrice}</span>}
+                  {l.priceKind && (
+                    <span className="mt-0.5 block">
+                      <PriceStatusBadge kind={l.priceKind} updatedAt={l.priceUpdatedAt} validTo={l.priceValidTo} />
+                    </span>
+                  )}
                 </td>
                 {showPaid && (
                   <td className="py-2">

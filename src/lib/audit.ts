@@ -20,6 +20,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   register: "הרשמה",
   "price.changed": "שינוי מחיר",
   "price.held": "שינוי מחיר גדול ממתין לאישור",
+  "price.promotion-ended": "סיום מבצע",
   "price.approved": "אדמין אישר מחיר",
   "price.rejected": "אדמין דחה מחיר",
   "supplier.status": "שינוי סטטוס ספק",

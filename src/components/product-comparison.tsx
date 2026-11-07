@@ -1,24 +1,6 @@
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PaidComparisonLine } from "@/lib/customer/paid-prices";
-import { priceStatus, type PriceStatusKey } from "@/lib/price-status";
-
-const STATUS_CLASS: Record<PriceStatusKey, string> = {
-  verified: "bg-accent-soft text-accent",
-  list: "bg-[#e7f1fb] text-[#1f4f82]",
-  promotion: "bg-[#fff4c2] text-[#6b5300]",
-};
-
-export function PriceStatusBadge({ kind, updatedAt }: { kind?: string; updatedAt?: string }) {
-  const status = priceStatus({ kind, updatedAt });
-  return (
-    <span
-      title={status.detail}
-      className={`rounded px-1.5 py-0.5 text-xs whitespace-nowrap ${STATUS_CLASS[status.key]}`}
-    >
-      {status.label}
-    </span>
-  );
-}
+import { PriceStatusBadge } from "./price-badge";
 
 /** תובנה קצרה: בכמה הלקוח משלם יותר (או פחות) מהמחיר הזול ביותר שמצאנו */
 export function gapInsight(gapPct: number | null) {
@@ -69,6 +51,13 @@ export function ProductComparison({
                         {l.best.supplierName}
                         {l.best.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                       </span>
+                      <span className="mt-0.5 block">
+                        <PriceStatusBadge
+                          kind={l.best.priceKind}
+                          updatedAt={l.best.priceUpdatedAt}
+                          validTo={l.best.priceValidTo}
+                        />
+                      </span>
                     </>
                   ) : (
                     <span className="text-muted">אין ספק במערכת</span>
@@ -93,7 +82,7 @@ export function ProductComparison({
                       <tr>
                         <th className="pb-1 text-start font-normal">ספק</th>
                         <th className="pb-1 text-start font-normal">מחיר עבורכם</th>
-                        <th className="pb-1 text-start font-normal">סטטוס</th>
+                        <th className="pb-1 text-start font-normal">סוג המחיר</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -107,7 +96,11 @@ export function ProductComparison({
                             {shekels(o.unitPriceAgorot, 2)} / {unit}
                           </td>
                           <td className="py-1.5">
-                            <PriceStatusBadge kind={o.priceKind} updatedAt={o.priceUpdatedAt} />
+                            <PriceStatusBadge
+                              kind={o.priceKind}
+                              updatedAt={o.priceUpdatedAt}
+                              validTo={o.priceValidTo}
+                            />
                           </td>
                         </tr>
                       ))}

@@ -21,6 +21,8 @@ export interface TierPrice {
   kind: PriceKind;
   /** מתי הספק עדכן או אישר את המחיר (ISO), להצגת סטטוס המחיר */
   updatedAt?: string;
+  /** עד מתי המחיר תקף (ISO); חסר למחיר קבוע */
+  validTo?: string;
 }
 
 export interface Offer {
@@ -84,6 +86,7 @@ export interface PricedLine {
   lineTotalAgorot: number;
   priceKind: PriceKind;
   priceUpdatedAt?: string;
+  priceValidTo?: string;
 }
 
 export interface SupplierShare {

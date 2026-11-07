@@ -5,12 +5,14 @@ import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel } from "@/lib/pack";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
-import { removeOfferImage } from "../../actions";
+import { endPromotion, removeOfferImage } from "../../actions";
+import { PriceStatusBadge } from "@/components/price-badge";
+import { lastValidDay } from "@/lib/price-status";
 import { OfferImage } from "../../offer-image";
 import { DeleteOfferButton } from "../../delete-button";
 
 const STATUS_LABEL = { LIVE: "פעיל", PENDING_APPROVAL: "ממתין לאישור", REJECTED: "נדחה" } as const;
-const KIND_LABEL = { REGULAR: "רגיל", PROMOTION: "מבצע" } as const;
+const KIND_LABEL = { REGULAR: "קבוע", PROMOTION: "מבצע" } as const;
 
 export default async function ProductDetails({
   params,
@@ -97,6 +99,7 @@ export default async function ProductDetails({
               <tr>
                 <th className="pb-2 text-start font-normal">מדרגה</th>
                 <th className="pb-2 text-start font-normal">מחיר פעיל</th>
+                <th className="pb-2 text-start font-normal">מבצע</th>
                 <th className="pb-2 text-start font-normal">ממתין</th>
               </tr>
             </thead>
@@ -114,13 +117,48 @@ export default async function ProductDetails({
                       {p?.live != null && pricedPerPack(offer) && (
                         <span className="block text-xs text-muted">{packPriceLabel(p.live, pack)}</span>
                       )}
+                      {p?.live != null && (
+                        <span className="mt-1 block">
+                          <PriceStatusBadge kind="REGULAR" updatedAt={p.liveSince} validTo={p.liveValidTo} />
+                        </span>
+                      )}
+                      {p?.live == null && p?.expired && (
+                        <span className="block text-xs text-danger">
+                          {shekels(p.expired.price, 2)}, התוקף פג ב-{date(lastValidDay(p.expired.validTo))}
+                        </span>
+                      )}
                     </td>
-                    <td className="py-2">{p?.pending != null ? shekels(p.pending, 2) : "—"}</td>
+                    <td className="py-2">
+                      {p?.promo != null ? (
+                        <>
+                          {shekels(p.promo, 2)}
+                          <span className="mt-1 block">
+                            <PriceStatusBadge kind="PROMOTION" updatedAt={p.promoSince} validTo={p.promoValidTo} />
+                          </span>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-2">
+                      {p?.pending != null ? shekels(p.pending, 2) : "—"}
+                      {p?.pendingKind === "PROMOTION" && <span className="block text-xs text-muted">מבצע</span>}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          {[...byTier.values()].some((p) => p.promo != null) && (
+            <form action={endPromotion} className="mt-3">
+              <input type="hidden" name="offerId" value={offer.id} />
+              <button className="text-sm text-danger hover:underline">סיום המבצע עכשיו</button>
+              <span className="ms-2 text-xs text-muted">המחיר הרגיל יחזור מיד.</span>
+            </form>
+          )}
+          <p className="mt-3 text-xs text-muted">
+            כדי לשנות מחיר, סוג מחיר (קבוע, עם תוקף או מבצע) או תאריך סיום, לחצו על &quot;עריכה&quot;.
+          </p>
         </Card>
       </div>
 
@@ -135,6 +173,7 @@ export default async function ProductDetails({
                 <th className="pb-2 text-start font-normal">מדרגה</th>
                 <th className="pb-2 text-start font-normal">מחיר</th>
                 <th className="pb-2 text-start font-normal">סוג</th>
+                <th className="pb-2 text-start font-normal">בתוקף עד</th>
                 <th className="pb-2 text-start font-normal">סטטוס</th>
               </tr>
             </thead>
@@ -144,7 +183,15 @@ export default async function ProductDetails({
                   <td className="py-2">{date(p.createdAt)}</td>
                   <td className="py-2">{p.tier.name}</td>
                   <td className="py-2">{shekels(p.unitPriceAgorot, 2)}</td>
-                  <td className="py-2">{KIND_LABEL[p.kind]}</td>
+                  <td className="py-2">
+                    {p.kind === "PROMOTION" ? KIND_LABEL.PROMOTION : p.termEndsAt ? "עם תוקף" : "קבוע"}
+                  </td>
+                  <td className="py-2">
+                    {p.validTo ? date(lastValidDay(p.validTo)) : "—"}
+                    {p.validTo && (!p.termEndsAt || p.validTo < p.termEndsAt) && (
+                      <span className="block text-xs text-muted">הוחלף במחיר חדש</span>
+                    )}
+                  </td>
                   <td className="py-2">{STATUS_LABEL[p.status]}</td>
                 </tr>
               ))}

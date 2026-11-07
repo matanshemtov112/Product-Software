@@ -303,6 +303,8 @@ model OfferPrice {
   status          PriceChangeStatus @default(LIVE)
   validFrom       DateTime          @default(now())
   validTo         DateTime?
+  /// תאריך הסיום שהספק בחר (מחיר עם תוקף או מבצע); null למחיר קבוע. validTo יכול להיות מוקדם יותר כשהמחיר הוחלף
+  termEndsAt      DateTime?
   createdAt       DateTime          @default(now())
 
   @@index([offerId, tierId, validFrom])

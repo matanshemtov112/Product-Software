@@ -34,7 +34,33 @@ export interface OfferFormValues {
   /** מחיר בשקלים לפי מזהה מדרגה */
   prices: Record<string, string>;
   imageSrc: string | null;
+  /** סוג המחיר הרגיל הנוכחי: קבוע או עם תוקף */
+  priceType?: "FIXED" | "UNTIL";
+  /** היום האחרון שהמחיר הרגיל בתוקף, yyyy-mm-dd */
+  validUntil?: string;
+  /** מבצע בתוקף, בשקלים לפי מדרגה */
+  promoPrices?: Record<string, string>;
+  promoUntil?: string;
 }
+
+type PriceType = "FIXED" | "UNTIL" | "PROMOTION";
+
+const PRICE_TYPES: { value: PriceType; label: string; hint: string }[] = [
+  { value: "FIXED", label: "מחיר קבוע", hint: "בלי תאריך סיום. הלקוחות רואים מתי עדכנתם אותו." },
+  {
+    value: "UNTIL",
+    label: "מחיר עם תוקף",
+    hint: "אתם מתחייבים למחיר עד תאריך. אחריו המוצר יוצא מההשוואות עד שתעדכנו מחיר.",
+  },
+  {
+    value: "PROMOTION",
+    label: "מבצע",
+    hint: "מחיר מוזל עד תאריך. המחיר הרגיל נשאר שמור וחוזר אוטומטית כשהמבצע נגמר.",
+  },
+];
+
+const dateInput = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const UNITS = [
   { value: "KG", label: "ק״ג" },
@@ -63,7 +89,16 @@ export function ProductForm({
   const [packSize, setPackSize] = useState(String(initial.packSize));
   const [packSizeMax, setPackSizeMax] = useState(initial.packSizeMax ? String(initial.packSizeMax) : "");
   const [pricePer, setPricePer] = useState<"unit" | "pack">(initial.pricePerPack ? "pack" : "unit");
-  const [prices, setPrices] = useState(initial.prices);
+  const [priceType, setPriceType] = useState<PriceType>(initial.priceType ?? "FIXED");
+  const promotion = priceType === "PROMOTION";
+  const [regularPrices, setRegularPrices] = useState(initial.prices);
+  const [promoPrices, setPromoPrices] = useState(initial.promoPrices ?? {});
+  const [validUntil, setValidUntil] = useState(initial.validUntil ?? "");
+  const [promoUntil, setPromoUntil] = useState(initial.promoUntil ?? "");
+  const prices = promotion ? promoPrices : regularPrices;
+  const setPrices = promotion ? setPromoPrices : setRegularPrices;
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
   const pack = { unit, packSize: Number(packSize) || 0, packSizeMax: Number(packSizeMax) || null };
   const nominal = nominalPackSize(pack);
   // במשקל משתנה אין מחיר קבוע לאריזה: המחיר תמיד ליחידת המידה
@@ -279,11 +314,53 @@ export function ProductForm({
           שמן) מתמחרים לאריזה, והלקוח יראה את המחיר לאריזה וגם את המחיר ל{unitLabel}.
           {variable && " במשקל משתנה המחיר הוא תמיד ל" + unitLabel + "."}
         </p>
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">סוג המחיר</span>
+          <div role="radiogroup" aria-label="סוג המחיר" className="flex flex-wrap gap-2 text-sm">
+            {PRICE_TYPES.filter((t) => t.value !== "PROMOTION" || editing).map((t) => (
+              <label
+                key={t.value}
+                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${priceType === t.value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
+              >
+                <input
+                  type="radio"
+                  name="priceType"
+                  value={t.value}
+                  checked={priceType === t.value}
+                  onChange={() => setPriceType(t.value)}
+                  className="accent-accent"
+                />
+                {t.label}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-muted">{PRICE_TYPES.find((t) => t.value === priceType)?.hint}</p>
+          {priceType !== "FIXED" && (
+            <Field label={promotion ? "המבצע בתוקף עד (כולל)" : "המחיר בתוקף עד (כולל)"}>
+              <Input
+                name="validUntil"
+                type="date"
+                value={promotion ? promoUntil : validUntil}
+                onChange={(e) => (promotion ? setPromoUntil : setValidUntil)(e.target.value)}
+                min={dateInput(today)}
+                max={dateInput(maxDate)}
+                required
+                dir="ltr"
+                className="sm:max-w-48"
+              />
+            </Field>
+          )}
+          {promotion && (
+            <p className="text-xs text-muted">
+              מלאו מחיר מבצע למדרגות שבהן יש מבצע. מדרגה שתשאירו ריקה תישאר במחיר הרגיל.
+            </p>
+          )}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {(tiers.length ? tiers : [{ id: "new", name: "רגיל", minMonthlyAgorot: 0 }]).map((t, i) => (
             <Field
               key={t.id}
-              label={`${t.name}${t.minMonthlyAgorot ? ` (מ-₪${(t.minMonthlyAgorot / 100).toLocaleString("he-IL")} בחודש)` : ""}${i === 0 ? " *" : ""}`}
+              label={`${promotion ? "מבצע · " : ""}${t.name}${t.minMonthlyAgorot ? ` (מ-₪${(t.minMonthlyAgorot / 100).toLocaleString("he-IL")} בחודש)` : ""}${i === 0 && !promotion ? " *" : ""}`}
             >
               <Input
                 name={`price_${t.id}`}
@@ -293,8 +370,11 @@ export function ProductForm({
                 value={prices[t.id] ?? ""}
                 onChange={(e) => setPrices((current) => ({ ...current, [t.id]: e.target.value }))}
                 dir="ltr"
-                required={i === 0}
+                required={i === 0 && !promotion}
               />
+              {promotion && regularPrices[t.id] && (
+                <span className="text-xs text-muted">מחיר רגיל: ₪{regularPrices[t.id]}</span>
+              )}
               {converted(prices[t.id]) && <span className="text-xs text-muted">{converted(prices[t.id])}</span>}
             </Field>
           ))}

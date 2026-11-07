@@ -27,6 +27,10 @@ export interface QuoteSnapshot {
     minOrder?: string | null;
     /** המחיר לאריזה, למשל "₪72.00 לפח 4 ליטר" */
     packPrice?: string;
+    /** סוג המחיר, מתי עודכן ועד מתי תקף (בהצעות שנשמרו לפני שהשדות נוספו הם חסרים) */
+    priceKind?: string;
+    priceUpdatedAt?: string;
+    priceValidTo?: string;
   }[];
   productsAgorot: number;
   deliveryAgorot: number;

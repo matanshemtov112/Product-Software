@@ -112,6 +112,9 @@ function snapshot(
       pack: offers.get(l.productId)?.packLabel,
       minOrder: offers.get(l.productId)?.minOrderLabel,
       packPrice: packPriceFor(l.unitPriceAgorot, offers.get(l.productId)?.packInfo),
+      priceKind: l.priceKind,
+      priceUpdatedAt: l.priceUpdatedAt,
+      priceValidTo: l.priceValidTo,
     })),
     productsAgorot: share.productsAgorot,
     deliveryAgorot: share.deliveryAgorot,
@@ -150,6 +153,7 @@ export function paidComparison(
         unitPriceAgorot: l.unitPriceAgorot,
         priceKind: l.priceKind,
         priceUpdatedAt: l.priceUpdatedAt,
+        priceValidTo: l.priceValidTo,
       })),
     ),
     {

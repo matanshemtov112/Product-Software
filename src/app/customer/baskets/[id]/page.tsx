@@ -222,8 +222,8 @@ export default async function BasketPage({
 
             <ProductComparison lines={paid.lines} currentSupplierId={basket.currentSupplierId} />
             <p className="text-xs text-muted">
-              מחיר מאומת: הספק עדכן אותו ב-30 הימים האחרונים. מחיר מחירון: פורסם קודם ועלול להשתנות. כל המחירים ללא
-              מע״מ.
+              מחיר קבוע: בלי תאריך סיום. מחיר עם תוקף: הספק התחייב אליו עד התאריך. מבצע: מחיר מוזל עד התאריך, ואחריו
+              חוזר המחיר הרגיל. תאריך עדכון באדום: עבר יותר מחודש, כדאי לוודא מול הספק. כל המחירים ללא מע״מ.
             </p>
 
             {paid.suppliers.length > 0 && (

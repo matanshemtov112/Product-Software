@@ -80,6 +80,7 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
     lineTotalAgorot: Math.round(billed * price.unitPriceAgorot),
     priceKind: price.kind,
     priceUpdatedAt: price.updatedAt,
+    priceValidTo: price.validTo,
   };
 }
 

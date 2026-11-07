@@ -136,8 +136,9 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
       <Card title="המוצרים והמחירים">
         <ProductComparison lines={supplier.lines} currentSupplierId={supplier.supplierId} />
         <p className="mt-2 text-xs text-muted">
-          לחצו על מוצר כדי לראות את כל הספקים במערכת. מחיר מאומת: הספק עדכן אותו ב-30 הימים האחרונים. מחיר מחירון: פורסם
-          קודם ועלול להשתנות.
+          לחצו על מוצר כדי לראות את כל הספקים במערכת. מחיר קבוע: בלי תאריך סיום. מחיר עם תוקף: הספק התחייב אליו עד
+          התאריך. מבצע: מחיר מוזל עד התאריך, ואחריו חוזר המחיר הרגיל. תאריך עדכון באדום: עבר יותר מחודש, כדאי לוודא מול
+          הספק.
         </p>
       </Card>
       {supplier.supplierId && (
