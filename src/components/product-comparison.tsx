@@ -1,6 +1,6 @@
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PaidComparisonLine } from "@/lib/customer/paid-prices";
-import { DealBadge, PriceStatusBadge, SaleMark } from "./price-badge";
+import { DealBadge, PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
 
 /** תובנה קצרה: בכמה הלקוח משלם יותר (או פחות) מהמחיר הזול ביותר שמצאנו */
 export function gapInsight(gapPct: number | null) {
@@ -39,12 +39,15 @@ export function ProductComparison({
                 </span>
                 <span>
                   <span className="block text-xs text-muted">אתם משלמים</span>
-                  {shekels(l.paidAgorot, 2)} / {unit}
+                  <span className={l.monthlySavingAgorot > 0 ? "text-muted line-through" : ""}>
+                    {shekels(l.paidAgorot, 2)} / {unit}
+                  </span>
                 </span>
                 <span>
                   <span className="block text-xs text-muted">הכי זול במערכת</span>
                   {l.best ? (
                     <>
+                      <WasPrice nowAgorot={l.best.unitPriceAgorot} regularAgorot={l.best.regularUnitAgorot} />
                       <span className={l.monthlySavingAgorot > 0 ? "font-medium text-accent" : ""}>
                         {shekels(l.best.unitPriceAgorot, 2)} / {unit}
                       </span>
@@ -100,6 +103,7 @@ export function ProductComparison({
                             {o.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                           </td>
                           <td className="py-1.5">
+                            <WasPrice nowAgorot={o.unitPriceAgorot} regularAgorot={o.regularUnitAgorot} />
                             {shekels(o.unitPriceAgorot, 2)} / {unit}
                           </td>
                           <td className="py-1.5">

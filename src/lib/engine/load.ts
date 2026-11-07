@@ -85,6 +85,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
               kind: "PROMOTION",
               updatedAt: p.validFrom.toISOString(),
               validTo: p.validTo?.toISOString(),
+              ...(current ? { regularAgorot: current.unitPriceAgorot } : {}),
             };
           }
         }

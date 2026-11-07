@@ -81,6 +81,8 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
   const billed = billedQuantity(offer, line.quantity);
   const deal = applyQuantityDeal(price.unitPriceAgorot, offer.quantityDeal, billed, p.deliveries);
   const unitPriceAgorot = deal?.unitPriceAgorot ?? price.unitPriceAgorot;
+  // רק מחיר רגיל אמיתי שהספק מגדיר, אף פעם לא מחיר "מקורי" מומצא
+  const regular = price.regularAgorot ?? (deal?.applied ? price.unitPriceAgorot : undefined);
   return {
     productId: line.productId,
     productName: line.productName,
@@ -101,6 +103,7 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
     priceKind: price.kind,
     priceUpdatedAt: price.updatedAt,
     priceValidTo: price.validTo,
+    ...(regular !== undefined && regular > unitPriceAgorot ? { regularUnitAgorot: regular } : {}),
   };
 }
 

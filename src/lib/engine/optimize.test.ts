@@ -255,3 +255,19 @@ describe("quantity deals", () => {
     expect(eight.lowestCost?.suppliers[0].supplierId).toBe("b");
   });
 });
+
+describe("regular price shown crossed out", () => {
+  it("is the real regular price under a promotion or an applied deal, and missing otherwise", () => {
+    const promo = supplier("p", { oil: 9 });
+    promo.offers[0].prices["p-t0"] = { unitPriceAgorot: 900, kind: "PROMOTION", regularAgorot: 1000 };
+    const plain = supplier("r", { oil: 9.5 });
+    const plan = optimizeBasket([line("oil", 10)], [promo, plain], opts);
+    expect(plan.lowestCost?.suppliers[0].lines[0].regularUnitAgorot).toBe(1000);
+    const regularOnly = optimizeBasket([line("oil", 10)], [plain], opts);
+    expect(regularOnly.lowestCost?.suppliers[0].lines[0].regularUnitAgorot).toBeUndefined();
+    const deal = supplier("d", { oil: 10 });
+    deal.offers[0].quantityDeal = { minPerOrder: 5, discountPct: 10 };
+    const withDeal = optimizeBasket([line("oil", 10)], [deal], opts);
+    expect(withDeal.lowestCost?.suppliers[0].lines[0]).toMatchObject({ unitPriceAgorot: 900, regularUnitAgorot: 1000 });
+  });
+});

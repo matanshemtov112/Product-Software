@@ -19,6 +19,8 @@ export interface SystemOffer {
   priceKind?: string;
   priceUpdatedAt?: string;
   priceValidTo?: string;
+  /** המחיר הרגיל האמיתי כשיש מבצע (מוצג עם קו) */
+  regularUnitAgorot?: number;
   /** מבצע כמות של הספק למוצר */
   deal?: PricedLine["deal"];
 }

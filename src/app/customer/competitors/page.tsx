@@ -140,7 +140,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                       return (
                         <tr key={l.productId}>
                           <td className="py-1.5">{l.productName}</td>
-                          <td className="py-1.5">
+                          <td className={`py-1.5 ${diff < 0 ? "text-muted line-through" : ""}`}>
                             {shekels(l.currentAgorot, 2)} / {unit}
                           </td>
                           <td className="py-1.5">

@@ -1,4 +1,5 @@
 import { dealLabel, dealStatus } from "@/lib/deal-label";
+import { shekels } from "@/lib/format";
 import type { QuantityDealInput } from "@/lib/engine/quantity-deal";
 import { priceStatus, type PriceStatusKey } from "@/lib/price-status";
 
@@ -56,4 +57,34 @@ export function DealBadge({
 /** "מבצע!" קטן באדום, בצד ימין של שם המוצר */
 export function SaleMark() {
   return <span className="me-1.5 align-middle text-xs font-bold text-danger">מבצע!</span>;
+}
+
+/**
+ * מחיר אמיתי גבוה יותר עם קו, ליד המחיר: המחיר הרגיל של הספק בזמן מבצע,
+ * או המחיר שהלקוח משלם היום כשההצעה זולה ממנו. אף פעם לא מחיר "מקורי" מומצא.
+ */
+export function WasPrice({
+  nowAgorot,
+  regularAgorot,
+  paidAgorot,
+}: {
+  nowAgorot: number;
+  regularAgorot?: number | null;
+  paidAgorot?: number | null;
+}) {
+  if (regularAgorot != null && regularAgorot > nowAgorot) {
+    return (
+      <span className="me-1.5 text-xs text-muted">
+        <span className="line-through">{shekels(regularAgorot, 2)}</span> מחיר רגיל
+      </span>
+    );
+  }
+  if (paidAgorot != null && paidAgorot > nowAgorot) {
+    return (
+      <span className="me-1.5 text-xs text-muted">
+        <span className="line-through">{shekels(paidAgorot, 2)}</span> אתם משלמים היום
+      </span>
+    );
+  }
+  return null;
 }

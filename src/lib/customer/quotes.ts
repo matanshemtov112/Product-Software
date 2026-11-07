@@ -117,6 +117,7 @@ function snapshot(
       priceKind: l.priceKind,
       priceUpdatedAt: l.priceUpdatedAt,
       priceValidTo: l.priceValidTo,
+      regularUnitAgorot: l.regularUnitAgorot,
       deal: l.deal
         ? `${dealLabel(l.deal, UNIT_LABEL[units.get(l.productId) ?? "UNIT"])}${l.deal.applied ? " (חל)" : ""}`
         : undefined,
@@ -159,6 +160,7 @@ export function paidComparison(
         priceKind: l.priceKind,
         priceUpdatedAt: l.priceUpdatedAt,
         priceValidTo: l.priceValidTo,
+        regularUnitAgorot: l.regularUnitAgorot,
         deal: l.deal,
       })),
     ),

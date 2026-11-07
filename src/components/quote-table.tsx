@@ -1,4 +1,4 @@
-import { PriceStatusBadge, SaleMark } from "./price-badge";
+import { PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
 import { shekels } from "@/lib/format";
 import type { QuoteSnapshot } from "@/lib/inquiries";
 import { UNIT_LABEL } from "@/lib/supplier/catalog";
@@ -40,6 +40,11 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                   )}
                 </td>
                 <td className="py-2">
+                  <WasPrice
+                    nowAgorot={l.unitPriceAgorot}
+                    regularAgorot={l.regularUnitAgorot}
+                    paidAgorot={showPaid ? null : l.customerPaidAgorot}
+                  />
                   {shekels(l.unitPriceAgorot, 2)}
                   {l.packPrice && <span className="block text-xs text-muted">{l.packPrice}</span>}
                   {l.deal && <span className="block text-xs text-[#7a3410]">{l.deal}</span>}

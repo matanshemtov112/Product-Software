@@ -24,6 +24,8 @@ export interface TierPrice {
   updatedAt?: string;
   /** עד מתי המחיר תקף (ISO); חסר למחיר קבוע */
   validTo?: string;
+  /** במבצע: המחיר הרגיל האמיתי של הספק באותה מדרגה (מוצג עם קו) */
+  regularAgorot?: number;
 }
 
 export interface Offer {
@@ -90,6 +92,11 @@ export interface PricedLine {
   priceKind: PriceKind;
   priceUpdatedAt?: string;
   priceValidTo?: string;
+  /**
+   * המחיר הרגיל האמיתי של הספק ליחידה, כשהמחיר בשורה נמוך ממנו בגלל מבצע או מבצע כמות.
+   * מוצג עם קו ליד המחיר. חסר כשאין מבצע.
+   */
+  regularUnitAgorot?: number;
   /** מבצע כמות של הספק למוצר: האם חל על הלקוח, ומה חסר כדי שיחול */
   deal?: QuantityDealInput & { applied: boolean; perOrder: number; missingPerOrder: number };
 }
