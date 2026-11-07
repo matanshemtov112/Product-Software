@@ -87,6 +87,11 @@ export function CustomerSidebar({
             </Link>
           </li>
           <li>
+            <Link href="/customer/deals" className={item(pathname.startsWith("/customer/deals"))}>
+              מבצעים
+            </Link>
+          </li>
+          <li>
             <Link href="/customer/competitors" className={item(pathname === "/customer/competitors")}>
               מתחרים לספק שלי
             </Link>

@@ -1,3 +1,4 @@
+import { isDealSnapshot } from "@/lib/customer/deals";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -80,7 +81,9 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
                   </span>
                 </div>
                 <p className="text-muted">
-                  הצעה של {shekels(i.totalAgorot)} לחודש{i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}
+                  {isDealSnapshot(i.deal)
+                    ? `בעקבות מבצע: ${i.deal.productName}, ${i.deal.dealText}`
+                    : `הצעה של ${shekels(i.totalAgorot)} לחודש${i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}`}
                 </p>
                 {i.reply && (
                   <p className="rounded-md bg-background px-3 py-2">

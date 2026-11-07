@@ -237,3 +237,21 @@ describe("declared monthly volume", () => {
     expect(tierOf("b")).toBe("מדרגה 0");
   });
 });
+
+describe("quantity deals", () => {
+  const withDeal = (s: SupplierInput): SupplierInput => ({
+    ...s,
+    offers: s.offers.map((o) => ({ ...o, quantityDeal: { minPerOrder: 20, discountPct: 10 } })),
+  });
+  it("applies the deal per order and can change the cheapest supplier", () => {
+    const a = withDeal(supplier("a", { cola: 10 }));
+    const b = supplier("b", { cola: 9.5 });
+    // 80 בחודש ב-4 אספקות: 20 בהזמנה, א' יורד ל-9
+    const four = optimizeBasket([line("cola", 80)], [a, b], { ...opts, deliveriesPerMonth: 4 });
+    expect(four.lowestCost?.suppliers[0].supplierId).toBe("a");
+    expect(four.lowestCost?.suppliers[0].lines[0]).toMatchObject({ unitPriceAgorot: 900, deal: { applied: true } });
+    // 8 אספקות: 10 בהזמנה, אין מבצע
+    const eight = optimizeBasket([line("cola", 80)], [a, b], { ...opts, deliveriesPerMonth: 8 });
+    expect(eight.lowestCost?.suppliers[0].supplierId).toBe("b");
+  });
+});

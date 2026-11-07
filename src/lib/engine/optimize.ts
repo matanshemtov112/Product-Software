@@ -10,6 +10,7 @@ import type {
   SupplierShare,
   TierPrice,
 } from "./types";
+import { applyQuantityDeal } from "./quantity-deal";
 
 export const PREFERENCE_WEIGHTS: Record<Preference, { price: number; service: number; reliability: number }> = {
   PRICE: { price: 1, service: 0, reliability: 0 },
@@ -44,15 +45,22 @@ export function priceAtTier(supplier: SupplierInput, offer: Offer, tierIndex: nu
 
 interface Prepared {
   supplier: SupplierInput;
+  /** אספקות בחודש, לבדיקת מבצעי כמות לפי הזמנה */
+  deliveries: number;
   offers: Map<string, Offer>;
   /** מחיר השורה לפי מוצר ומדרגה; מחושב פעם אחת לכל ריצה */
   cache: Map<string, (PricedLine | null)[]>;
 }
 
-function prepare(supplier: SupplierInput): Prepared {
+function prepare(supplier: SupplierInput, deliveries = 1): Prepared {
   const tiers = [...supplier.tiers].sort((a, b) => a.minMonthlyAgorot - b.minMonthlyAgorot);
   const sorted = { ...supplier, tiers };
-  return { supplier: sorted, offers: new Map(supplier.offers.map((o) => [o.productId, o])), cache: new Map() };
+  return {
+    supplier: sorted,
+    deliveries,
+    offers: new Map(supplier.offers.map((o) => [o.productId, o])),
+    cache: new Map(),
+  };
 }
 
 function lineAt(p: Prepared, line: BasketLine, tierIndex: number): PricedLine | null {
@@ -71,13 +79,25 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
   const price = priceAtTier(p.supplier, offer, tierIndex);
   if (!price) return null;
   const billed = billedQuantity(offer, line.quantity);
+  const deal = applyQuantityDeal(price.unitPriceAgorot, offer.quantityDeal, billed, p.deliveries);
+  const unitPriceAgorot = deal?.unitPriceAgorot ?? price.unitPriceAgorot;
   return {
     productId: line.productId,
     productName: line.productName,
     quantity: line.quantity,
     billedQuantity: billed,
-    unitPriceAgorot: price.unitPriceAgorot,
-    lineTotalAgorot: Math.round(billed * price.unitPriceAgorot),
+    unitPriceAgorot,
+    lineTotalAgorot: Math.round(billed * unitPriceAgorot),
+    ...(deal && offer.quantityDeal
+      ? {
+          deal: {
+            ...offer.quantityDeal,
+            applied: deal.applied,
+            perOrder: deal.perOrder,
+            missingPerOrder: deal.missingPerOrder,
+          },
+        }
+      : {}),
     priceKind: price.kind,
     priceUpdatedAt: price.updatedAt,
     priceValidTo: price.validTo,
@@ -137,7 +157,9 @@ function evaluateSubset(subset: Prepared[], lines: BasketLine[], opts: EngineOpt
     let tiers = new Map(subset.map((p) => [p.supplier.id, 0]));
     let assignment = assign(subset, lines, tiers, forced);
     for (let i = 0; i < MAX_TIER_ITERATIONS; i++) {
-      const next = new Map(subset.map((p) => [p.supplier.id, tierFor(p, assignment.bySupplier.get(p.supplier.id)!, scale)]));
+      const next = new Map(
+        subset.map((p) => [p.supplier.id, tierFor(p, assignment.bySupplier.get(p.supplier.id)!, scale)]),
+      );
       if ([...next].every(([id, t]) => tiers.get(id) === t)) break;
       tiers = next;
       assignment = assign(subset, lines, tiers, forced);
@@ -255,15 +277,9 @@ function weighted(plan: Plan, value: (s: SupplierInput) => number, byId: Map<str
   return plan.suppliers.reduce((sum, s) => sum + value(byId.get(s.supplierId)!) * (s.productsAgorot / total), 0);
 }
 
-const shekel = (agorot: number) =>
-  `₪${(agorot / 100).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
+const shekel = (agorot: number) => `₪${(agorot / 100).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
 
-function scoreAndExplain(
-  plan: Plan,
-  minCost: number,
-  opts: EngineOptions,
-  byId: Map<string, SupplierInput>,
-): void {
+function scoreAndExplain(plan: Plan, minCost: number, opts: EngineOptions, byId: Map<string, SupplierInput>): void {
   const w = PREFERENCE_WEIGHTS[opts.preference];
   const neutral = opts.neutralRating ?? 4;
   const rating = weighted(plan, (s) => s.rating ?? neutral, byId);
@@ -307,7 +323,9 @@ export function optimizeBasket(lines: BasketLine[], suppliers: SupplierInput[], 
 
   const ids = new Set(wanted.map((l) => l.productId));
   const eligible = shortlist(
-    suppliers.map(prepare).filter((p) => [...p.offers.keys()].some((id) => ids.has(id))),
+    suppliers
+      .map((s) => prepare(s, opts.deliveriesPerMonth))
+      .filter((p) => [...p.offers.keys()].some((id) => ids.has(id))),
     wanted,
     opts.maxCandidates ?? MAX_CANDIDATES,
   );
@@ -332,8 +350,7 @@ export function optimizeBasket(lines: BasketLine[], suppliers: SupplierInput[], 
   for (const p of plans) scoreAndExplain(p, lowestCost.totalAgorot, opts, byId);
 
   // "מחיר קודם" פירושו תמיד הזול ביותר (סעיף 12 באפיון)
-  const recommended =
-    opts.preference === "PRICE" ? lowestCost : pickBest(comparable, (a, b) => a.score > b.score)!;
+  const recommended = opts.preference === "PRICE" ? lowestCost : pickBest(comparable, (a, b) => a.score > b.score)!;
   const singles = plans.filter((p) => p.suppliers.length === 1);
   const singleFewest = singles.length ? Math.min(...singles.map((p) => p.missingProductIds.length)) : 0;
   const singleSupplier = pickBest(

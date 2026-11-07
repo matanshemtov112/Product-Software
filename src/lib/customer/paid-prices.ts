@@ -1,3 +1,4 @@
+import type { PricedLine } from "@/lib/engine";
 import { blockedReason, effectiveCost, type EffectiveCost, type SupplierTerms } from "./effective-cost";
 
 export interface PaidItem {
@@ -18,6 +19,8 @@ export interface SystemOffer {
   priceKind?: string;
   priceUpdatedAt?: string;
   priceValidTo?: string;
+  /** מבצע כמות של הספק למוצר */
+  deal?: PricedLine["deal"];
 }
 
 export interface PaidComparisonLine extends PaidItem {

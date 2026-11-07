@@ -115,6 +115,46 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     }
   }
 
+  // מבצע כמות: מכמות מסוימת בהזמנה, אחוז הנחה או מחיר ליחידה
+  let deal: {
+    minPerOrder: number;
+    minPacks: number | null;
+    discountPct: number | null;
+    priceAgorot: number | null;
+    validTo: Date | null;
+  } | null = null;
+  if (form.get("dealEnabled") === "on") {
+    const min = Number(form.get("dealMin"));
+    if (!(min > 0)) return { error: "נא למלא מאיזו כמות בהזמנה חל מבצע הכמות" };
+    const inPacks = form.get("dealMinIn") === "packs" && data.packSize > 0;
+    const packSize = nominalPackSize({
+      packSize: data.packSize,
+      packSizeMax: typeof data.packSizeMax === "number" ? data.packSizeMax : null,
+    });
+    const value = Number(form.get("dealValue"));
+    const pct = form.get("dealType") !== "price";
+    if (pct && !(value > 0 && value <= 90)) return { error: "אחוז ההנחה במבצע הכמות צריך להיות בין 1 ל-90" };
+    const dealAgorot = pct ? null : parseShekels(form.get("dealValue"));
+    if (!pct && dealAgorot === null) return { error: "נא למלא את המחיר במבצע הכמות" };
+    const dealUnit = dealAgorot === null ? null : Math.round(dealAgorot / packDivisor);
+    const regularBase = promotion
+      ? (existing?.prices.find((p) => p.tierId === tiers[0].id && p.kind === "REGULAR")?.unitPriceAgorot ?? null)
+      : prices[0].agorot;
+    if (dealUnit !== null && regularBase !== null && dealUnit >= regularBase) {
+      return { error: "המחיר במבצע הכמות צריך להיות נמוך מהמחיר הרגיל" };
+    }
+    const until = form.get("dealUntil");
+    const dealValidTo = until ? parseValidUntil(until, now) : null;
+    if (until && !dealValidTo) return { error: "תאריך הסיום של מבצע הכמות צריך להיות מהיום ועד שנה קדימה" };
+    deal = {
+      minPerOrder: inPacks ? Math.round(min * packSize * 1000) / 1000 : min,
+      minPacks: inPacks ? Math.ceil(min) : null,
+      discountPct: pct ? value : null,
+      priceAgorot: dealUnit,
+      validTo: dealValidTo,
+    };
+  }
+
   let productId = existing?.productId;
   if (!existing) {
     const catalogProduct = await db.product.findUnique({ where: { name: data.productName } });
@@ -160,6 +200,38 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     : await db.supplierOffer.create({ data: { ...offerData, supplierId: supplier.id, productId: productId! } });
 
   if (image?.ok) await storeImage(offer.id, image);
+
+  const previousDeal = await db.quantityDeal.findUnique({ where: { offerId: offer.id } });
+  if (deal) {
+    await db.quantityDeal.upsert({
+      where: { offerId: offer.id },
+      create: { ...deal, offerId: offer.id },
+      update: deal,
+    });
+  } else if (previousDeal) {
+    await db.quantityDeal.delete({ where: { offerId: offer.id } });
+  }
+  if (deal || previousDeal) {
+    const changed =
+      !deal ||
+      !previousDeal ||
+      deal.minPerOrder !== previousDeal.minPerOrder ||
+      deal.discountPct !== previousDeal.discountPct ||
+      deal.priceAgorot !== previousDeal.priceAgorot ||
+      deal.validTo?.getTime() !== previousDeal.validTo?.getTime();
+    if (changed) {
+      await audit({
+        action: deal ? "deal.saved" : "deal.removed",
+        targetType: "offer",
+        targetId: offer.id,
+        details: {
+          supplier: supplier.companyName,
+          product: data.productName,
+          ...(deal ? { ...deal, validTo: deal.validTo?.toISOString() ?? null } : {}),
+        },
+      });
+    }
+  }
 
   let held = 0;
   const kind = promotion ? "PROMOTION" : "REGULAR";

@@ -41,6 +41,7 @@ const offerInclude = {
   product: { include: { category: { include: { parent: true } } } },
   prices: { orderBy: { createdAt: "desc" }, include: { tier: true } },
   image: { select: { updatedAt: true } },
+  quantityDeal: true,
 } satisfies Prisma.SupplierOfferInclude;
 
 export type OfferWithPrices = Prisma.SupplierOfferGetPayload<{ include: typeof offerInclude }>;

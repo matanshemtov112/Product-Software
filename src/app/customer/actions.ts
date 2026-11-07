@@ -17,6 +17,8 @@ import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { isManager } from "@/lib/auth/team";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
+import { customerDeals, type DealInquirySnapshot } from "@/lib/customer/deals";
+import { lastValidDay, shortDate } from "@/lib/price-status";
 
 export interface FormState {
   error?: string;
@@ -211,6 +213,77 @@ export async function sendInquiry(_: FormState, form: FormData): Promise<FormSta
       kind: "NEW_INQUIRY",
       title: `פנייה חדשה מ${customer.businessName}`,
       body: row.quote.gapAgorot ? `פער של ${shekels(row.quote.gapAgorot)} בחודש מול ספק מתחרה.` : undefined,
+      href: `/supplier/inquiries/${inquiry.id}`,
+    },
+  ]);
+  revalidatePath("/customer", "layout");
+  redirect("/customer/inquiries?sent=1");
+}
+
+const dealInquirySchema = z.object({
+  offerId: z.string().min(1),
+  quantity: z.union([z.literal(""), z.coerce.number().positive("הכמות צריכה להיות חיובית")]).optional(),
+  deliveries: z.coerce.number().int().min(1).max(31).default(4),
+  message: z.string().trim().min(5, "נא לכתוב כמה מילים לספק").max(1000, "ההודעה ארוכה מדי (עד 1,000 תווים)"),
+});
+
+/** פנייה לספק בעקבות מבצע שהלקוח ראה בדף המבצעים */
+export async function sendDealInquiry(_: FormState, form: FormData): Promise<FormState> {
+  const customer = await currentCustomer();
+  const parsed = dealInquirySchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
+  const { offerId, quantity, deliveries, message } = parsed.data;
+  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+    return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
+  }
+  const deal = (await customerDeals(customer.id)).find((d) => d.offerId === offerId);
+  if (!deal) return { error: "המבצע כבר לא בתוקף" };
+  const open = await db.negotiationRequest.findFirst({
+    where: { customerId: customer.id, supplierId: deal.supplierId, status: { in: OPEN_INQUIRY } },
+  });
+  if (open) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
+
+  const dealText = [
+    deal.promotion &&
+      `מבצע: ${shekels(deal.promotion.priceAgorot, 2)} ל${deal.unitLabel}${deal.promotion.validTo ? ` עד ${shortDate(lastValidDay(deal.promotion.validTo))}` : ""}`,
+    deal.quantityDeal?.label,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const snapshot: DealInquirySnapshot = {
+    productName: deal.productName,
+    unitLabel: deal.unitLabel,
+    pack: deal.pack,
+    dealText,
+    regularAgorot: deal.regularAgorot,
+    quantityPerOrder: typeof quantity === "number" ? quantity : null,
+    deliveriesPerMonth: deliveries,
+  };
+  const inquiry = await db.negotiationRequest.create({
+    data: {
+      customerId: customer.id,
+      supplierId: deal.supplierId,
+      gapAgorot: 0,
+      deal: JSON.parse(JSON.stringify(snapshot)),
+      customerProfile: JSON.parse(
+        JSON.stringify(
+          await customerProfile(customer.id, {
+            name: `מבצע: ${deal.productName}`,
+            deliveriesPerMonth: deliveries,
+            monthlyVolumeMinAgorot: null,
+            items: [],
+          }),
+        ),
+      ),
+      message,
+    },
+  });
+  await notify([
+    {
+      supplierId: deal.supplierId,
+      kind: "NEW_INQUIRY",
+      title: `פנייה חדשה מ${customer.businessName} בעקבות מבצע`,
+      body: `${deal.productName}: ${dealText}`,
       href: `/supplier/inquiries/${inquiry.id}`,
     },
   ]);

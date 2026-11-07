@@ -49,6 +49,18 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
             validUntil: validUntilInput(base?.liveValidTo),
             promoPrices,
             promoUntil: validUntilInput(promoTier?.promoValidTo),
+            deal: offer.quantityDeal
+              ? {
+                  min: String(offer.quantityDeal.minPacks ?? offer.quantityDeal.minPerOrder),
+                  minIn: offer.quantityDeal.minPacks ? "packs" : "units",
+                  type: offer.quantityDeal.priceAgorot != null ? "price" : "pct",
+                  value:
+                    offer.quantityDeal.priceAgorot != null
+                      ? shown(offer.quantityDeal.priceAgorot)
+                      : String(offer.quantityDeal.discountPct ?? ""),
+                  until: validUntilInput(offer.quantityDeal.validTo),
+                }
+              : null,
           }}
           categories={categories}
           catalog={[]}

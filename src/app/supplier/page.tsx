@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { PriceStatusBadge } from "@/components/price-badge";
+import { DealBadge, PriceStatusBadge } from "@/components/price-badge";
+import { dealInput } from "@/lib/deal-label";
 import { lastValidDay, shortDate } from "@/lib/price-status";
 import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
@@ -86,6 +87,16 @@ function basePrice(offer: OfferWithPrices, firstTierId: string | undefined) {
         : null,
     expired: entry?.live == null ? (entry?.expired ?? null) : null,
   };
+}
+
+function Deal({ offer }: { offer: OfferWithPrices }) {
+  const d = offer.quantityDeal;
+  if (!d || (d.validTo && d.validTo <= new Date())) return null;
+  return (
+    <span className="mt-1 block">
+      <DealBadge deal={dealInput(d)} unitLabel={UNIT_LABEL[offer.product.unit]} />
+    </span>
+  );
 }
 
 function PriceType({ price }: { price: ReturnType<typeof basePrice> }) {
@@ -247,6 +258,7 @@ export default async function SupplierProducts({
                     <span className="mt-1 block">
                       <PriceType price={price} />
                     </span>
+                    <Deal offer={offer} />
                   </span>
                   <Actions offer={offer} />
                 </div>
@@ -284,6 +296,7 @@ export default async function SupplierProducts({
                   <div className="mt-1">
                     <PriceType price={price} />
                   </div>
+                  <Deal offer={offer} />
                 </div>
                 <div className="mt-auto border-t border-border pt-3">
                   <Actions offer={offer} />

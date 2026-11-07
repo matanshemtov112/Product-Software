@@ -31,6 +31,8 @@ export interface QuoteSnapshot {
     priceKind?: string;
     priceUpdatedAt?: string;
     priceValidTo?: string;
+    /** מבצע כמות, כטקסט מוכן לתצוגה */
+    deal?: string;
   }[];
   productsAgorot: number;
   deliveryAgorot: number;

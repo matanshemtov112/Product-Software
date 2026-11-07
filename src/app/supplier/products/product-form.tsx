@@ -41,6 +41,14 @@ export interface OfferFormValues {
   /** מבצע בתוקף, בשקלים לפי מדרגה */
   promoPrices?: Record<string, string>;
   promoUntil?: string;
+  /** מבצע כמות קיים */
+  deal?: {
+    min: string;
+    minIn: "units" | "packs";
+    type: "pct" | "price";
+    value: string;
+    until: string;
+  } | null;
 }
 
 type PriceType = "FIXED" | "UNTIL" | "PROMOTION";
@@ -97,6 +105,8 @@ export function ProductForm({
   const [promoUntil, setPromoUntil] = useState(initial.promoUntil ?? "");
   const prices = promotion ? promoPrices : regularPrices;
   const setPrices = promotion ? setPromoPrices : setRegularPrices;
+  const [dealOn, setDealOn] = useState(Boolean(initial.deal));
+  const [dealType, setDealType] = useState<"pct" | "price">(initial.deal?.type ?? "pct");
   const today = new Date();
   const maxDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
   const pack = { unit, packSize: Number(packSize) || 0, packSizeMax: Number(packSizeMax) || null };
@@ -382,6 +392,83 @@ export function ProductForm({
         <p className="text-xs text-muted">
           שינוי של יותר מ-30% ממחיר קיים ייכנס להשוואות רק אחרי אישור צוות הפלטפורמה.
         </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-3">
+        <legend className="mb-2 font-semibold">מבצע כמות (לא חובה)</legend>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="dealEnabled"
+            checked={dealOn}
+            onChange={(e) => setDealOn(e.target.checked)}
+            className="size-4 accent-accent"
+          />
+          הנחה למי שמזמין כמות גדולה בהזמנה אחת
+        </label>
+        {dealOn && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">מאיזו כמות בהזמנה</span>
+              <div className="flex items-center gap-2 [&_input]:w-full [&_input]:min-w-0">
+                <Input
+                  name="dealMin"
+                  type="number"
+                  step="any"
+                  min="0"
+                  defaultValue={initial.deal?.min ?? ""}
+                  dir="ltr"
+                  required
+                  aria-label="כמות מינימלית למבצע"
+                />
+                <Select name="dealMinIn" defaultValue={initial.deal?.minIn ?? "units"} aria-label="יחידת הכמות">
+                  <option value="units">{unitLabel}</option>
+                  <option value="packs">{packType ? PACK_LABEL[packType] : "אריזות"}</option>
+                </Select>
+              </div>
+              <span className="text-xs text-muted">למשל 100 פחים, או משטח שלם.</span>
+            </div>
+            <div className="flex flex-col gap-1 text-sm">
+              <span className="text-muted">מה מקבלים</span>
+              <div className="flex items-center gap-2 [&_input]:w-full [&_input]:min-w-0">
+                <Select
+                  name="dealType"
+                  value={dealType}
+                  onChange={(e) => setDealType(e.target.value as "pct" | "price")}
+                  aria-label="סוג ההנחה"
+                >
+                  <option value="pct">אחוז הנחה</option>
+                  <option value="price">{`מחיר ל${effectivePricePer === "pack" ? packText : unitLabel}`}</option>
+                </Select>
+                <Input
+                  name="dealValue"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={initial.deal?.value ?? ""}
+                  dir="ltr"
+                  required
+                  aria-label={dealType === "pct" ? "אחוז הנחה" : "מחיר במבצע"}
+                />
+                <span className="text-muted">{dealType === "pct" ? "%" : "₪"}</span>
+              </div>
+            </div>
+            <Field label="בתוקף עד (לא חובה)">
+              <Input
+                name="dealUntil"
+                type="date"
+                defaultValue={initial.deal?.until ?? ""}
+                min={dateInput(today)}
+                max={dateInput(maxDate)}
+                dir="ltr"
+              />
+            </Field>
+            <p className="text-xs text-muted sm:col-span-2">
+              הכמות נבדקת לכל הזמנה. לקוחות שמזמינים מספיק יקבלו את המחיר בהשוואה, וכל הלקוחות באזורי המשלוח שלכם יראו
+              את המבצע בדף המבצעים ויוכלו לשלוח לכם פנייה.
+            </p>
+          </div>
+        )}
       </fieldset>
 
       <FormError message={state.error} />

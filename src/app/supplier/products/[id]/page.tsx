@@ -6,7 +6,8 @@ import { shekels } from "@/lib/format";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel } from "@/lib/pack";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
 import { endPromotion, removeOfferImage } from "../../actions";
-import { PriceStatusBadge } from "@/components/price-badge";
+import { DealBadge, PriceStatusBadge } from "@/components/price-badge";
+import { dealInput } from "@/lib/deal-label";
 import { lastValidDay } from "@/lib/price-status";
 import { OfferImage } from "../../offer-image";
 import { DeleteOfferButton } from "../../delete-button";
@@ -156,8 +157,16 @@ export default async function ProductDetails({
               <span className="ms-2 text-xs text-muted">המחיר הרגיל יחזור מיד.</span>
             </form>
           )}
+          {offer.quantityDeal && (
+            <div className="mt-3">
+              <DealBadge deal={dealInput(offer.quantityDeal)} unitLabel={unit} />
+              {offer.quantityDeal.validTo && offer.quantityDeal.validTo <= new Date() && (
+                <span className="text-xs text-danger">המבצע הסתיים ולא מוצג ללקוחות.</span>
+              )}
+            </div>
+          )}
           <p className="mt-3 text-xs text-muted">
-            כדי לשנות מחיר, סוג מחיר (קבוע, עם תוקף או מבצע) או תאריך סיום, לחצו על &quot;עריכה&quot;.
+            כדי לשנות מחיר, מבצע כמות, סוג מחיר (קבוע, עם תוקף או מבצע) או תאריך סיום, לחצו על &quot;עריכה&quot;.
           </p>
         </Card>
       </div>

@@ -1,6 +1,6 @@
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PaidComparisonLine } from "@/lib/customer/paid-prices";
-import { PriceStatusBadge } from "./price-badge";
+import { DealBadge, PriceStatusBadge, SaleMark } from "./price-badge";
 
 /** תובנה קצרה: בכמה הלקוח משלם יותר (או פחות) מהמחיר הזול ביותר שמצאנו */
 export function gapInsight(gapPct: number | null) {
@@ -30,6 +30,7 @@ export function ProductComparison({
             <details className="group">
               <summary className="grid cursor-pointer list-none grid-cols-2 gap-x-4 gap-y-1 p-3 text-sm sm:grid-cols-[2fr_1fr_1.5fr_1fr] [&::-webkit-details-marker]:hidden">
                 <span>
+                  {l.offers.some((o) => o.priceKind === "PROMOTION" || o.deal) && <SaleMark />}
                   <span className="font-medium">{l.productName}</span>
                   <span className="block text-xs text-muted">
                     {l.quantity} {unit} בחודש · <span className="text-accent group-open:hidden">השוואה מלאה ▾</span>
@@ -58,6 +59,11 @@ export function ProductComparison({
                           validTo={l.best.priceValidTo}
                         />
                       </span>
+                      {l.best.deal && (
+                        <span className="mt-1 block">
+                          <DealBadge deal={l.best.deal} unitLabel={unit} />
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="text-muted">אין ספק במערכת</span>
@@ -89,6 +95,7 @@ export function ProductComparison({
                       {l.offers.map((o) => (
                         <tr key={o.supplierId} className="border-t border-border">
                           <td className="py-1.5">
+                            {(o.priceKind === "PROMOTION" || o.deal) && <SaleMark />}
                             {o.supplierName}
                             {o.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                           </td>

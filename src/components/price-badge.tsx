@@ -1,3 +1,5 @@
+import { dealLabel, dealStatus } from "@/lib/deal-label";
+import type { QuantityDealInput } from "@/lib/engine/quantity-deal";
 import { priceStatus, type PriceStatusKey } from "@/lib/price-status";
 
 const STATUS_CLASS: Record<PriceStatusKey, string> = {
@@ -29,4 +31,29 @@ export function PriceStatusBadge({
       )}
     </span>
   );
+}
+
+/** מבצע כמות ליד המחיר, ומה חסר כדי לקבל אותו */
+export function DealBadge({
+  deal,
+  unitLabel,
+}: {
+  deal: QuantityDealInput & { applied?: boolean; missingPerOrder?: number };
+  unitLabel: string;
+}) {
+  return (
+    <span className="flex flex-col gap-0.5 text-xs">
+      <span className="w-fit rounded bg-[#fde7d9] px-1.5 py-0.5 text-[#7a3410]">{dealLabel(deal, unitLabel)}</span>
+      {deal.applied !== undefined && (
+        <span className={deal.applied ? "text-accent" : "text-muted"}>
+          {dealStatus({ applied: deal.applied, missingPerOrder: deal.missingPerOrder ?? 0 }, unitLabel)}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** "מבצע!" קטן באדום, בצד ימין של שם המוצר */
+export function SaleMark() {
+  return <span className="me-1.5 align-middle text-xs font-bold text-danger">מבצע!</span>;
 }

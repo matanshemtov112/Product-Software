@@ -30,6 +30,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
         where: { productId: { in: productIds }, available: true },
         include: {
           product: { select: { unit: true } },
+          quantityDeal: true,
           prices: {
             where: {
               status: "LIVE",
@@ -102,6 +103,16 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
             pricePerPack: o.pricePerPack,
           },
           prices,
+          quantityDeal:
+            o.quantityDeal && (!o.quantityDeal.validTo || o.quantityDeal.validTo > now)
+              ? {
+                  minPerOrder: o.quantityDeal.minPerOrder,
+                  minPacks: o.quantityDeal.minPacks,
+                  discountPct: o.quantityDeal.discountPct,
+                  priceAgorot: o.quantityDeal.priceAgorot,
+                  validTo: o.quantityDeal.validTo?.toISOString() ?? null,
+                }
+              : undefined,
         };
       }),
     };

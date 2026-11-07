@@ -1,3 +1,4 @@
+import type { QuantityDealInput } from "./quantity-deal";
 // טיפוסי הקלט והפלט של מנוע אופטימיזציית הסל.
 // המנוע טהור: אין בו גישה למסד נתונים, כך שאפשר לבדוק אותו בבדיקות יחידה.
 // כל הסכומים באגורות, ללא מע״מ.
@@ -37,6 +38,8 @@ export interface Offer {
   packInfo?: Pick<PackInfo, "unit" | "packType" | "packSize" | "packSizeMax"> & { pricePerPack: boolean };
   /** מחיר לפי מזהה מדרגה */
   prices: Record<string, TierPrice>;
+  /** מבצע כמות בתוקף, אם יש */
+  quantityDeal?: QuantityDealInput;
 }
 
 export interface Tier {
@@ -87,6 +90,8 @@ export interface PricedLine {
   priceKind: PriceKind;
   priceUpdatedAt?: string;
   priceValidTo?: string;
+  /** מבצע כמות של הספק למוצר: האם חל על הלקוח, ומה חסר כדי שיחול */
+  deal?: QuantityDealInput & { applied: boolean; perOrder: number; missingPerOrder: number };
 }
 
 export interface SupplierShare {

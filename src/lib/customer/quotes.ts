@@ -3,6 +3,8 @@ import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
 import { comparePaidPrices, type PaidComparison } from "./paid-prices";
 import { pricedPerPack, packPriceLabel } from "@/lib/pack";
+import { dealLabel } from "@/lib/deal-label";
+import { UNIT_LABEL } from "@/lib/format";
 import {
   optimizeBasket,
   quoteForSupplier,
@@ -115,6 +117,9 @@ function snapshot(
       priceKind: l.priceKind,
       priceUpdatedAt: l.priceUpdatedAt,
       priceValidTo: l.priceValidTo,
+      deal: l.deal
+        ? `${dealLabel(l.deal, UNIT_LABEL[units.get(l.productId) ?? "UNIT"])}${l.deal.applied ? " (חל)" : ""}`
+        : undefined,
     })),
     productsAgorot: share.productsAgorot,
     deliveryAgorot: share.deliveryAgorot,
@@ -154,6 +159,7 @@ export function paidComparison(
         priceKind: l.priceKind,
         priceUpdatedAt: l.priceUpdatedAt,
         priceValidTo: l.priceValidTo,
+        deal: l.deal,
       })),
     ),
     {

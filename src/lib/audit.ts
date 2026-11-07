@@ -21,6 +21,8 @@ export const AUDIT_LABEL: Record<string, string> = {
   "price.changed": "שינוי מחיר",
   "price.held": "שינוי מחיר גדול ממתין לאישור",
   "price.promotion-ended": "סיום מבצע",
+  "deal.saved": "מבצע כמות נשמר",
+  "deal.removed": "מבצע כמות הוסר",
   "price.approved": "אדמין אישר מחיר",
   "price.rejected": "אדמין דחה מחיר",
   "supplier.status": "שינוי סטטוס ספק",

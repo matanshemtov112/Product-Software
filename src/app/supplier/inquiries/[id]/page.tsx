@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { ReportButton } from "@/components/report/report-button";
 import { QuoteTable } from "@/components/quote-table";
+import { SaleMark } from "@/components/price-badge";
+import { isDealSnapshot } from "@/lib/customer/deals";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
@@ -41,6 +43,7 @@ export default async function SupplierInquiry({
     where: { supplierId_customerId: { supplierId: supplier.id, customerId: customer.id } },
   });
   const contact = customer.users[0];
+  const deal = isDealSnapshot(inquiry.deal) ? inquiry.deal : null;
   const gapPct = inquiry.gapAgorot ? (inquiry.gapAgorot / (inquiry.totalAgorot - inquiry.gapAgorot)) * 100 : 0;
 
   return (
@@ -57,18 +60,41 @@ export default async function SupplierInquiry({
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <p className="text-sm text-muted">ההצעה שלכם ללקוח</p>
-          <p className="text-2xl font-bold">{shekels(inquiry.totalAgorot)}</p>
-          <p className="text-xs text-muted">לחודש, כולל משלוחים, ללא מע״מ</p>
-        </div>
-        <div className="rounded-lg bg-accent-soft p-4">
-          <p className="text-sm">הפער מול ספק מתחרה</p>
-          <p className="text-2xl font-bold text-accent">{inquiry.gapAgorot ? shekels(inquiry.gapAgorot) : "אין"}</p>
-          <p className="text-xs text-muted">
-            {inquiry.gapAgorot ? `${gapPct.toFixed(1)}% בחודש. שם המתחרה לא נחשף.` : "אתם הזולים ביותר לסל הזה"}
-          </p>
-        </div>
+        {deal ? (
+          <div className="rounded-lg bg-[#fde7d9] p-4 text-sm md:col-span-2">
+            <p className="text-muted">פנייה בעקבות מבצע</p>
+            <p className="text-lg font-bold">
+              <SaleMark />
+              {deal.productName}
+            </p>
+            <p>{deal.dealText}</p>
+            <p className="text-xs text-muted">
+              {deal.pack}
+              {deal.regularAgorot !== null && ` · מחיר רגיל ${shekels(deal.regularAgorot, 2)} ל${deal.unitLabel}`}
+            </p>
+            {deal.quantityPerOrder !== null && (
+              <p className="mt-1">
+                הלקוח מעוניין ב-<strong>{deal.quantityPerOrder.toLocaleString("he-IL")}</strong> {deal.unitLabel} בכל
+                הזמנה{deal.deliveriesPerMonth ? `, ${deal.deliveriesPerMonth} הזמנות בחודש` : ""}.
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="rounded-lg border border-border bg-surface p-4">
+              <p className="text-sm text-muted">ההצעה שלכם ללקוח</p>
+              <p className="text-2xl font-bold">{shekels(inquiry.totalAgorot)}</p>
+              <p className="text-xs text-muted">לחודש, כולל משלוחים, ללא מע״מ</p>
+            </div>
+            <div className="rounded-lg bg-accent-soft p-4">
+              <p className="text-sm">הפער מול ספק מתחרה</p>
+              <p className="text-2xl font-bold text-accent">{inquiry.gapAgorot ? shekels(inquiry.gapAgorot) : "אין"}</p>
+              <p className="text-xs text-muted">
+                {inquiry.gapAgorot ? `${gapPct.toFixed(1)}% בחודש. שם המתחרה לא נחשף.` : "אתם הזולים ביותר לסל הזה"}
+              </p>
+            </div>
+          </>
+        )}
         <div className="rounded-lg border border-border bg-surface p-4 text-sm">
           <p className="text-muted">איש קשר</p>
           {contact ? (

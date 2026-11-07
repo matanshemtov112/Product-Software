@@ -266,6 +266,7 @@ model SupplierOffer {
   available           Boolean      @default(true)
   prices              OfferPrice[]
   image               OfferImage?
+  quantityDeal        QuantityDeal?
 
   @@unique([supplierId, productId])
 }
@@ -292,6 +293,25 @@ model PriceTier {
 }
 
 // כל שינוי מחיר הוא שורה חדשה; ההיסטוריה נשמרת במלואה.
+/// מבצע כמות: מכמות מסוימת בהזמנה בודדת המחיר יורד באחוז או למחיר קבוע ליחידה
+model QuantityDeal {
+  id          String        @id @default(cuid())
+  offerId     String        @unique
+  offer       SupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  /// הכמות המינימלית בהזמנה, ביחידות בסיס (ק״ג/ליטר/יחידה)
+  minPerOrder Float
+  /// כשהספק הגדיר את הסף באריזות, לתצוגה
+  minPacks    Int?
+  /// אחוז הנחה מהמחיר במדרגה של הלקוח; או priceAgorot
+  discountPct Float?
+  /// מחיר ליחידת בסיס במבצע, ללא מע״מ
+  priceAgorot Int?
+  /// סוף המבצע (תחילת היום שאחרי היום האחרון); null בלי תאריך סיום
+  validTo     DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
 model OfferPrice {
   id              String            @id @default(cuid())
   offerId         String
@@ -428,6 +448,8 @@ model NegotiationRequest {
   quote           Json?
   /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
   customerProfile Json?
+  /// פנייה בעקבות מבצע (DealInquirySnapshot): המוצר, המבצע והכמות שהלקוח רוצה
+  deal            Json?
   /// סה"כ ההצעה של הספק, כולל משלוח
   totalAgorot     Int               @default(0)
   message         String

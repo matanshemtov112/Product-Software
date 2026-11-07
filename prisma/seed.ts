@@ -689,6 +689,18 @@ async function main() {
       });
     }
   }
+  // מבצעי כמות לדמו: שמן קנולה מ-5 פחים בהזמנה במחיר מוזל, ופחיות שתייה מ-10 קרטונים בהזמנה 10% הנחה
+  if (canola) {
+    await db.quantityDeal.create({
+      data: { offerId: canola.id, minPerOrder: 90, minPacks: 5, priceAgorot: ils(8.9), validTo: endOfNextMonth },
+    });
+  }
+  const cans = await db.supplierOffer.findFirst({
+    where: { supplierId: supplierIds["510000037"].id, productId: products.get("פחית שתייה קלה 330 מ״ל")! },
+  });
+  if (cans) {
+    await db.quantityDeal.create({ data: { offerId: cans.id, minPerOrder: 240, minPacks: 10, discountPct: 10 } });
+  }
   // בקשת השוואה מהחודש הקודם: מרכז המזון השווה את מחיר חזה העוף והלקוח אישר
   const decided = new Date(now.getFullYear(), now.getMonth() - 1, 20);
   const meatAndOil = await db.basket.findFirstOrThrow({ where: { customerId: customer.id, name: "בשר ושמן" } });

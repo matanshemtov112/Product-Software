@@ -1,3 +1,5 @@
+import { SaleMark } from "@/components/price-badge";
+import { isDealSnapshot } from "@/lib/customer/deals";
 import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
@@ -90,7 +92,17 @@ export default async function SupplierInquiries() {
                   </div>
                   <div className="flex shrink-0 flex-col text-sm sm:items-end">
                     <span>
-                      הצעה {shekels(i.totalAgorot)} · פער <strong>{i.gapAgorot ? shekels(i.gapAgorot) : "אין"}</strong>
+                      {isDealSnapshot(i.deal) ? (
+                        <>
+                          <SaleMark />
+                          בעקבות מבצע: {i.deal.productName}
+                        </>
+                      ) : (
+                        <>
+                          הצעה {shekels(i.totalAgorot)} · פער{" "}
+                          <strong>{i.gapAgorot ? shekels(i.gapAgorot) : "אין"}</strong>
+                        </>
+                      )}
                     </span>
                     <span className="text-xs text-muted">
                       {i.customer.businessType} · {i.customer.city} · {i.createdAt.toLocaleDateString("he-IL")}
