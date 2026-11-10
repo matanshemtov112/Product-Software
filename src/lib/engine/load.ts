@@ -91,6 +91,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
         }
         const pack = { ...o, unit: o.product.unit };
         return {
+          offerId: o.id,
           productId: o.productId,
           packSize: nominalPackSize(o),
           minQuantity: minBaseQuantity(pack),

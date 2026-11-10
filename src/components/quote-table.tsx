@@ -32,6 +32,11 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                       {l.minOrder && ` · מינימום ${l.minOrder}`}
                     </span>
                   )}
+                  {l.otherPacks?.map((t) => (
+                    <span key={t} className="block text-xs text-muted">
+                      {t}
+                    </span>
+                  ))}
                 </td>
                 <td className="py-2">
                   {l.billedQuantity} {UNIT_LABEL[l.unit]}

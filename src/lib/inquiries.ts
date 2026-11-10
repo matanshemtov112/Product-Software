@@ -33,6 +33,8 @@ export interface QuoteSnapshot {
     priceValidTo?: string;
     /** המחיר הרגיל האמיתי כשיש מבצע (מוצג עם קו) */
     regularUnitAgorot?: number;
+    /** אריזות אחרות של הספק לאותו מוצר, כטקסט מוכן לתצוגה */
+    otherPacks?: string[];
     /** מבצע כמות, כטקסט מוכן לתצוגה */
     deal?: string;
   }[];

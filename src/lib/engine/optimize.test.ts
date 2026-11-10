@@ -271,3 +271,28 @@ describe("regular price shown crossed out", () => {
     expect(withDeal.lowestCost?.suppliers[0].lines[0]).toMatchObject({ unitPriceAgorot: 900, regularUnitAgorot: 1000 });
   });
 });
+
+describe("several packs of the same product at one supplier", () => {
+  const twoPacks = (): SupplierInput => {
+    const s = supplier("c", { rice: 9.8 }, { pack: { rice: 5 } });
+    s.offers[0].offerId = "small";
+    s.offers[0].packLabel = "שק 5 ק״ג";
+    s.offers.push({
+      offerId: "big",
+      productId: "rice",
+      packSize: 25,
+      packLabel: "שק 25 ק״ג",
+      prices: { "c-t0": { unitPriceAgorot: 890, kind: "REGULAR" } },
+    });
+    return s;
+  };
+  it("picks the pack that is cheapest for the customer's quantity and lists the other one", () => {
+    // 40 ק״ג: 8 שקים קטנים (₪392) זולים מ-2 שקים גדולים (50 ק״ג, ₪445)
+    const small = optimizeBasket([line("rice", 40)], [twoPacks()], opts).lowestCost!.suppliers[0].lines[0];
+    expect(small).toMatchObject({ offerId: "small", billedQuantity: 40, unitPriceAgorot: 980 });
+    expect(small.otherPacks).toEqual([{ offerId: "big", packLabel: "שק 25 ק״ג", packSize: 25, unitPriceAgorot: 890 }]);
+    // 100 ק״ג: 4 שקים גדולים (₪890) זולים מ-20 קטנים (₪980)
+    const big = optimizeBasket([line("rice", 100)], [twoPacks()], opts).lowestCost!.suppliers[0].lines[0];
+    expect(big).toMatchObject({ offerId: "big", billedQuantity: 100, unitPriceAgorot: 890 });
+  });
+});

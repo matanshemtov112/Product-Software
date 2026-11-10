@@ -47,7 +47,7 @@ export default async function ProductDetails({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href="/supplier" className="text-sm text-muted hover:text-foreground">
             → חזרה לרשימה
@@ -57,12 +57,18 @@ export default async function ProductDetails({
             <p className="text-sm text-muted">מוצר חדש בקטלוג, ממתין לבדיקת צוות הפלטפורמה.</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             href={`/supplier/products/${offer.id}/edit`}
             className="rounded-md bg-accent px-4 py-2 text-sm text-white"
           >
             עריכה
+          </Link>
+          <Link
+            href={`/supplier/products/new?addPack=${offer.id}`}
+            className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft"
+          >
+            + אריזה נוספת
           </Link>
           <DeleteOfferButton offerId={offer.id} productName={offer.product.name} />
         </div>

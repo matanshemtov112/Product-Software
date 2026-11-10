@@ -269,7 +269,8 @@ model SupplierOffer {
   image               OfferImage?
   quantityDeal        QuantityDeal?
 
-  @@unique([supplierId, productId])
+  // ספק יכול למכור את אותו מוצר בכמה אריזות (למשל אורז בשק 5 ק״ג ובשק 25 ק״ג): כל אריזה היא הצעה נפרדת
+  @@index([supplierId, productId])
 }
 
 // תמונת מוצר של ספק. נשמרת במסד בגודל מוקטן, בטבלה נפרדת כדי שהרשימות לא יטענו את הקובץ.

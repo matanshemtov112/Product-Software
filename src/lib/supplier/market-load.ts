@@ -1,6 +1,7 @@
 import { priceAt, type PricePoint } from "@/lib/customer/monthly-report";
 import { db } from "@/lib/db";
 import { UNIT_LABEL } from "@/lib/format";
+import { packLabel } from "@/lib/pack";
 import { marketPosition, type MarketPosition } from "./market";
 
 export interface MarketRow {
@@ -40,6 +41,9 @@ export async function supplierMarket(supplierId: string, now = new Date()): Prom
         select: {
           id: true,
           productId: true,
+          packType: true,
+          packSize: true,
+          packSizeMax: true,
           product: { select: { name: true, unit: true, category: { select: { name: true } } } },
           prices: { where: priceWhere, select: priceSelect },
         },
@@ -59,11 +63,18 @@ export async function supplierMarket(supplierId: string, now = new Date()): Prom
   });
   const competitorPrices = new Map<string, number[]>();
   for (const s of others) {
+    // ספק עם כמה אריזות לאותו מוצר נספר פעם אחת, במחיר הזול שלו
+    const cheapest = new Map<string, number>();
     for (const o of s.offers) {
       const price = basePrice(o.prices, s.priceTiers[0]?.id, now);
-      if (price !== null) competitorPrices.set(o.productId, [...(competitorPrices.get(o.productId) ?? []), price]);
+      if (price !== null && price < (cheapest.get(o.productId) ?? Infinity)) cheapest.set(o.productId, price);
+    }
+    for (const [productId, price] of cheapest) {
+      competitorPrices.set(productId, [...(competitorPrices.get(productId) ?? []), price]);
     }
   }
+  const packCount = new Map<string, number>();
+  for (const o of own.offers) packCount.set(o.productId, (packCount.get(o.productId) ?? 0) + 1);
   return own.offers
     .flatMap((o) => {
       const ownAgorot = basePrice(o.prices, own.priceTiers[0]?.id, now);
@@ -71,7 +82,11 @@ export async function supplierMarket(supplierId: string, now = new Date()): Prom
       return [
         {
           offerId: o.id,
-          productName: o.product.name,
+          // כשיש לספק כמה אריזות למוצר, השם כולל את האריזה כדי להבדיל ביניהן
+          productName:
+            (packCount.get(o.productId) ?? 0) > 1
+              ? `${o.product.name} (${packLabel({ ...o, unit: o.product.unit })})`
+              : o.product.name,
           unitLabel: UNIT_LABEL[o.product.unit as keyof typeof UNIT_LABEL] ?? o.product.unit,
           category: o.product.category.name,
           ownAgorot,

@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { UNIT_LABEL } from "@/lib/format";
 import { offeredPrice } from "@/lib/matches";
-import { buildMonthlyReport, type ReportMonth, type WatchedProduct } from "./monthly-report";
+import { buildMonthlyReport, priceAt, type PricePoint, type ReportMonth, type WatchedProduct } from "./monthly-report";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
 
@@ -71,13 +71,19 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
   ]);
 
   // רק המחירון הבסיסי של כל ספק: אותו מחיר שכל לקוח חדש מקבל
-  const prices = suppliers.flatMap((s) =>
-    s.offers.flatMap((o) =>
-      o.prices
+  // ספק שמוכר מוצר בכמה אריזות: עוקבים אחרי האריזה הזולה לק״ג בסוף החודש, כדי לא לערבב מחירים של אריזות שונות
+  const prices = suppliers.flatMap((s) => {
+    const chosen = new Map<string, { price: number; points: PricePoint[] }>();
+    for (const o of s.offers) {
+      const points = o.prices
         .filter((p) => p.tierId === s.priceTiers[0]?.id)
-        .map((p) => ({ supplierId: s.id, productId: o.productId, ...p })),
-    ),
-  );
+        .map((p) => ({ supplierId: s.id, productId: o.productId, ...p }));
+      const price = priceAt(points, new Date(month.end.getTime() - 1)) ?? Infinity;
+      const prev = chosen.get(o.productId);
+      if (!prev || price < prev.price) chosen.set(o.productId, { price, points });
+    }
+    return [...chosen.values()].flatMap((c) => c.points);
+  });
 
   return buildMonthlyReport({
     month,

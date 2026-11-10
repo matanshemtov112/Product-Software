@@ -21,6 +21,9 @@ export interface SystemOffer {
   priceValidTo?: string;
   /** המחיר הרגיל האמיתי כשיש מבצע (מוצג עם קו) */
   regularUnitAgorot?: number;
+  /** האריזה שנבחרה, והאריזות האחרות של הספק לאותו מוצר (טקסט לתצוגה) */
+  packLabel?: string;
+  otherPacks?: string[];
   /** מבצע כמות של הספק למוצר */
   deal?: PricedLine["deal"];
 }

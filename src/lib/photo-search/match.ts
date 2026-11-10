@@ -36,9 +36,11 @@ export function groupMatches(identified: { exact: string[]; similar: string[] },
       entry = { productId: o.productId, productName: o.productName, unit: o.unit, category: o.category, suppliers: [] };
       byName.set(o.productName, entry);
     }
-    if (!entry.suppliers.some((s) => s.id === o.supplierId)) {
-      entry.suppliers.push({ id: o.supplierId, name: o.supplierName, priceAgorot: o.priceAgorot, pack: o.pack });
-    }
+    // ספק עם כמה אריזות לאותו מוצר מופיע פעם אחת, באריזה הזולה לק״ג
+    const row = { id: o.supplierId, name: o.supplierName, priceAgorot: o.priceAgorot, pack: o.pack };
+    const i = entry.suppliers.findIndex((s) => s.id === o.supplierId);
+    if (i === -1) entry.suppliers.push(row);
+    else if ((o.priceAgorot ?? Infinity) < (entry.suppliers[i].priceAgorot ?? Infinity)) entry.suppliers[i] = row;
   }
   for (const entry of byName.values()) {
     entry.suppliers.sort((a, b) => (a.priceAgorot ?? Infinity) - (b.priceAgorot ?? Infinity));

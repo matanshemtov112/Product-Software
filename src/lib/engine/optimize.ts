@@ -47,7 +47,8 @@ interface Prepared {
   supplier: SupplierInput;
   /** אספקות בחודש, לבדיקת מבצעי כמות לפי הזמנה */
   deliveries: number;
-  offers: Map<string, Offer>;
+  /** האריזות של כל מוצר אצל הספק (ספק יכול למכור מוצר בכמה גדלי אריזה) */
+  offers: Map<string, Offer[]>;
   /** מחיר השורה לפי מוצר ומדרגה; מחושב פעם אחת לכל ריצה */
   cache: Map<string, (PricedLine | null)[]>;
 }
@@ -58,7 +59,7 @@ function prepare(supplier: SupplierInput, deliveries = 1): Prepared {
   return {
     supplier: sorted,
     deliveries,
-    offers: new Map(supplier.offers.map((o) => [o.productId, o])),
+    offers: supplier.offers.reduce((m, o) => m.set(o.productId, [...(m.get(o.productId) ?? []), o]), new Map<string, Offer[]>()),
     cache: new Map(),
   };
 }
@@ -74,8 +75,27 @@ function lineAt(p: Prepared, line: BasketLine, tierIndex: number): PricedLine | 
 
 function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine | null {
   if (line.excludedSupplierIds?.includes(p.supplier.id)) return null;
-  const offer = p.offers.get(line.productId);
-  if (!offer) return null;
+  const packs = (p.offers.get(line.productId) ?? [])
+    .map((offer) => packLine(p, line, offer, tierIndex))
+    .filter((x): x is PricedLine => x !== null);
+  if (packs.length === 0) return null;
+  // כמה אריזות לאותו מוצר: האריזה שיוצאת הכי זולה לכמות של הלקוח (אחרי עיגול לאריזות ומבצעים)
+  const [best, ...rest] = [...packs].sort(
+    (a, b) => a.lineTotalAgorot - b.lineTotalAgorot || a.unitPriceAgorot - b.unitPriceAgorot,
+  );
+  if (rest.length === 0) return best;
+  return {
+    ...best,
+    otherPacks: rest.map((o) => ({
+      offerId: o.offerId,
+      packLabel: o.packLabel,
+      packSize: o.packSize ?? 0,
+      unitPriceAgorot: o.unitPriceAgorot,
+    })),
+  };
+}
+
+function packLine(p: Prepared, line: BasketLine, offer: Offer, tierIndex: number): PricedLine | null {
   const price = priceAtTier(p.supplier, offer, tierIndex);
   if (!price) return null;
   const billed = billedQuantity(offer, line.quantity);
@@ -86,6 +106,9 @@ function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine
   return {
     productId: line.productId,
     productName: line.productName,
+    ...(offer.offerId ? { offerId: offer.offerId } : {}),
+    ...(offer.packLabel ? { packLabel: offer.packLabel } : {}),
+    packSize: offer.packSize,
     quantity: line.quantity,
     billedQuantity: billed,
     unitPriceAgorot,

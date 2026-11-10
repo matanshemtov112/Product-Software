@@ -153,9 +153,10 @@ export async function notifyPriceChange(change: PriceChange) {
       .filter((p) => p.tierId === baseTier)
       .map((p) => ({ ...p, supplierId: change.supplierId, productId: o.productId }));
     const price = priceAt(points, now);
-    if (price !== null) prices.set(o.productId, price);
+    // כמה אריזות לאותו מוצר: המחיר הזול לק״ג
+    if (price !== null && price < (prices.get(o.productId) ?? Infinity)) prices.set(o.productId, price);
   }
-  prices.set(change.productId, change.newAgorot);
+  prices.set(change.productId, Math.min(prices.get(change.productId) ?? Infinity, change.newAgorot));
   const zones = new Map(supplier.deliveryZones.map((z) => [z.regionId, z]));
 
   await notify(

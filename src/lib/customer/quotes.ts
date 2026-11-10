@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { comparePaidPrices, type PaidComparison } from "./paid-prices";
 import { pricedPerPack, packPriceLabel } from "@/lib/pack";
 import { dealLabel } from "@/lib/deal-label";
-import { UNIT_LABEL } from "@/lib/format";
+import { shekels, UNIT_LABEL } from "@/lib/format";
+import type { PricedLine } from "@/lib/engine";
 import {
   optimizeBasket,
   quoteForSupplier,
@@ -100,7 +101,10 @@ function snapshot(
   supplier: SupplierInput,
 ): QuoteSnapshot {
   const { share } = quote;
-  const offers = new Map(supplier.offers.map((o) => [o.productId, o]));
+  // האריזה שנבחרה לכל שורה (ספק יכול למכור מוצר בכמה אריזות)
+  const byOffer = new Map(supplier.offers.map((o) => [o.offerId ?? o.productId, o]));
+  const offerOf = (l: { offerId?: string; productId: string }) =>
+    byOffer.get(l.offerId ?? l.productId) ?? supplier.offers.find((o) => o.productId === l.productId);
   return {
     tierName: share.tierName,
     lines: share.lines.map((l) => ({
@@ -111,9 +115,10 @@ function snapshot(
       unitPriceAgorot: l.unitPriceAgorot,
       lineTotalAgorot: l.lineTotalAgorot,
       customerPaidAgorot: paid.get(l.productId) ?? null,
-      pack: offers.get(l.productId)?.packLabel,
-      minOrder: offers.get(l.productId)?.minOrderLabel,
-      packPrice: packPriceFor(l.unitPriceAgorot, offers.get(l.productId)?.packInfo),
+      pack: offerOf(l)?.packLabel,
+      otherPacks: otherPacksText(l, units.get(l.productId) ?? "UNIT"),
+      minOrder: offerOf(l)?.minOrderLabel,
+      packPrice: packPriceFor(l.unitPriceAgorot, offerOf(l)?.packInfo),
       priceKind: l.priceKind,
       priceUpdatedAt: l.priceUpdatedAt,
       priceValidTo: l.priceValidTo,
@@ -143,6 +148,7 @@ export function paidComparison(
   },
   analysis: BasketAnalysis,
 ): PaidComparison {
+  const unitOf = new Map(basket.items.map((i) => [i.productId, i.product.unit]));
   return comparePaidPrices(
     basket.items.map((i) => ({
       productId: i.productId,
@@ -161,6 +167,8 @@ export function paidComparison(
         priceUpdatedAt: l.priceUpdatedAt,
         priceValidTo: l.priceValidTo,
         regularUnitAgorot: l.regularUnitAgorot,
+        packLabel: l.packLabel,
+        otherPacks: otherPacksText(l, unitOf.get(l.productId) ?? "UNIT"),
         deal: l.deal,
       })),
     ),
@@ -178,5 +186,13 @@ export function paidComparison(
       deliveriesPerMonth: basket.deliveriesPerMonth,
       currentSupplierId: basket.currentSupplierId,
     },
+  );
+}
+
+/** האריזות האחרות של הספק לאותו מוצר, כטקסט קצר: "גם בשק 5 ק״ג: ₪6.90 לק״ג" */
+export function otherPacksText(line: Pick<PricedLine, "otherPacks">, unit: Unit): string[] | undefined {
+  if (!line.otherPacks?.length) return undefined;
+  return line.otherPacks.map(
+    (o) => `גם ב${o.packLabel ?? "אריזה אחרת"}: ${shekels(o.unitPriceAgorot, 2)} ל${UNIT_LABEL[unit]}`,
   );
 }

@@ -17,6 +17,8 @@ interface CatalogProduct {
 
 export interface OfferFormValues {
   offerId?: string;
+  /** אריזה נוספת למוצר שכבר ברשימה: המוצר קבוע, ממלאים רק אריזה ומחיר */
+  addPack?: boolean;
   productName: string;
   categoryId: string;
   unit: "KG" | "LITER" | "UNIT";
@@ -90,6 +92,7 @@ export function ProductForm({
 }) {
   const [state, action, pending] = useActionState(saveOffer, {});
   const editing = Boolean(initial.offerId);
+  const productLocked = editing || Boolean(initial.addPack);
   const [categoryId, setCategoryId] = useState(initial.categoryId);
   const [unit, setUnit] = useState(initial.unit);
   const [packType, setPackType] = useState(initial.packType);
@@ -138,6 +141,12 @@ export function ProductForm({
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
       {editing && <input type="hidden" name="offerId" value={initial.offerId} />}
+      {initial.addPack && (
+        <>
+          <input type="hidden" name="categoryId" value={initial.categoryId} />
+          <input type="hidden" name="unit" value={initial.unit} />
+        </>
+      )}
 
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 font-semibold">המוצר</legend>
@@ -146,7 +155,7 @@ export function ProductForm({
             name="productName"
             list="catalog-products"
             defaultValue={initial.productName}
-            readOnly={editing}
+            readOnly={productLocked}
             onChange={(e) => onProductName(e.target.value)}
             required
           />
@@ -156,7 +165,7 @@ export function ProductForm({
             <option key={p.name} value={p.name} />
           ))}
         </datalist>
-        {!editing && (
+        {!productLocked && (
           <p className="-mt-2 text-xs text-muted">
             כדאי לבחור שם מהרשימה. מוצר בשם חדש ייבדק על ידי צוות הפלטפורמה כדי שיושווה נכון מול ספקים אחרים.
           </p>
@@ -167,7 +176,7 @@ export function ProductForm({
               name="categoryId"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              disabled={editing}
+              disabled={productLocked}
               required
             >
               <option value="" disabled>
@@ -189,7 +198,7 @@ export function ProductForm({
               name="unit"
               value={unit}
               onChange={(e) => setUnit(e.target.value as typeof unit)}
-              disabled={editing}
+              disabled={productLocked}
             >
               {UNITS.map((u) => (
                 <option key={u.value} value={u.value}>

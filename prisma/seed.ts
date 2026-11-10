@@ -273,6 +273,7 @@ const DEMO_BASKET: [string, number, number][] = [
   ["שמן קנולה", 20, 10.9],
   ["גבינה צהובה 28%", 15, 46],
   ["קמח לבן", 10, 3.9],
+  ["אורז פרסי", 40, 10.5],
   ["פחית שתייה קלה 330 מ״ל", 120, 2.4],
   ["קופסת אלומיניום לטייק-אווי", 1000, 0.95],
 ];
@@ -440,6 +441,26 @@ async function main() {
       },
     });
   }
+
+  // אותו מוצר בשתי אריזות אצל אותו ספק: שק 5 ק״ג ושק 25 ק״ג, זול יותר לק״ג
+  const center = await db.supplier.findFirstOrThrow({
+    where: { companyNumber: "510000037" },
+    include: { priceTiers: { orderBy: { minMonthlyAgorot: "asc" } } },
+  });
+  await db.supplierOffer.create({
+    data: {
+      supplierId: center.id,
+      productId: products.get("אורז פרסי")!,
+      packType: "SACK",
+      packSize: 25,
+      prices: {
+        create: center.priceTiers.map((tier, t) => ({
+          tierId: tier.id,
+          unitPriceAgorot: ils(8.9 * Math.pow(0.97, t)),
+        })),
+      },
+    },
+  });
 
   const customer = await db.customer.create({
     data: {

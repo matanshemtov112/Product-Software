@@ -29,6 +29,8 @@ export interface TierPrice {
 }
 
 export interface Offer {
+  /** מזהה ההצעה במסד; ספק יכול להחזיק כמה הצעות (אריזות) לאותו מוצר */
+  offerId?: string;
   productId: string;
   /** גודל אריזה ביחידות בסיס; הכמות מעוגלת כלפי מעלה לכפולה שלו */
   packSize: number;
@@ -85,6 +87,12 @@ export interface EngineOptions {
 export interface PricedLine {
   productId: string;
   productName: string;
+  /** האריזה שנבחרה: מזהה ההצעה, איך המוצר מגיע וגודל האריזה ביחידות בסיס */
+  offerId?: string;
+  packLabel?: string;
+  packSize?: number;
+  /** אריזות אחרות של אותו ספק לאותו מוצר, שיצאו יקרות יותר לכמות של הלקוח */
+  otherPacks?: { offerId?: string; packLabel?: string; packSize: number; unitPriceAgorot: number }[];
   quantity: number;
   billedQuantity: number;
   unitPriceAgorot: number;

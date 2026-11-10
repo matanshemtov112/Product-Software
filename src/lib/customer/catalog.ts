@@ -70,10 +70,7 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
   });
   if (!supplier) return null;
   const tierId = supplier.priceTiers[0]?.id;
-  return {
-    id: supplier.id,
-    name: supplier.companyName,
-    items: supplier.offers.map((o) => ({
+  const items = supplier.offers.map((o) => ({
       product: {
         id: o.product.id,
         name: o.product.name,
@@ -87,8 +84,27 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
         packPrice: packPriceOf(o, o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot),
       },
       priceAgorot: o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot ?? null,
-    })),
-  };
+    }));
+  // מוצר שהספק מוכר בכמה אריזות מופיע פעם אחת, עם כל האריזות והמחיר הזול לק״ג
+  const byProduct = new Map<string, (typeof items)[number]>();
+  for (const item of items) {
+    const prev = byProduct.get(item.product.id);
+    if (!prev) {
+      byProduct.set(item.product.id, item);
+      continue;
+    }
+    const prices = [prev.priceAgorot, item.priceAgorot].filter((p): p is number => p !== null);
+    byProduct.set(item.product.id, {
+      product: {
+        ...prev.product,
+        pack: `${prev.product.pack} או ${item.product.pack}`,
+        minOrder: undefined,
+        packPrice: undefined,
+      },
+      priceAgorot: prices.length ? Math.min(...prices) : null,
+    });
+  }
+  return { id: supplier.id, name: supplier.companyName, items: [...byProduct.values()] };
 }
 
 function packPriceOf(

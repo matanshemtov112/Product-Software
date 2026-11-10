@@ -171,14 +171,22 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
       (await db.product.create({
         data: { name: data.productName, categoryId: data.categoryId, unit: data.unit, pendingReview: true },
       }));
-    if (
-      await db.supplierOffer.findUnique({
-        where: { supplierId_productId: { supplierId: supplier.id, productId: product.id } },
-      })
-    ) {
-      return { error: "המוצר הזה כבר נמצא ברשימה שלך" };
-    }
     productId = product.id;
+  }
+  // ספק יכול למכור את אותו מוצר בכמה אריזות, אבל לא את אותה אריזה פעמיים
+  const samePack = await db.supplierOffer.findFirst({
+    where: {
+      supplierId: supplier.id,
+      productId: productId!,
+      packType: data.packType || null,
+      packSize: data.packSize,
+      ...(existing ? { id: { not: existing.id } } : {}),
+    },
+  });
+  if (samePack) {
+    return {
+      error: "האריזה הזו כבר נמצאת ברשימה שלך. אפשר לערוך אותה, או להוסיף את המוצר באריזה בגודל אחר.",
+    };
   }
 
   const minAmount = typeof data.minAmount === "number" ? data.minAmount : 0;

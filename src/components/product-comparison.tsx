@@ -1,5 +1,5 @@
 import { shekels, UNIT_LABEL } from "@/lib/format";
-import type { PaidComparisonLine } from "@/lib/customer/paid-prices";
+import type { PaidComparisonLine, SystemOffer } from "@/lib/customer/paid-prices";
 import { DealBadge, PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
 
 /** תובנה קצרה: בכמה הלקוח משלם יותר (או פחות) מהמחיר הזול ביותר שמצאנו */
@@ -55,6 +55,7 @@ export function ProductComparison({
                         {l.best.supplierName}
                         {l.best.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                       </span>
+                      <OtherPacks offer={l.best} />
                       <span className="mt-0.5 block">
                         <PriceStatusBadge
                           kind={l.best.priceKind}
@@ -101,6 +102,7 @@ export function ProductComparison({
                             {(o.priceKind === "PROMOTION" || o.deal) && <SaleMark />}
                             {o.supplierName}
                             {o.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
+                            <OtherPacks offer={o} />
                           </td>
                           <td className="py-1.5">
                             <WasPrice nowAgorot={o.unitPriceAgorot} regularAgorot={o.regularUnitAgorot} />
@@ -124,5 +126,20 @@ export function ProductComparison({
         );
       })}
     </ul>
+  );
+}
+
+/** האריזה שנבחרה, כשלספק יש כמה אריזות למוצר, והאריזות האחרות באפור מתחת */
+function OtherPacks({ offer }: { offer: SystemOffer }) {
+  if (!offer.otherPacks?.length) return null;
+  return (
+    <>
+      {offer.packLabel && <span className="block text-xs text-muted">{offer.packLabel}</span>}
+      {offer.otherPacks.map((t) => (
+        <span key={t} className="block text-xs text-muted">
+          {t}
+        </span>
+      ))}
+    </>
   );
 }

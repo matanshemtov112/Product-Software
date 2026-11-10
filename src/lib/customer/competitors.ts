@@ -31,14 +31,14 @@ export interface Competitor {
  */
 export function findCompetitors(current: PriceList, others: PriceList[]): Competitor[] {
   const priced = new Map(
-    current.items.filter((i) => i.priceAgorot != null).map((i) => [i.product.id, { ...i, priceAgorot: i.priceAgorot! }]),
+    cheapestPerProduct(current.items).map((i) => [i.product.id, { ...i, priceAgorot: i.priceAgorot! }]),
   );
   if (priced.size === 0) return [];
   const result: Competitor[] = [];
   for (const other of others) {
     if (other.id === current.id) continue;
     const lines: CompetitorLine[] = [];
-    for (const item of other.items) {
+    for (const item of cheapestPerProduct(other.items)) {
       const mine = priced.get(item.product.id);
       if (!mine || item.priceAgorot == null) continue;
       lines.push({
@@ -61,4 +61,15 @@ export function findCompetitors(current: PriceList, others: PriceList[]): Compet
     });
   }
   return result.sort((a, b) => b.lines.length - a.lines.length || a.avgDiffPct - b.avgDiffPct);
+}
+
+/** כשלספק יש כמה אריזות לאותו מוצר: המחיר הזול ביותר לכל מוצר, פעם אחת */
+function cheapestPerProduct<T extends { product: { id: string }; priceAgorot: number | null }>(items: T[]): T[] {
+  const best = new Map<string, T>();
+  for (const i of items) {
+    if (i.priceAgorot == null) continue;
+    const prev = best.get(i.product.id);
+    if (!prev || i.priceAgorot < prev.priceAgorot!) best.set(i.product.id, i);
+  }
+  return [...best.values()];
 }
