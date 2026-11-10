@@ -20,10 +20,7 @@ export default async function DealPage({ params }: { params: Promise<{ offerId: 
   const [supplier, basket, open] = await Promise.all([
     db.supplier.findUniqueOrThrow({
       where: { id: deal.supplierId },
-      select: {
-        minOrderAgorot: true,
-        deliveryZones: { where: { regionId: customer.regionId }, select: { feeAgorot: true, freeAboveAgorot: true } },
-      },
+      select: { minOrderAgorot: true },
     }),
     db.basket.findFirst({
       where: { customerId: customer.id },
@@ -37,7 +34,6 @@ export default async function DealPage({ params }: { params: Promise<{ offerId: 
       where: { customerId: customer.id, supplierId: deal.supplierId, status: { in: OPEN_INQUIRY } },
     }),
   ]);
-  const zone = supplier.deliveryZones[0];
   const deliveries = basket?.deliveriesPerMonth ?? 4;
   const monthly = basket?.items[0]?.monthlyQuantity;
   const suggested = deal.quantityDeal?.minPerOrder ?? (monthly ? Math.round((monthly / deliveries) * 100) / 100 : "");
@@ -72,7 +68,8 @@ export default async function DealPage({ params }: { params: Promise<{ offerId: 
             <dt className="text-muted">מינימום הזמנה</dt>
             <dd>{supplier.minOrderAgorot ? shekels(supplier.minOrderAgorot) : "אין"}</dd>
             <dt className="text-muted">משלוח לאזור שלכם</dt>
-            <dd>{zone ? "חינם" : "—"}</dd>
+            {/* המבצע מוצג רק אצל ספקים שמגיעים ללקוח, והמשלוח תמיד חינם */}
+            <dd>חינם</dd>
           </dl>
           <p className="mt-3 text-xs text-muted">המחירים ללא מע״מ. ההזמנה עצמה נעשית ישירות מול הספק.</p>
         </Card>

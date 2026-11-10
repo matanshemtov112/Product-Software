@@ -1,3 +1,4 @@
+import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { dealInput, dealLabel } from "@/lib/deal-label";
 import type { QuantityDealInput } from "@/lib/engine/quantity-deal";
@@ -30,15 +31,23 @@ export interface CustomerDeal {
 export async function customerDeals(customerId: string, now = new Date()): Promise<CustomerDeal[]> {
   const customer = await db.customer.findUniqueOrThrow({
     where: { id: customerId },
-    select: { regionId: true, baskets: { select: { items: { select: { productId: true } } } } },
+    select: {
+      id: true,
+      regionId: true,
+      city: true,
+      lat: true,
+      lng: true,
+      baskets: { select: { items: { select: { productId: true } } } },
+    },
   });
   const mine = new Set(customer.baskets.flatMap((b) => b.items.map((i) => i.productId)));
+  const serving = await servingSupplierIds(customer);
   const valid = { validFrom: { lte: now }, OR: [{ validTo: null }, { validTo: { gt: now } }] };
   const offers = await db.supplierOffer.findMany({
     where: {
       available: true,
       product: { pendingReview: false },
-      supplier: { status: "APPROVED", deliveryZones: { some: { regionId: customer.regionId } } },
+      supplierId: { in: serving },
       OR: [
         { quantityDeal: { OR: [{ validTo: null }, { validTo: { gt: now } }] } },
         { prices: { some: { status: "LIVE", kind: "PROMOTION", ...valid } } },

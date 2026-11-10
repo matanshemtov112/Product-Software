@@ -61,6 +61,8 @@ export async function saveBusinessDetails(_: FormState, form: FormData): Promise
     where: { id: customer.id },
     data: {
       city: parsed.data.city,
+      // עיר חדשה: המיקום על המפה יאותר מחדש בפעם הבאה שבודקים אילו ספקים מגיעים לעסק
+      ...(parsed.data.city !== customer.city ? { lat: null, lng: null } : {}),
       address: parsed.data.address || null,
       totalVolumeMinAgorot: range ? range.min * 100 : null,
       totalVolumeMaxAgorot: range?.max ? range.max * 100 : null,

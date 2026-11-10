@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Stars } from "@/components/stars";
 import { requireRole } from "@/lib/auth/current";
-import { supplierPriceList, suppliersInRegion } from "@/lib/customer/catalog";
+import { supplierPriceList, suppliersServing } from "@/lib/customer/catalog";
 import { findCompetitors } from "@/lib/customer/competitors";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
@@ -22,7 +22,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
   const { supplier: supplierId } = await searchParams;
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
-  const suppliers = await suppliersInRegion(customer.regionId);
+  const suppliers = await suppliersServing(customer);
 
   if (!supplierId) {
     return (

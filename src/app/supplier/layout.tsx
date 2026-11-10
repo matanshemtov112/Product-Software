@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
 import { categoryTree } from "@/lib/categories";
@@ -37,7 +38,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     );
   }
 
-  const [categories, newInquiries, newMatches, unread, ratingAgg] = await Promise.all([
+  const [categories, newInquiries, newMatches, unread, ratingAgg, areaCount] = await Promise.all([
     categoryCounts(supplier.id),
     db.negotiationRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
     db.matchRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
@@ -47,6 +48,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
       _avg: { overall: true },
       _count: true,
     }),
+    db.deliveryArea.count({ where: { supplierId: supplier.id } }),
   ]);
   const rating = ratingAgg._count ? { average: ratingAgg._avg.overall ?? 0, count: ratingAgg._count } : null;
   const total = categories.reduce((s, c) => s + c.count, 0);
@@ -67,6 +69,15 @@ export default async function SupplierLayout({ children }: { children: React.Rea
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         {note && <p className="rounded-md border border-border bg-accent-soft px-4 py-3 text-sm">{note}</p>}
+        {areaCount === 0 && (
+          <p className="rounded-md border border-border bg-accent-soft px-4 py-3 text-sm">
+            עוד לא סימנתם את אזורי החלוקה שלכם.{" "}
+            <Link href="/supplier/areas" className="font-medium text-accent underline">
+              סמנו אותם על המפה
+            </Link>{" "}
+            כדי שלקוחות באזורים שלכם יראו אתכם בהשוואות.
+          </p>
+        )}
         {children}
       </div>
     </div>

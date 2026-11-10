@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { isManager } from "@/lib/auth/team";
@@ -21,6 +22,7 @@ export default async function SupplierProfile() {
     include: {
       logo: { select: { updatedAt: true } },
       deliveryZones: { include: { region: true } },
+      deliveryAreas: { orderBy: { createdAt: "asc" } },
       priceTiers: { orderBy: { minMonthlyAgorot: "asc" } },
     },
   });
@@ -70,21 +72,32 @@ export default async function SupplierProfile() {
         />
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
-        <Card title="אזורי משלוח">
-          {supplier.deliveryZones.length === 0 ? (
-            <p className="text-sm text-muted">עדיין לא הוגדרו אזורי משלוח.</p>
-          ) : (
+        <Card title="אזורי חלוקה">
+          {supplier.deliveryAreas.length > 0 ? (
             <ul className="text-sm">
-              {supplier.deliveryZones.map((z) => (
-                <li key={z.id}>{z.region.name}: משלוח חינם</li>
+              {supplier.deliveryAreas.map((a) => (
+                <li key={a.id}>
+                  {a.label}: {a.radiusKm} ק״מ סביב הנקודה
+                </li>
               ))}
             </ul>
+          ) : supplier.deliveryZones.length > 0 ? (
+            <p className="text-sm">
+              אזורים כלליים: {supplier.deliveryZones.map((z) => z.region.name).join(", ")}.{" "}
+              <span className="text-muted">כדאי לסמן על המפה את האזורים המדויקים.</span>
+            </p>
+          ) : (
+            <p className="text-sm text-muted">עדיין לא הוגדרו אזורי חלוקה.</p>
           )}
+          <Link
+            href="/supplier/areas"
+            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm text-white"
+          >
+            {supplier.deliveryAreas.length > 0 ? "עריכת האזורים על המפה" : "סימון האזורים על המפה"}
+          </Link>
         </Card>
       </div>
-      <p className="text-xs text-muted">
-        המשלוח לכל האזורים חינם. מה שקובע הוא מינימום ההזמנה. עריכת אזורי משלוח תתווסף בהמשך.
-      </p>
+      <p className="text-xs text-muted">המשלוח לכל האזורים חינם. מה שקובע הוא מינימום ההזמנה.</p>
     </div>
   );
 }

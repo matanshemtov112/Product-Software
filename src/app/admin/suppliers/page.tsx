@@ -51,6 +51,7 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
     include: {
       users: { select: { email: true, name: true, phone: true }, take: 1, orderBy: { createdAt: "asc" } },
       deliveryZones: { include: { region: true } },
+      deliveryAreas: { select: { label: true, radiusKm: true }, orderBy: { createdAt: "asc" } },
       _count: { select: { offers: true } },
     },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
@@ -144,7 +145,11 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="inline text-muted">אזורי אספקה: </dt>
-                    <dd className="inline">{s.deliveryZones.map((z) => z.region.name).join(", ") || "לא הוגדרו"}</dd>
+                    <dd className="inline">
+                      {s.deliveryAreas.length > 0
+                        ? `על המפה: ${s.deliveryAreas.map((a) => `${a.label} (${a.radiusKm} ק״מ)`).join(", ")}`
+                        : s.deliveryZones.map((z) => z.region.name).join(", ") || "לא הוגדרו"}
+                    </dd>
                   </div>
                 </dl>
                 <div className="flex flex-wrap gap-2">

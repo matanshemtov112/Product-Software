@@ -1,6 +1,7 @@
 "use server";
 
 import { requireRole } from "@/lib/auth/current";
+import { servingSupplierIds } from "@/lib/coverage";
 import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
 import {
@@ -49,6 +50,6 @@ export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promis
   if (result.kind === "refused") return { error: "לא הצלחנו לזהות את התמונה. נסו תמונה אחרת של המוצר." };
   if (result.kind === "error") return { error: result.message };
 
-  const offers = await offersForProducts([...result.exact, ...result.similar], customer.regionId);
+  const offers = await offersForProducts([...result.exact, ...result.similar], await servingSupplierIds(customer));
   return { description: result.description, matches: groupMatches(result, offers) };
 }

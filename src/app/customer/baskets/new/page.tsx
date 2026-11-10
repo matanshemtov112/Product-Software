@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
-import { catalogForBasket, supplierPriceList, suppliersInRegion } from "@/lib/customer/catalog";
+import { catalogForBasket, supplierPriceList, suppliersServing } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
 import { TEMPLATES } from "@/lib/customer/templates";
 import { BasketBuilder, type BuilderRow } from "../basket-builder";
@@ -84,7 +84,7 @@ export default async function NewBasket({
   );
 
   if (mode === "supplier" && !supplierId) {
-    const suppliers = await suppliersInRegion(customer.regionId);
+    const suppliers = await suppliersServing(customer);
     return (
       <div className="flex flex-col gap-4">
         <div>
@@ -185,7 +185,7 @@ export default async function NewBasket({
           initialName={`סל ${today()}`}
           initialDeliveries={4}
           initialVolume=""
-          supplierNames={(await suppliersInRegion(customer.regionId)).map((s) => s.companyName)}
+          supplierNames={(await suppliersServing(customer)).map((s) => s.companyName)}
           submitLabel="השוואת מחירים"
         />
       </div>

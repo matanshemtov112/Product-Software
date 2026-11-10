@@ -1,3 +1,4 @@
+import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel } from "@/lib/pack";
 import { volumeScale } from "./optimize";
@@ -16,11 +17,11 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
     include: { customer: true, items: { include: { product: { include: { category: true } } } } },
   });
   const productIds = basket.items.map((i) => i.productId);
+  const serving = await servingSupplierIds(basket.customer);
 
   const suppliers = await db.supplier.findMany({
     where: {
-      status: "APPROVED",
-      deliveryZones: { some: { regionId: basket.customer.regionId } },
+      id: { in: serving },
       offers: { some: { productId: { in: productIds }, available: true } },
     },
     include: {
@@ -64,7 +65,8 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
       minOrderAgorot: s.minOrderAgorot,
       rating,
       reliability: s.reliability,
-      delivery: { feeAgorot: zone.feeAgorot, freeAboveAgorot: zone.freeAboveAgorot },
+      // ספק שמגיע לפי אזור על המפה אולי בלי אזור כללי; המשלוח חינם בכל מקרה
+      delivery: { feeAgorot: zone?.feeAgorot ?? 0, freeAboveAgorot: zone?.freeAboveAgorot ?? null },
       tiers: s.priceTiers.map((t) => ({ id: t.id, name: t.name, minMonthlyAgorot: t.minMonthlyAgorot })),
       offers: s.offers.map((o) => {
         const prices: SupplierInput["offers"][number]["prices"] = {};

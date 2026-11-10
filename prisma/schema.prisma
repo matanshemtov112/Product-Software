@@ -138,6 +138,9 @@ model Customer {
   address              String?
   regionId             String
   region               Region               @relation(fields: [regionId], references: [id])
+  /// מיקום העסק על המפה (לפי העיר), לבדיקה אילו ספקים מגיעים אליו; null עד שאותר
+  lat                  Float?
+  lng                  Float?
   /// היקף הרכש החודשי הכולל מכל הספקים, כפי שהוצהר בהרשמה (מידע לספקים; המדרגה אצל כל ספק נקבעת לפי הסל)
   totalVolumeMinAgorot Int?
   totalVolumeMaxAgorot Int?
@@ -183,6 +186,8 @@ model Supplier {
   users            User[]
   categories       SupplierCategory[]
   deliveryZones    DeliveryZone[]
+  /// אזורי החלוקה שהספק סימן על המפה; כשיש כאלה הם קובעים לאן הוא מגיע (במקום האזורים הכלליים)
+  deliveryAreas    DeliveryArea[]
   priceTiers       PriceTier[]
   offers           SupplierOffer[]
   reviews          Review[]
@@ -205,6 +210,21 @@ model DeliveryZone {
   deliveryDays    String // למשל "א,ג,ה"
 
   @@unique([supplierId, regionId])
+}
+
+/// אזור חלוקה שהספק סימן על המפה: עיגול סביב נקודה, ברדיוס בק״מ
+model DeliveryArea {
+  id         String   @id @default(cuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// שם לתצוגה, למשל העיר שבמרכז העיגול
+  label      String
+  lat        Float
+  lng        Float
+  radiusKm   Float
+  createdAt  DateTime @default(now())
+
+  @@index([supplierId])
 }
 
 model Category {

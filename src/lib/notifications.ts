@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { effectiveCost, type EffectiveCost } from "@/lib/customer/effective-cost";
 import { priceAt } from "@/lib/customer/monthly-report";
 import { shekels } from "@/lib/format";
+import { servesCustomer } from "@/lib/geo";
 
 export interface NewNotification {
   customerId?: string;
@@ -118,7 +119,7 @@ export async function notifyPriceChange(change: PriceChange) {
             customerId: true,
             currentSupplierId: true,
             deliveriesPerMonth: true,
-            customer: { select: { regionId: true } },
+            customer: { select: { regionId: true, lat: true, lng: true } },
             items: { select: { productId: true, monthlyQuantity: true, currentUnitPriceAgorot: true } },
           },
         },
@@ -129,6 +130,7 @@ export async function notifyPriceChange(change: PriceChange) {
       select: {
         minOrderAgorot: true,
         deliveryZones: { select: { regionId: true, feeAgorot: true, freeAboveAgorot: true } },
+        deliveryAreas: { select: { lat: true, lng: true, radiusKm: true } },
         priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1, select: { id: true } },
         offers: {
           where: { available: true },
@@ -158,12 +160,16 @@ export async function notifyPriceChange(change: PriceChange) {
   }
   prices.set(change.productId, Math.min(prices.get(change.productId) ?? Infinity, change.newAgorot));
   const zones = new Map(supplier.deliveryZones.map((z) => [z.regionId, z]));
+  const coverage = { areas: supplier.deliveryAreas, regionIds: [...zones.keys()] };
 
   await notify(
     priceChangeNotifications(
       change,
       items.map((i) => {
-        const zone = zones.get(i.basket.customer.regionId);
+        const { regionId, lat, lng } = i.basket.customer;
+        const reaches = servesCustomer(coverage, { regionId, point: lat != null && lng != null ? { lat, lng } : null });
+        // המשלוח חינם; האזור הכללי (אם יש) משמש רק לתנאים הישנים, ובלעדיו התנאים ריקים
+        const zone = reaches ? (zones.get(regionId) ?? { feeAgorot: 0, freeAboveAgorot: null }) : undefined;
         const lines = i.basket.items.flatMap((b) => {
           const price = prices.get(b.productId);
           return price !== undefined && b.currentUnitPriceAgorot !== null && price < b.currentUnitPriceAgorot

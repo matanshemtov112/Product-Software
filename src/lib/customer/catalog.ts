@@ -1,3 +1,4 @@
+import { servingSupplierIds, type CoverageCustomer } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel, type PackInfo } from "@/lib/pack";
 import type { CatalogItem } from "@/app/customer/baskets/basket-builder";
@@ -29,10 +30,10 @@ export async function catalogForBasket(): Promise<CatalogItem[]> {
   }));
 }
 
-/** ספקים מאושרים שמספקים לאזור של הלקוח, לבחירת "הספק שלי היום" */
-export async function suppliersInRegion(regionId: string) {
+/** ספקים מאושרים שמגיעים ללקוח, לבחירת "הספק שלי היום" */
+export async function suppliersServing(customer: CoverageCustomer) {
   return db.supplier.findMany({
-    where: { status: "APPROVED", deliveryZones: { some: { regionId } }, offers: { some: { available: true } } },
+    where: { id: { in: await servingSupplierIds(customer) }, offers: { some: { available: true } } },
     select: {
       id: true,
       companyName: true,

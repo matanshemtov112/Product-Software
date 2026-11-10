@@ -1,3 +1,4 @@
+import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { UNIT_LABEL } from "@/lib/format";
 import { offeredPrice } from "@/lib/matches";
@@ -9,7 +10,11 @@ const PRICE_ALERTS = ["PRICE_INCREASE", "PRICE_DROP", "CHEAPER_SUPPLIER"] as con
 
 /** טוען את הנתונים של הלקוח לחודש ובונה את הדוח */
 export async function loadMonthlyReport(customerId: string, month: ReportMonth) {
-  const customer = await db.customer.findUniqueOrThrow({ where: { id: customerId }, select: { regionId: true } });
+  const customer = await db.customer.findUniqueOrThrow({
+    where: { id: customerId },
+    select: { id: true, regionId: true, city: true, lat: true, lng: true },
+  });
+  const serving = await servingSupplierIds(customer);
   const baskets = await db.basket.findMany({
     where: { customerId, createdAt: { lt: month.end } },
     include: { items: { include: { product: { select: { name: true, unit: true } } } } },
@@ -35,7 +40,7 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
 
   const [suppliers, lines, checks, alerts] = await Promise.all([
     db.supplier.findMany({
-      where: { status: "APPROVED", deliveryZones: { some: { regionId: customer.regionId } } },
+      where: { id: { in: serving } },
       select: {
         id: true,
         companyName: true,
