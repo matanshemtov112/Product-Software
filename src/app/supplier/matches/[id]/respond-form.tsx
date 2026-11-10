@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
 import { shekels } from "@/lib/format";
-import { VALID_DAYS } from "@/lib/matches";
+import { NO_VALIDITY, revealText, VALID_DAYS } from "@/lib/matches";
 import { respondMatch } from "../../actions";
 
 export interface RespondLine {
@@ -20,9 +20,11 @@ export interface RespondLine {
   locked: boolean;
 }
 
-function LineRow({ line }: { line: RespondLine }) {
+function LineRow({ line, reveal }: { line: RespondLine; reveal: "EXACT" | "CEILING" }) {
+  const ceiling = reveal === "CEILING";
+  // ב"מתחת לסף" אין "משווה ל-": הספק לא יודע מה המחיר שנמצא, ומציע מחיר משלו
   const [response, setResponse] = useState<RespondLine["response"]>(
-    line.response === "PENDING" ? "MATCHED" : line.response,
+    line.response === "PENDING" ? (ceiling ? "COUNTER" : "MATCHED") : line.response,
   );
   const saving = (price: number) => Math.max(0, Math.round((line.currentPriceAgorot - price) * line.monthlyQuantity));
   const radio = (value: string, label: string) => (
@@ -49,17 +51,19 @@ function LineRow({ line }: { line: RespondLine }) {
           </p>
         </div>
         <p className="text-sm sm:text-end">
-          הלקוח משלם לכם {shekels(line.currentPriceAgorot, 2)} · מצא{" "}
-          <strong>{shekels(line.targetPriceAgorot, 2)}</strong> ל{line.unitLabel}
-          <span className="block text-xs text-muted">
-            השוואה תחסוך ללקוח {shekels(saving(line.targetPriceAgorot))} בחודש
-          </span>
+          הלקוח משלם לכם {shekels(line.currentPriceAgorot, 2)} ל{line.unitLabel}
+          <strong className="block">{revealText(reveal, line.targetPriceAgorot, line.unitLabel)}</strong>
+          {!ceiling && (
+            <span className="block text-xs text-muted">
+              השוואה תחסוך ללקוח {shekels(saving(line.targetPriceAgorot))} בחודש
+            </span>
+          )}
         </p>
       </div>
       <fieldset className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" disabled={line.locked}>
         <legend className="sr-only">התשובה ל{line.productName}</legend>
-        {radio("MATCHED", `משווה ל-${shekels(line.targetPriceAgorot, 2)}`)}
-        {radio("COUNTER", "מחיר אחר")}
+        {!ceiling && radio("MATCHED", `משווה ל-${shekels(line.targetPriceAgorot, 2)}`)}
+        {radio("COUNTER", ceiling ? "המחיר שלי" : "מחיר אחר")}
         {response === "COUNTER" && (
           <label className="flex items-center gap-2">
             <span className="sr-only">המחיר שלכם ל{line.productName}</span>₪
@@ -67,7 +71,7 @@ function LineRow({ line }: { line: RespondLine }) {
               name={`counter_${line.id}`}
               inputMode="decimal"
               defaultValue={line.counterPriceAgorot ? (line.counterPriceAgorot / 100).toFixed(2) : ""}
-              placeholder={(line.targetPriceAgorot / 100).toFixed(2)}
+              placeholder={ceiling ? "" : (line.targetPriceAgorot / 100).toFixed(2)}
               className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-base outline-none focus:border-accent"
               required
             />
@@ -83,11 +87,16 @@ function LineRow({ line }: { line: RespondLine }) {
 
 export function RespondForm({
   requestId,
+  reveal,
+  validUntil,
   lines,
   note,
   answered,
 }: {
   requestId: string;
+  reveal: "EXACT" | "CEILING";
+  /** התוקף שהספק כבר נתן (ISO), או null */
+  validUntil: string | null;
   lines: RespondLine[];
   note: string | null;
   answered: boolean;
@@ -98,16 +107,17 @@ export function RespondForm({
       <input type="hidden" name="requestId" value={requestId} />
       <ul className="divide-y divide-border">
         {lines.map((l) => (
-          <LineRow key={l.id} line={l} />
+          <LineRow key={l.id} line={l} reveal={reveal} />
         ))}
       </ul>
       <label className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-muted">ההצעה בתוקף למשך</span>
+        <span className="text-muted">תוקף להצעה שלכם (לא חובה)</span>
         <select
           name="validDays"
-          defaultValue="30"
+          defaultValue={answered && !validUntil ? String(NO_VALIDITY) : "30"}
           className="rounded-md border border-border bg-surface px-2 py-1 text-base outline-none focus:border-accent"
         >
+          <option value={NO_VALIDITY}>בלי תוקף</option>
           {VALID_DAYS.map((d) => (
             <option key={d} value={d}>
               {d} ימים

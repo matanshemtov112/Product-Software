@@ -9,7 +9,8 @@ import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { notify } from "@/lib/notifications";
-import { isValid, matchCandidates, offeredPrice, OPEN_MATCH } from "@/lib/matches";
+import { isValid, matchCandidates, offeredPrice, OPEN_MATCH, validCeiling } from "@/lib/matches";
+import { parseShekels } from "@/lib/supplier/pricing-rules";
 
 export interface MatchFormState {
   error?: string;
@@ -29,6 +30,18 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
   const chosen = new Set(form.getAll("product").map(String));
   const lines = matchCandidates(supplier.lines).filter((c) => chosen.has(c.productId));
   if (lines.length === 0) return { error: "נא לסמן לפחות מוצר אחד" };
+  // איך להציג לספק: המחיר שנמצא, או רק סף שהלקוח קבע (לא נמוך מהמחיר שנמצא, כדי שההודעה תהיה נכונה)
+  const reveal = form.get("reveal") === "CEILING" ? "CEILING" : "EXACT";
+  const shown = new Map<string, number>();
+  if (reveal === "CEILING") {
+    for (const l of lines) {
+      const ceiling = parseShekels(form.get(`ceiling_${l.productId}`));
+      if (ceiling === null || !validCeiling(ceiling, l.targetPriceAgorot, l.currentPriceAgorot)) {
+        return { error: `הסף ל"${l.productName}" צריך להיות בין המחיר שמצאנו למחיר שאתם משלמים היום` };
+      }
+      shown.set(l.productId, ceiling);
+    }
+  }
   if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
@@ -49,6 +62,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       supplierId: supplier.supplierId,
       basketId,
       message,
+      reveal,
       customerProfile: basket ? JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))) : undefined,
       lines: {
         create: lines.map((l) => ({
@@ -58,6 +72,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
           monthlyQuantity: l.monthlyQuantity,
           currentPriceAgorot: l.currentPriceAgorot,
           targetPriceAgorot: l.targetPriceAgorot,
+          shownPriceAgorot: shown.get(l.productId) ?? null,
         })),
       },
     },

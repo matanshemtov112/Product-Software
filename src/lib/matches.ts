@@ -1,4 +1,4 @@
-import type { MatchDecision, MatchResponse, MatchStatus } from "@prisma/client";
+import type { MatchDecision, MatchReveal, MatchResponse, MatchStatus } from "@prisma/client";
 import { shekels } from "@/lib/format";
 import type { PaidComparisonLine } from "@/lib/customer/paid-prices";
 
@@ -22,8 +22,41 @@ export const MATCH_DECISION_LABEL: Record<MatchDecision, string> = {
   REJECTED: "דחיתם",
 };
 
-/** כמה ימים הספק יכול לתת להצעה שלו */
+/** כמה ימים הספק יכול לתת להצעה שלו; 0 = בלי תוקף */
 export const VALID_DAYS = [7, 14, 30, 60, 90];
+export const NO_VALIDITY = 0;
+
+/**
+ * סף ברירת מחדל ל"המחיר שלכם צריך להיות מתחת ל-": כ-3% מעל המחיר שנמצא, מעוגל למעלה ל-10 אגורות,
+ * ותמיד נמוך מהמחיר שהלקוח משלם היום (אחרת אין טעם בבקשה).
+ */
+export function suggestedCeiling(targetAgorot: number, currentAgorot: number) {
+  const up = Math.ceil((targetAgorot * 1.03) / 10) * 10;
+  return Math.max(targetAgorot, Math.min(up, currentAgorot - 10));
+}
+
+/** סף תקין: לא נמוך מהמחיר שנמצא (אחרת ההודעה לספק לא נכונה), ונמוך ממה שהלקוח משלם היום */
+export function validCeiling(ceilingAgorot: number, targetAgorot: number, currentAgorot: number) {
+  return Number.isInteger(ceilingAgorot) && ceilingAgorot >= targetAgorot && ceilingAgorot < currentAgorot;
+}
+
+/**
+ * השורה כפי שהספק רואה אותה: ב-CEILING המחיר "המבוקש" הוא הסף שהלקוח קבע, והמחיר שנמצא לא נחשף,
+ * גם לא דרך סכומי החיסכון.
+ */
+export function supplierFacing<T extends { targetPriceAgorot: number; shownPriceAgorot?: number | null }>(
+  line: T,
+  reveal: MatchReveal,
+): T {
+  return reveal === "CEILING" ? { ...line, targetPriceAgorot: line.shownPriceAgorot ?? line.targetPriceAgorot } : line;
+}
+
+/** איך המחיר מוצג לספק, במשפט אחד */
+export function revealText(reveal: MatchReveal, priceAgorot: number, unitLabel: string) {
+  return reveal === "CEILING"
+    ? `כדי להיות תחרותי, המחיר צריך להיות מתחת ל-${shekels(priceAgorot, 2)} ל${unitLabel}`
+    : `הלקוח קיבל מחיר של ${shekels(priceAgorot, 2)} ל${unitLabel}`;
+}
 
 /** ההצעה של הספק עדיין בתוקף (או שלא נקבע לה תוקף) */
 export const isValid = (validUntil: Date | null, now = new Date()) => !validUntil || validUntil >= now;
@@ -117,11 +150,20 @@ export function matchSummary(lines: LineLike[]): MatchSummary {
  * הודעה מוכנה לספק שלא רשום במערכת, לשליחה בוואטסאפ או במייל.
  * בלי שמות של ספקים אחרים.
  */
-export function matchRequestText(businessName: string, lines: MatchCandidate[], unitLabel: (u: string) => string) {
-  const rows = lines.map(
-    (l) =>
-      `• ${l.productName}: משלמים היום ${shekels(l.currentPriceAgorot, 2)} ל${unitLabel(l.unit)}, ` +
-      `מצאנו ${shekels(l.targetPriceAgorot, 2)} (${l.monthlyQuantity} ${unitLabel(l.unit)} בחודש)`,
+export function matchRequestText(
+  businessName: string,
+  lines: MatchCandidate[],
+  unitLabel: (u: string) => string,
+  reveal: MatchReveal = "EXACT",
+  ceilings: Record<string, number> = {},
+) {
+  const rows = lines.map((l) =>
+    reveal === "CEILING"
+      ? `• ${l.productName}: משלמים היום ${shekels(l.currentPriceAgorot, 2)} ל${unitLabel(l.unit)}. ` +
+        `כדי להיות תחרותי המחיר צריך להיות מתחת ל-${shekels(ceilings[l.productId] ?? l.targetPriceAgorot, 2)} ` +
+        `(${l.monthlyQuantity} ${unitLabel(l.unit)} בחודש)`
+      : `• ${l.productName}: משלמים היום ${shekels(l.currentPriceAgorot, 2)} ל${unitLabel(l.unit)}, ` +
+        `מצאנו ${shekels(l.targetPriceAgorot, 2)} (${l.monthlyQuantity} ${unitLabel(l.unit)} בחודש)`,
   );
   return [
     `שלום, כאן ${businessName}.`,

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL } from "@/lib/inquiries";
-import { MATCH_STATUS_LABEL, matchSummary } from "@/lib/matches";
+import { MATCH_STATUS_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
 import { supplierForUser } from "@/lib/supplier/catalog";
 
 export default async function SupplierInquiries() {
@@ -36,7 +36,7 @@ export default async function SupplierInquiries() {
           <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
             {matches.map((m) => {
               const isNew = m.status === "SENT";
-              const sum = matchSummary(m.lines);
+              const sum = matchSummary(m.lines.map((l) => supplierFacing(l, m.reveal)));
               return (
                 <li key={m.id}>
                   <Link

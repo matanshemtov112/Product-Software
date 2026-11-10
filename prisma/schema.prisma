@@ -73,6 +73,14 @@ enum MatchStatus {
 }
 
 /// תשובת הספק לשורה
+/// איך הלקוח בוחר להציג לספק את המחיר שמצא
+enum MatchReveal {
+  /// "הלקוח קיבל מחיר של ₪85": המחיר הזול שנמצא
+  EXACT
+  /// "כדי להיות תחרותי המחיר שלכם צריך להיות מתחת ל-₪88": סף שהלקוח קבע, לא נמוך מהמחיר שנמצא
+  CEILING
+}
+
 enum MatchResponse {
   PENDING
   MATCHED
@@ -521,8 +529,10 @@ model MatchRequest {
   /// פרטי הלקוח ברגע הבקשה (CustomerProfileSnapshot)
   customerProfile Json?
   status          MatchStatus        @default(SENT)
+  /// מה הספק רואה: המחיר שנמצא, או רק סף שצריך לרדת ממנו
+  reveal          MatchReveal        @default(EXACT)
   supplierNote    String?
-  /// עד מתי ההצעה של הספק בתוקף
+  /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
   validUntil      DateTime?
   answeredAt      DateTime?
   createdAt       DateTime           @default(now())
@@ -544,6 +554,8 @@ model MatchRequestLine {
   currentPriceAgorot Int
   /// המחיר הזול שנמצא במערכת, ליחידה
   targetPriceAgorot  Int
+  /// ב-CEILING: הסף שהספק רואה ("מתחת ל-"); לא נמוך מ-targetPriceAgorot. המחיר האמיתי לא נחשף לספק
+  shownPriceAgorot   Int?
   response           MatchResponse @default(PENDING)
   counterPriceAgorot Int?
   decision           MatchDecision @default(PENDING)

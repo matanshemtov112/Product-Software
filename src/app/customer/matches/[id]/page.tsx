@@ -100,6 +100,9 @@ export default async function CustomerMatch({
               : `ההצעה של הספק פגה ב-${validText}. אפשר לשלוח לספק בקשה חדשה.`}
           </p>
         )}
+        {!request.validUntil && request.answeredAt && (
+          <p className="mb-3 text-sm text-muted">הספק לא קבע תוקף להצעה.</p>
+        )}
         {valid && summary.awaitingDecision > 0 && (
           <p className="mb-3 text-sm">
             הספק הציע מחיר ל-{summary.awaitingDecision} מוצרים. אשרו את מה שמתאים לכם, והמחיר יתעדכן בסל שלכם כמחיר שאתם
@@ -120,7 +123,10 @@ export default async function CustomerMatch({
                     </span>
                   </div>
                   <p className="text-sm text-muted">
-                    משלמים {shekels(l.currentPriceAgorot, 2)} · ביקשתם {shekels(l.targetPriceAgorot, 2)}
+                    משלמים {shekels(l.currentPriceAgorot, 2)} ·{" "}
+                    {request.reveal === "CEILING" && l.shownPriceAgorot
+                      ? `הספק ראה "מתחת ל-${shekels(l.shownPriceAgorot, 2)}" (מצאנו ${shekels(l.targetPriceAgorot, 2)})`
+                      : `ביקשתם ${shekels(l.targetPriceAgorot, 2)}`}
                     {price !== null && (
                       <>
                         {" "}

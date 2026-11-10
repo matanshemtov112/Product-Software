@@ -13,7 +13,7 @@ import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
 import { closePrevious } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
-import { VALID_DAYS } from "@/lib/matches";
+import { NO_VALIDITY, VALID_DAYS } from "@/lib/matches";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
 
@@ -523,6 +523,9 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
     const response = String(form.get(`response_${line.id}`) ?? "");
     if (response !== "MATCHED" && response !== "COUNTER" && response !== "DECLINED")
       return { error: `נא לבחור תשובה ל"${line.productName}"` };
+    // ב"מתחת לסף" אין "משווה": הספק לא ראה את המחיר שנמצא
+    if (request.reveal === "CEILING" && response === "MATCHED")
+      return { error: `נא לרשום את המחיר שלכם ל"${line.productName}"` };
     let counter: number | null = null;
     if (response === "COUNTER") {
       counter = parseShekels(form.get(`counter_${line.id}`));
@@ -533,11 +536,11 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
     updates.push(
       db.matchRequestLine.update({
         where: { id: line.id },
-        data: {
-          // הצעה נגדית בדיוק במחיר המבוקש היא השוואה
-          response: counter === line.targetPriceAgorot ? "MATCHED" : response,
-          counterPriceAgorot: counter === line.targetPriceAgorot ? null : counter,
-        },
+        data: (() => {
+          // הצעה נגדית בדיוק במחיר המבוקש היא השוואה. ב"מתחת לסף" הספק לא ראה את המחיר, ולכן ההצעה נשארת שלו
+          const same = request.reveal === "EXACT" && counter === line.targetPriceAgorot;
+          return { response: same ? ("MATCHED" as const) : response, counterPriceAgorot: same ? null : counter };
+        })(),
       }),
     );
   }
@@ -545,9 +548,10 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
     String(form.get("note") ?? "")
       .trim()
       .slice(0, 1000) || null;
+  // תוקף להצעה הוא בחירה של הספק: אפשר גם בלי תוקף
   const days = Number(form.get("validDays"));
-  if (!VALID_DAYS.includes(days)) return { error: "נא לבחור עד מתי ההצעה בתוקף" };
-  const validUntil = new Date(Date.now() + days * 86_400_000);
+  if (days !== NO_VALIDITY && !VALID_DAYS.includes(days)) return { error: "נא לבחור תוקף להצעה, או בלי תוקף" };
+  const validUntil = days === NO_VALIDITY ? null : new Date(Date.now() + days * 86_400_000);
   await db.$transaction([
     ...updates,
     db.matchRequest.update({

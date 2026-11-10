@@ -5,19 +5,77 @@ import { ActionForm } from "@/components/action-form";
 import { FormError } from "@/components/form";
 import { SendToSupplierButton } from "@/components/send-to-supplier";
 import { shekels, UNIT_LABEL } from "@/lib/format";
-import { matchRequestText, type MatchCandidate } from "@/lib/matches";
+import { matchRequestText, suggestedCeiling, validCeiling, type MatchCandidate } from "@/lib/matches";
 import { sendMatchRequest } from "../../../matches/actions";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
+
+type Reveal = "EXACT" | "CEILING";
+
+/** איך המחיר יוצג לספק, והסף לכל מוצר כשבוחרים "מתחת ל-" */
+function useReveal(candidates: MatchCandidate[]) {
+  const [reveal, setReveal] = useState<Reveal>("EXACT");
+  const [ceilings, setCeilings] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      candidates.map((c) => [
+        c.productId,
+        (suggestedCeiling(c.targetPriceAgorot, c.currentPriceAgorot) / 100).toFixed(2),
+      ]),
+    ),
+  );
+  const ceilingAgorot = (id: string) => Math.round(Number(ceilings[id]) * 100);
+  const setCeiling = (id: string, value: string) => setCeilings((prev) => ({ ...prev, [id]: value }));
+  return { reveal, setReveal, ceilings, ceilingAgorot, setCeiling };
+}
+
+function RevealPicker({ reveal, setReveal }: { reveal: Reveal; setReveal: (r: Reveal) => void }) {
+  const option = (value: Reveal, title: string, example: string) => (
+    <label
+      className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm ${reveal === value ? "border-accent bg-accent-soft" : "border-border"}`}
+    >
+      <input
+        type="radio"
+        name="reveal"
+        value={value}
+        checked={reveal === value}
+        onChange={() => setReveal(value)}
+        className="mt-1 accent-accent"
+      />
+      <span>
+        <span className="block font-medium">{title}</span>
+        <span className="block text-xs text-muted">{example}</span>
+      </span>
+    </label>
+  );
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="mb-1 text-sm font-medium">איך להציג לספק את המחיר שמצאתם?</legend>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {option("EXACT", "המחיר שמצאנו", 'הספק רואה: "הלקוח קיבל מחיר של ₪85"')}
+        {option(
+          "CEILING",
+          "רק סף שצריך לרדת ממנו",
+          'הספק רואה: "כדי להיות תחרותי המחיר צריך להיות מתחת ל-₪88". אתם קובעים את הסף, והספק לא יודע מה בדיוק הציעו לכם, אז אולי יוזיל יותר.',
+        )}
+      </div>
+    </fieldset>
+  );
+}
 
 function CandidateList({
   candidates,
   chosen,
   toggle,
+  reveal,
+  ceilings,
+  setCeiling,
 }: {
   candidates: MatchCandidate[];
   chosen: Set<string>;
   toggle: (id: string) => void;
+  reveal: Reveal;
+  ceilings: Record<string, string>;
+  setCeiling: (id: string, value: string) => void;
 }) {
   return (
     <ul className="divide-y divide-border rounded-lg border border-border">
@@ -48,9 +106,52 @@ function CandidateList({
               </span>
             </span>
           </label>
+          {reveal === "CEILING" && chosen.has(c.productId) && (
+            <CeilingInput
+              candidate={c}
+              value={ceilings[c.productId] ?? ""}
+              onChange={(v) => setCeiling(c.productId, v)}
+            />
+          )}
         </li>
       ))}
     </ul>
+  );
+}
+
+function CeilingInput({
+  candidate: c,
+  value,
+  onChange,
+}: {
+  candidate: MatchCandidate;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const agorot = Math.round(Number(value) * 100);
+  const ok = value !== "" && validCeiling(agorot, c.targetPriceAgorot, c.currentPriceAgorot);
+  return (
+    <div className="flex flex-col gap-1 px-3 pb-3 ps-10 text-sm">
+      <label className="flex flex-wrap items-center gap-2">
+        <span className="text-muted">הספק יראה: המחיר צריך להיות מתחת ל-</span>₪
+        <input
+          name={`ceiling_${c.productId}`}
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-24 rounded-md border border-border bg-surface px-2 py-1 text-base outline-none focus:border-accent"
+          dir="ltr"
+          aria-invalid={!ok}
+        />
+        ל{unitLabel(c.unit)}
+      </label>
+      {!ok && (
+        <span className="text-xs text-danger">
+          הסף צריך להיות בין {shekels(c.targetPriceAgorot, 2)} (המחיר שמצאנו) לבין {shekels(c.currentPriceAgorot, 2)}{" "}
+          (מה שאתם משלמים היום).
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -79,10 +180,19 @@ export function MatchForm({
 }) {
   const [state, action, pending] = useActionState(sendMatchRequest, {});
   const { chosen, toggle, saving } = useChosen(candidates);
+  const { reveal, setReveal, ceilings, setCeiling } = useReveal(candidates);
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="key" value={supplierKey} />
-      <CandidateList candidates={candidates} chosen={chosen} toggle={toggle} />
+      <RevealPicker reveal={reveal} setReveal={setReveal} />
+      <CandidateList
+        candidates={candidates}
+        chosen={chosen}
+        toggle={toggle}
+        reveal={reveal}
+        ceilings={ceilings}
+        setCeiling={setCeiling}
+      />
       <p className="text-sm">
         אם {supplierName} ישווה את כל המוצרים שסימנתם, תחסכו עד{" "}
         <strong className="text-accent">{shekels(saving)}</strong> בחודש.
@@ -108,6 +218,7 @@ export function MatchForm({
 /** ספק שלא רשום במערכת: הודעה מוכנה לשליחה בוואטסאפ או להעתקה */
 export function MatchMessage({ businessName, candidates }: { businessName: string; candidates: MatchCandidate[] }) {
   const { chosen, toggle, saving } = useChosen(candidates);
+  const { reveal, setReveal, ceilings, ceilingAgorot, setCeiling } = useReveal(candidates);
   const [copied, setCopied] = useState(false);
   const text = useMemo(
     () =>
@@ -115,8 +226,17 @@ export function MatchMessage({ businessName, candidates }: { businessName: strin
         businessName,
         candidates.filter((c) => chosen.has(c.productId)),
         unitLabel,
+        reveal,
+        Object.fromEntries(
+          candidates.map((c) => {
+            const a = ceilingAgorot(c.productId);
+            // סף לא תקין לא נכנס להודעה: במקומו המחיר שנמצא, שתמיד נכון
+            return [c.productId, validCeiling(a, c.targetPriceAgorot, c.currentPriceAgorot) ? a : c.targetPriceAgorot];
+          }),
+        ),
       ),
-    [businessName, candidates, chosen],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [businessName, candidates, chosen, reveal, ceilings],
   );
   const copy = async () => {
     try {
@@ -129,7 +249,15 @@ export function MatchMessage({ businessName, candidates }: { businessName: strin
   };
   return (
     <div className="flex flex-col gap-4">
-      <CandidateList candidates={candidates} chosen={chosen} toggle={toggle} />
+      <RevealPicker reveal={reveal} setReveal={setReveal} />
+      <CandidateList
+        candidates={candidates}
+        chosen={chosen}
+        toggle={toggle}
+        reveal={reveal}
+        ceilings={ceilings}
+        setCeiling={setCeiling}
+      />
       <p className="text-sm">
         חיסכון של עד <strong className="text-accent">{shekels(saving)}</strong> בחודש אם הספק ישווה את כל המוצרים
         שסימנתם.

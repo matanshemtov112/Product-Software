@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { matchCandidates, matchRequestText, matchSummary, offeredPrice } from "./matches";
+import {
+  matchCandidates,
+  matchRequestText,
+  matchSummary,
+  offeredPrice,
+  revealText,
+  suggestedCeiling,
+  supplierFacing,
+  validCeiling,
+} from "./matches";
 import type { PaidComparisonLine } from "./customer/paid-prices";
 
 const offer = (supplierId: string, price: number) => ({
@@ -76,5 +85,40 @@ describe("matchRequestText", () => {
     expect(text).toContain("₪37.00");
     expect(text).toContain("₪31.90");
     expect(text).not.toContain("s1");
+  });
+});
+
+describe("showing the supplier only a ceiling", () => {
+  it("suggests about 3% above the found price, rounded up, and below what the customer pays", () => {
+    expect(suggestedCeiling(8500, 9500)).toBe(8760);
+    expect(suggestedCeiling(8500, 8600)).toBe(8590);
+    expect(suggestedCeiling(8500, 8505)).toBe(8500);
+  });
+  it("accepts a ceiling only between the found price and today's price", () => {
+    expect(validCeiling(8800, 8500, 9500)).toBe(true);
+    expect(validCeiling(8500, 8500, 9500)).toBe(true);
+    expect(validCeiling(8400, 8500, 9500)).toBe(false);
+    expect(validCeiling(9500, 8500, 9500)).toBe(false);
+  });
+  it("the supplier sees the ceiling, never the found price", () => {
+    const line = { targetPriceAgorot: 8500, shownPriceAgorot: 8800 };
+    expect(supplierFacing(line, "CEILING").targetPriceAgorot).toBe(8800);
+    expect(supplierFacing(line, "EXACT").targetPriceAgorot).toBe(8500);
+    expect(revealText("CEILING", 8800, "ק״ג")).toContain("מתחת ל-₪88.00");
+    expect(revealText("EXACT", 8500, "ק״ג")).toContain("הלקוח קיבל מחיר של ₪85.00");
+  });
+  it("the WhatsApp message uses the ceiling and hides the found price", () => {
+    const c = {
+      productId: "p",
+      productName: "שמן",
+      unit: "LITER",
+      monthlyQuantity: 10,
+      currentPriceAgorot: 9500,
+      targetPriceAgorot: 8500,
+      monthlySavingAgorot: 10000,
+    };
+    const text = matchRequestText("מסעדה", [c], () => "ליטר", "CEILING", { p: 8800 });
+    expect(text).toContain("מתחת ל-₪88.00");
+    expect(text).not.toContain("85.00");
   });
 });

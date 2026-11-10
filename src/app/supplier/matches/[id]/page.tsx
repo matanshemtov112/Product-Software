@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { isCustomerProfile, profileRows } from "@/lib/inquiries";
-import { MATCH_DECISION_LABEL, MATCH_STATUS_LABEL, matchSummary } from "@/lib/matches";
+import { MATCH_DECISION_LABEL, MATCH_STATUS_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { RespondForm } from "./respond-form";
 
@@ -31,8 +31,10 @@ export default async function SupplierMatch({
     await db.matchRequest.update({ where: { id }, data: { status: "READ" } });
     request.status = "READ";
   }
-  const summary = matchSummary(request.lines);
-  const lines = [...request.lines].sort((a, b) => a.productName.localeCompare(b.productName, "he"));
+  // ב"מתחת לסף" הספק רואה רק את הסף שהלקוח קבע, גם בסכומים
+  const facing = request.lines.map((l) => supplierFacing(l, request.reveal));
+  const summary = matchSummary(facing);
+  const lines = [...facing].sort((a, b) => a.productName.localeCompare(b.productName, "he"));
   const decided = lines.filter((l) => l.decision !== "PENDING");
 
   return (
@@ -56,8 +58,17 @@ export default async function SupplierMatch({
 
       <div className="rounded-lg border border-border bg-surface p-4 text-sm">
         <p>
-          הלקוח כבר קונה אצלכם ורוצה להמשיך. הוא מצא במערכת מחירים זולים יותר ל-{lines.length} מוצרים, שחוסכים לו עד{" "}
-          <strong>{shekels(summary.requestedAgorot)}</strong> בחודש. שם הספק שמציע אותם לא נחשף.
+          {request.reveal === "CEILING" ? (
+            <>
+              הלקוח כבר קונה אצלכם ורוצה להמשיך. הוא מצא במערכת מחירים זולים יותר ל-{lines.length} מוצרים. כדי להיות
+              תחרותיים, המחיר שלכם לכל מוצר צריך להיות מתחת לסף שמופיע לידו. שם הספק שמציע אותם לא נחשף.
+            </>
+          ) : (
+            <>
+              הלקוח כבר קונה אצלכם ורוצה להמשיך. הוא מצא במערכת מחירים זולים יותר ל-{lines.length} מוצרים, שחוסכים לו עד{" "}
+              <strong>{shekels(summary.requestedAgorot)}</strong> בחודש. שם הספק שמציע אותם לא נחשף.
+            </>
+          )}
         </p>
         <p className="mt-1 text-muted">
           אפשר להשוות, להציע מחיר אחר או לסרב לכל מוצר. המחיר שתציעו חל על הלקוח הזה בלבד ולא משנה את המחירון שלכם.
@@ -74,6 +85,8 @@ export default async function SupplierMatch({
       <Card title="התשובה שלכם">
         <RespondForm
           requestId={request.id}
+          reveal={request.reveal}
+          validUntil={request.validUntil ? request.validUntil.toISOString() : null}
           note={request.supplierNote}
           answered={request.status === "ANSWERED" || request.status === "CLOSED"}
           lines={lines.map((l) => ({
