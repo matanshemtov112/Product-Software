@@ -2,14 +2,14 @@ import { db } from "@/lib/db";
 import { pricedPerPack, packLabel, packPriceLabel } from "@/lib/pack";
 import type { OfferRow } from "./match";
 
-/** הצעות פעילות למוצרים שזוהו, אצל ספקים מאושרים שמספקים לאזור, עם המחיר במדרגה הבסיסית */
-export async function offersForProducts(names: string[], regionId: string, now = new Date()): Promise<OfferRow[]> {
-  if (names.length === 0) return [];
+/** הצעות פעילות למוצרים שזוהו, אצל הספקים שמגיעים ללקוח, עם המחיר במדרגה הבסיסית */
+export async function offersForProducts(names: string[], supplierIds: string[], now = new Date()): Promise<OfferRow[]> {
+  if (names.length === 0 || supplierIds.length === 0) return [];
   const offers = await db.supplierOffer.findMany({
     where: {
       available: true,
       product: { name: { in: names }, pendingReview: false },
-      supplier: { status: "APPROVED", deliveryZones: { some: { regionId } } },
+      supplierId: { in: supplierIds },
     },
     include: {
       product: { include: { category: true } },

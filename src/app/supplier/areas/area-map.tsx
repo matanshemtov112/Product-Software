@@ -24,7 +24,13 @@ const SELECTED = "#b42318";
 /** חיפוש עיר או כתובת בישראל (OpenStreetMap), לדיוק האזור */
 async function searchPlaces(q: string): Promise<SearchHit[]> {
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.search = new URLSearchParams({ q, format: "json", countrycodes: "il", limit: "6", "accept-language": "he" }).toString();
+  url.search = new URLSearchParams({
+    q,
+    format: "json",
+    countrycodes: "il",
+    limit: "6",
+    "accept-language": "he",
+  }).toString();
   const res = await fetch(url);
   if (!res.ok) return [];
   const hits = (await res.json()) as { display_name: string; lat: string; lon: string }[];
@@ -213,7 +219,12 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
             {canEdit && (
               <button
                 type="button"
-                onClick={() => update(areas.filter((_, i) => i !== selected), null)}
+                onClick={() =>
+                  update(
+                    areas.filter((_, i) => i !== selected),
+                    null,
+                  )
+                }
                 className="rounded-md px-3 py-2 text-sm text-danger hover:bg-accent-soft"
               >
                 מחיקת האזור
@@ -267,7 +278,9 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
         <form action={action} onSubmit={() => setDirty(false)} className="flex items-center gap-4">
           <input type="hidden" name="areas" value={JSON.stringify(areas)} />
           <SubmitButton pending={pending}>שמירת האזורים</SubmitButton>
-          {state.saved && !dirty && <span className="text-sm text-accent">נשמר. ההשוואות מתעדכנות לפי האזורים החדשים.</span>}
+          {state.saved && !dirty && (
+            <span className="text-sm text-accent">נשמר. ההשוואות מתעדכנות לפי האזורים החדשים.</span>
+          )}
           {dirty && <span className="text-sm text-muted">יש שינויים שלא נשמרו</span>}
         </form>
       )}
