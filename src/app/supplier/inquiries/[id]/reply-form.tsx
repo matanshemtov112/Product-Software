@@ -4,16 +4,19 @@ import { useActionState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
 import { PaymentTermsSelect } from "@/components/payment-terms-select";
+import { NO_VALIDITY, VALID_DAYS } from "@/lib/matches";
 import { replyInquiry } from "../../actions";
 
 export function ReplyForm({
   inquiryId,
   hasReply,
   paymentTermsDays,
+  hasValidity,
 }: {
   inquiryId: string;
   hasReply: boolean;
   paymentTermsDays: number | null;
+  hasValidity: boolean;
 }) {
   const [state, action, pending] = useActionState(replyInquiry, {});
   return (
@@ -39,6 +42,21 @@ export function ReplyForm({
           לא נוכל להתאים את המחיר
         </label>
       </fieldset>
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted">תוקף להצעה שלכם (לא חובה)</span>
+        <select
+          name="validDays"
+          defaultValue={hasReply && !hasValidity ? String(NO_VALIDITY) : "30"}
+          className="rounded-md border border-border bg-surface px-2 py-1 text-base outline-none focus:border-accent"
+        >
+          <option value={NO_VALIDITY}>בלי תוקף</option>
+          {VALID_DAYS.map((d) => (
+            <option key={d} value={d}>
+              {d} ימים
+            </option>
+          ))}
+        </select>
+      </label>
       <PaymentTermsSelect defaultValue={paymentTermsDays} />
       <FormError message={state.error} />
       <div>

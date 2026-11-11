@@ -5,7 +5,10 @@ import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { isCustomerProfile, profileRows } from "@/lib/inquiries";
-import { MATCH_DECISION_LABEL, MATCH_STATUS_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
+import { MATCH_DECISION_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
+import { canCancel, matchStage, offerStageNote } from "@/lib/offer-status";
+import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
+import { withdrawOffer } from "../../actions";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { RespondForm } from "./respond-form";
 
@@ -36,6 +39,7 @@ export default async function SupplierMatch({
   const summary = matchSummary(facing);
   const lines = [...facing].sort((a, b) => a.productName.localeCompare(b.productName, "he"));
   const decided = lines.filter((l) => l.decision !== "PENDING");
+  const stage = matchStage(request);
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,10 +49,21 @@ export default async function SupplierMatch({
         </Link>
         <h1 className="text-2xl font-bold">{request.customer.businessName} מבקשים שתשוו מחירים</h1>
         <p className="text-sm text-muted">
-          {request.customer.businessType} · {request.customer.city} · {request.createdAt.toLocaleDateString("he-IL")} ·{" "}
-          {MATCH_STATUS_LABEL[request.status]}
+          {request.customer.businessType} · {request.customer.city} · {request.createdAt.toLocaleDateString("he-IL")}
         </p>
       </div>
+
+      <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", request)}>
+        {canCancel(stage, "SUPPLIER") && (
+          <OfferReasonAction
+            action={withdrawOffer}
+            fields={{ id: request.id, kind: "match" }}
+            label="ביטול ההצעה"
+            confirm="לבטל את ההצעה"
+            placeholder="למה? (לא חובה, הלקוח יראה)"
+          />
+        )}
+      </OfferStatus>
 
       {answered && (
         <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
@@ -82,27 +97,29 @@ export default async function SupplierMatch({
         </Card>
       )}
 
-      <Card title="התשובה שלכם">
-        <RespondForm
-          requestId={request.id}
-          reveal={request.reveal}
-          validUntil={request.validUntil ? request.validUntil.toISOString() : null}
-          paymentTermsDays={request.paymentTermsDays}
-          note={request.supplierNote}
-          answered={request.status === "ANSWERED" || request.status === "CLOSED"}
-          lines={lines.map((l) => ({
-            id: l.id,
-            productName: l.productName,
-            unitLabel: unitLabel(l.unit),
-            monthlyQuantity: l.monthlyQuantity,
-            currentPriceAgorot: l.currentPriceAgorot,
-            targetPriceAgorot: l.targetPriceAgorot,
-            response: l.response,
-            counterPriceAgorot: l.counterPriceAgorot,
-            locked: l.decision !== "PENDING",
-          }))}
-        />
-      </Card>
+      {request.outcome ? null : (
+        <Card title={stage === "EXPIRED" ? "התוקף עבר: אפשר לשלוח הצעה מעודכנת" : "התשובה שלכם"}>
+          <RespondForm
+            requestId={request.id}
+            reveal={request.reveal}
+            validUntil={request.validUntil ? request.validUntil.toISOString() : null}
+            paymentTermsDays={request.paymentTermsDays}
+            note={request.supplierNote}
+            answered={request.status === "ANSWERED" || request.status === "CLOSED"}
+            lines={lines.map((l) => ({
+              id: l.id,
+              productName: l.productName,
+              unitLabel: unitLabel(l.unit),
+              monthlyQuantity: l.monthlyQuantity,
+              currentPriceAgorot: l.currentPriceAgorot,
+              targetPriceAgorot: l.targetPriceAgorot,
+              response: l.response,
+              counterPriceAgorot: l.counterPriceAgorot,
+              locked: l.decision !== "PENDING",
+            }))}
+          />
+        </Card>
+      )}
 
       {decided.length > 0 && (
         <Card title="החלטות הלקוח">

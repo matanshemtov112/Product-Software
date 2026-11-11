@@ -1,13 +1,13 @@
-import { paymentTermsLabel } from "@/lib/terms";
 import { isDealSnapshot } from "@/lib/customer/deals";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { INQUIRY_STATUS_LABEL } from "@/lib/inquiries";
+import { OfferBadge } from "@/components/offer-badge";
+import { canDecide, inquiryStage, matchStage } from "@/lib/offer-status";
 import Link from "next/link";
-import { MATCH_STATUS_LABEL, matchSummary } from "@/lib/matches";
+import { matchSummary } from "@/lib/matches";
 
 export default async function CustomerInquiries({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
   const { sent } = await searchParams;
@@ -40,6 +40,7 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
           <ul className="divide-y divide-border">
             {matches.map((m) => {
               const sum = matchSummary(m.lines);
+              const stage = matchStage(m);
               return (
                 <li key={m.id}>
                   <Link
@@ -47,17 +48,13 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
                     className="flex flex-col gap-1 py-3 text-sm hover:bg-background sm:flex-row sm:items-center sm:justify-between"
                   >
                     <span className="flex flex-wrap items-center gap-2">
-                      {sum.awaitingDecision > 0 && (
-                        <span className="size-2 rounded-full bg-accent" aria-hidden="true" />
-                      )}
+                      {stage === "SENT" && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
                       <span className="font-medium">{m.supplier.companyName}</span>
-                      <span className="rounded bg-background px-2 py-0.5 text-xs text-muted">
-                        {MATCH_STATUS_LABEL[m.status]}
-                      </span>
+                      <OfferBadge stage={stage} />
                     </span>
                     <span className="text-muted">
                       {m.lines.length} מוצרים · {m.createdAt.toLocaleDateString("he-IL")}
-                      {m.status === "SENT" || m.status === "READ"
+                      {!m.answeredAt
                         ? ` · ביקשתם חיסכון של ${shekels(sum.requestedAgorot)} בחודש`
                         : ` · הספק הציע חיסכון של ${shekels(sum.offeredAgorot)} בחודש`}
                     </span>
@@ -73,32 +70,38 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
           <p className="text-sm text-muted">עדיין לא שלחתם פניות. אפשר לפנות לספק מתוך עמוד ההשוואה של סל.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {inquiries.map((i) => (
-              <li key={i.id} className="flex flex-col gap-1 py-3 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-medium">{i.supplier.companyName}</span>
-                  <span className="text-muted">
-                    {i.createdAt.toLocaleDateString("he-IL")} · {INQUIRY_STATUS_LABEL[i.status]}
-                  </span>
-                </div>
-                <p className="text-muted">
-                  {isDealSnapshot(i.deal)
-                    ? `בעקבות מבצע: ${i.deal.productName}, ${i.deal.dealText}`
-                    : `הצעה של ${shekels(i.totalAgorot)} לחודש${i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}`}
-                </p>
-                {i.reply && (
-                  <p className="rounded-md bg-background px-3 py-2">
-                    <span className="text-muted">תשובת הספק: </span>
-                    {i.reply}
-                    {i.paymentTermsDays !== null && (
-                      <span className="block text-muted">
-                        תנאי תשלום שהספק הציע לכם: {paymentTermsLabel(i.paymentTermsDays)}
+            {inquiries.map((i) => {
+              const stage = inquiryStage(i);
+              return (
+                <li key={i.id}>
+                  <Link
+                    href={`/customer/inquiries/${i.id}`}
+                    className="flex flex-col gap-1 py-3 text-sm hover:bg-background"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        {stage === "SENT" && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
+                        <span className="font-medium">{i.supplier.companyName}</span>
+                        <OfferBadge stage={stage} />
                       </span>
+                      <span className="text-muted">{i.createdAt.toLocaleDateString("he-IL")}</span>
+                    </div>
+                    <p className="text-muted">
+                      {isDealSnapshot(i.deal)
+                        ? `בעקבות מבצע: ${i.deal.productName}, ${i.deal.dealText}`
+                        : `הצעה של ${shekels(i.totalAgorot)} לחודש${i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}`}
+                    </p>
+                    {i.reply && (
+                      <p className="truncate rounded-md bg-background px-3 py-2">
+                        <span className="text-muted">תשובת הספק: </span>
+                        {i.reply}
+                      </p>
                     )}
-                  </p>
-                )}
-              </li>
-            ))}
+                    {canDecide(stage) && <span className="text-accent">לפתיחת ההצעה ←</span>}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </Card>

@@ -95,6 +95,13 @@ enum MatchDecision {
   REJECTED
 }
 
+/// מה קרה להצעה של הספק: הלקוח קיבל, דחה, או שאחד הצדדים ביטל
+enum OfferOutcome {
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
 enum NegotiationStatus {
   SENT
   READ
@@ -493,6 +500,17 @@ model NegotiationRequest {
   reply            String?
   /// תנאי תשלום שהספק הציע ללקוח הזה בתשובה (שוטף + ימים, 0 = מזומן); null = לא צוין
   paymentTermsDays Int?
+  /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
+  validUntil       DateTime?
+  /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
+  offerSeenAt      DateTime?
+  /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
+  outcome          OfferOutcome?
+  outcomeAt        DateTime?
+  /// סיבת דחייה או ביטול, לא חובה
+  outcomeNote      String?
+  /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
+  cancelledBy      Role?
   repliedAt        DateTime?
   createdAt        DateTime          @default(now())
 
@@ -544,6 +562,15 @@ model MatchRequest {
   paymentTermsDays Int?
   /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
   validUntil       DateTime?
+  /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
+  offerSeenAt      DateTime?
+  /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
+  outcome          OfferOutcome?
+  outcomeAt        DateTime?
+  /// סיבת דחייה או ביטול, לא חובה
+  outcomeNote      String?
+  /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
+  cancelledBy      Role?
   answeredAt       DateTime?
   createdAt        DateTime           @default(now())
   lines            MatchRequestLine[]
@@ -602,6 +629,9 @@ enum NotificationKind {
   NEW_INQUIRY
   NEW_MATCH_REQUEST
   MATCH_DECIDED
+  OFFER_VIEWED
+  OFFER_DECIDED
+  OFFER_CANCELLED
   MONTHLY_REPORT
   PRICE_APPROVED
   PRICE_REJECTED

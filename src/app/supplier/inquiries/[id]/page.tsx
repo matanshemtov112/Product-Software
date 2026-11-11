@@ -8,7 +8,10 @@ import { isDealSnapshot } from "@/lib/customer/deals";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { INQUIRY_STATUS_LABEL, isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
+import { isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
+import { canCancel, inquiryStage, offerStageNote } from "@/lib/offer-status";
+import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
+import { withdrawOffer } from "../../actions";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { CustomerReviewForm } from "./customer-review-form";
 import { ReplyForm } from "./reply-form";
@@ -39,6 +42,7 @@ export default async function SupplierInquiry({
     inquiry.status = "READ";
   }
   const { customer } = inquiry;
+  const stage = inquiryStage(inquiry);
   const myReview = await db.customerReview.findUnique({
     where: { supplierId_customerId: { supplierId: supplier.id, customerId: customer.id } },
   });
@@ -55,9 +59,21 @@ export default async function SupplierInquiry({
         <h1 className="text-2xl font-bold">פנייה מ{customer.businessName}</h1>
         <p className="text-sm text-muted">
           {customer.businessType} · {customer.city} · {customer.region.name} ·{" "}
-          {inquiry.createdAt.toLocaleDateString("he-IL")} · {INQUIRY_STATUS_LABEL[inquiry.status]}
+          {inquiry.createdAt.toLocaleDateString("he-IL")}
         </p>
       </div>
+
+      <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", inquiry)}>
+        {canCancel(stage, "SUPPLIER") && (
+          <OfferReasonAction
+            action={withdrawOffer}
+            fields={{ id: inquiry.id, kind: "inquiry" }}
+            label="ביטול ההצעה"
+            confirm="לבטל את ההצעה"
+            placeholder="למה? (לא חובה, הלקוח יראה)"
+          />
+        )}
+      </OfferStatus>
 
       <div className="grid gap-4 md:grid-cols-3">
         {deal ? (
@@ -143,16 +159,22 @@ export default async function SupplierInquiry({
         {inquiry.reply && (
           <div className="mb-4 rounded-md bg-background px-3 py-2 text-sm">
             <p className="text-xs text-muted">
-              נשלחה {inquiry.repliedAt?.toLocaleDateString("he-IL")} · {INQUIRY_STATUS_LABEL[inquiry.status]}
+              נשלחה {inquiry.repliedAt?.toLocaleDateString("he-IL")}
+              {inquiry.validUntil && ` · בתוקף עד ${inquiry.validUntil.toLocaleDateString("he-IL")}`}
             </p>
             <p className="whitespace-pre-line">{inquiry.reply}</p>
           </div>
         )}
-        <ReplyForm
-          inquiryId={inquiry.id}
-          hasReply={Boolean(inquiry.reply)}
-          paymentTermsDays={inquiry.paymentTermsDays}
-        />
+        {inquiry.outcome ? (
+          <p className="text-sm text-muted">הפנייה הסתיימה, ואי אפשר לשלוח עליה הצעה חדשה.</p>
+        ) : (
+          <ReplyForm
+            inquiryId={inquiry.id}
+            hasReply={Boolean(inquiry.reply)}
+            paymentTermsDays={inquiry.paymentTermsDays}
+            hasValidity={Boolean(inquiry.validUntil)}
+          />
+        )}
         <p className="mt-3 text-xs text-muted">
           ההזמנה עצמה נעשית ישירות מולכם. אפשר גם לעדכן מחירים ברשימת המוצרים, כך שההשוואות הבאות יציגו אותם.
         </p>

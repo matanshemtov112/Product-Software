@@ -9,7 +9,8 @@ import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { notify } from "@/lib/notifications";
-import { isValid, matchCandidates, offeredPrice, OPEN_MATCH, validCeiling } from "@/lib/matches";
+import { matchCandidates, offeredPrice, OPEN_MATCH, validCeiling } from "@/lib/matches";
+import { canDecide, matchStage } from "@/lib/offer-status";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
 
 export interface MatchFormState {
@@ -105,7 +106,8 @@ export async function decideMatchLine(form: FormData) {
   if (!line || line.decision !== "PENDING") return;
   const price = offeredPrice(line);
   if (price === null) return;
-  if (decision === "ACCEPTED" && !isValid(line.request.validUntil)) return;
+  // אחרי שההצעה פגה, בוטלה או הסתיימה אין יותר החלטות
+  if (!canDecide(matchStage(line.request))) return;
 
   await db.matchRequestLine.update({ where: { id: line.id }, data: { decision, decidedAt: new Date() } });
   const basketId = line.request.basketId;
@@ -120,9 +122,12 @@ export async function decideMatchLine(form: FormData) {
     (l) => l.id !== line.id && l.decision === "PENDING" && offeredPrice(l) !== null,
   );
   if (!pending) {
-    await db.matchRequest.update({ where: { id: line.requestId }, data: { status: "CLOSED" } });
     const lines = line.request.lines.map((l) => (l.id === line.id ? { ...l, decision } : l));
     const accepted = lines.filter((l) => l.decision === "ACCEPTED").length;
+    await db.matchRequest.update({
+      where: { id: line.requestId },
+      data: { status: "CLOSED", outcome: accepted ? "ACCEPTED" : "REJECTED", outcomeAt: new Date() },
+    });
     await notify([
       {
         supplierId: line.request.supplierId,

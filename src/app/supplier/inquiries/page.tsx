@@ -4,8 +4,9 @@ import Link from "next/link";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { INQUIRY_STATUS_LABEL } from "@/lib/inquiries";
-import { MATCH_STATUS_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
+import { OfferBadge } from "@/components/offer-badge";
+import { inquiryStage, matchStage } from "@/lib/offer-status";
+import { matchSummary, supplierFacing } from "@/lib/matches";
 import { supplierForUser } from "@/lib/supplier/catalog";
 
 export default async function SupplierInquiries() {
@@ -46,9 +47,7 @@ export default async function SupplierInquiries() {
                     <div className="flex min-w-0 items-center gap-2">
                       {isNew && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
                       <span className={isNew ? "font-semibold" : "font-medium"}>{m.customer.businessName}</span>
-                      <span className="rounded bg-background px-2 py-0.5 text-xs text-muted">
-                        {MATCH_STATUS_LABEL[m.status]}
-                      </span>
+                      <OfferBadge stage={matchStage(m)} />
                     </div>
                     <div className="flex shrink-0 flex-col text-sm sm:items-end">
                       <span>
@@ -84,9 +83,7 @@ export default async function SupplierInquiries() {
                     <div className="flex items-center gap-2">
                       {isNew && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
                       <span className={isNew ? "font-semibold" : "font-medium"}>{i.customer.businessName}</span>
-                      <span className="rounded bg-background px-2 py-0.5 text-xs text-muted">
-                        {INQUIRY_STATUS_LABEL[i.status]}
-                      </span>
+                      <OfferBadge stage={inquiryStage(i)} />
                     </div>
                     <p className="truncate text-sm text-muted">{i.message}</p>
                   </div>

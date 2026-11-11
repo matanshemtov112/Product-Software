@@ -13,7 +13,8 @@ import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize } from "@/lib/pack";
 import { closePrevious } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
-import { NO_VALIDITY, VALID_DAYS } from "@/lib/matches";
+import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
+import { canCancel, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
 import { parsePaymentTerms } from "@/lib/terms";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
@@ -450,6 +451,16 @@ const replySchema = z.object({
   status: z.enum(["OFFERED", "CLOSED"]),
 });
 
+const NO_MATCH_NOTE = "הספק לא יכול להתאים את המחיר";
+
+/** תוקף שהספק בחר להצעה: תאריך, null כשבחר "בלי תוקף", או undefined כשהערך לא מהרשימה */
+function parseValidDays(value: FormDataEntryValue | null): Date | null | undefined {
+  const days = Number(value ?? NO_VALIDITY);
+  if (days === NO_VALIDITY) return null;
+  if (!VALID_DAYS.includes(days)) return undefined;
+  return new Date(Date.now() + days * 86_400_000);
+}
+
 /** תשובת הספק לפנייה של לקוח; הלקוח רואה אותה ברשימת הפניות שלו */
 export async function replyInquiry(_: FormState, form: FormData): Promise<FormState> {
   const supplier = await currentSupplier();
@@ -458,19 +469,39 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
   const { inquiryId, reply, status } = parsed.data;
   const paymentTermsDays = parsePaymentTerms(form.get("paymentTerms"));
   if (paymentTermsDays === undefined) return { error: "נא לבחור תנאי תשלום מהרשימה" };
-  const { count } = await db.negotiationRequest.updateMany({
-    where: { id: inquiryId, supplierId: supplier.id },
-    data: { reply, status, paymentTermsDays, repliedAt: new Date() },
+  const validUntil = parseValidDays(form.get("validDays"));
+  if (validUntil === undefined) return { error: "נא לבחור תוקף להצעה, או בלי תוקף" };
+  const inquiry = await db.negotiationRequest.findFirst({ where: { id: inquiryId, supplierId: supplier.id } });
+  if (!inquiry) return { error: "הפנייה לא נמצאה" };
+  if (inquiry.outcome) return { error: "הפנייה כבר הסתיימה, ואי אפשר לשלוח עליה הצעה" };
+  const now = new Date();
+  await db.negotiationRequest.update({
+    where: { id: inquiryId },
+    data: {
+      reply,
+      status,
+      paymentTermsDays,
+      validUntil: status === "OFFERED" ? validUntil : null,
+      repliedAt: now,
+      // הצעה מעודכנת עוד לא נצפתה; "לא נוכל להתאים" סוגר את הפנייה
+      offerSeenAt: null,
+      ...(status === "CLOSED"
+        ? {
+            outcome: "CANCELLED" as const,
+            cancelledBy: "SUPPLIER" as const,
+            outcomeAt: now,
+            outcomeNote: NO_MATCH_NOTE,
+          }
+        : {}),
+    },
   });
-  if (!count) return { error: "הפנייה לא נמצאה" };
-  const inquiry = await db.negotiationRequest.findUniqueOrThrow({ where: { id: inquiryId } });
   await notify([
     {
       customerId: inquiry.customerId,
       kind: "SUPPLIER_REPLIED",
       title: `${supplier.companyName} השיב לפנייה שלכם`,
       body: reply.length > 140 ? `${reply.slice(0, 140)}…` : reply,
-      href: "/customer/inquiries",
+      href: `/customer/inquiries/${inquiryId}`,
     },
   ]);
   revalidatePath("/supplier", "layout");
@@ -520,7 +551,7 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
     include: { lines: true },
   });
   if (!request) return { error: "הבקשה לא נמצאה" };
-  if (request.status === "CLOSED") return { error: "הלקוח כבר סגר את הבקשה" };
+  if (request.status === "CLOSED" || request.outcome) return { error: "הבקשה כבר הסתיימה" };
   const updates = [];
   for (const line of request.lines) {
     if (line.decision !== "PENDING") continue;
@@ -553,16 +584,35 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
       .trim()
       .slice(0, 1000) || null;
   // תוקף להצעה הוא בחירה של הספק: אפשר גם בלי תוקף
-  const days = Number(form.get("validDays"));
-  if (days !== NO_VALIDITY && !VALID_DAYS.includes(days)) return { error: "נא לבחור תוקף להצעה, או בלי תוקף" };
-  const validUntil = days === NO_VALIDITY ? null : new Date(Date.now() + days * 86_400_000);
+  const validUntil = parseValidDays(form.get("validDays"));
+  if (validUntil === undefined) return { error: "נא לבחור תוקף להצעה, או בלי תוקף" };
   const paymentTermsDays = parsePaymentTerms(form.get("paymentTerms"));
   if (paymentTermsDays === undefined) return { error: "נא לבחור תנאי תשלום מהרשימה" };
+  // סירוב לכל המוצרים (בלי מחיר שאושר קודם) סוגר את הבקשה כ"בוטלה" מצד הספק
+  const offersAny = request.lines.some((l) =>
+    l.decision === "PENDING" ? String(form.get(`response_${l.id}`)) !== "DECLINED" : offeredPrice(l) !== null,
+  );
+  const now = new Date();
   await db.$transaction([
     ...updates,
     db.matchRequest.update({
       where: { id: request.id },
-      data: { status: "ANSWERED", supplierNote: note, validUntil, paymentTermsDays, answeredAt: new Date() },
+      data: {
+        status: "ANSWERED",
+        supplierNote: note,
+        validUntil,
+        paymentTermsDays,
+        answeredAt: now,
+        offerSeenAt: null,
+        ...(offersAny
+          ? {}
+          : {
+              outcome: "CANCELLED" as const,
+              cancelledBy: "SUPPLIER" as const,
+              outcomeAt: now,
+              outcomeNote: NO_MATCH_NOTE,
+            }),
+      },
     }),
   ]);
   await notify([
@@ -610,4 +660,50 @@ export async function saveTiers(_: FormState, form: FormData): Promise<FormState
   ]);
   revalidatePath("/supplier", "layout");
   return { saved: true };
+}
+
+/** הספק מושך הצעה שהלקוח עוד לא קיבל או דחה (פנייה או בקשת השוואה) */
+export async function withdrawOffer(form: FormData) {
+  const supplier = await currentSupplier();
+  const id = String(form.get("id") ?? "");
+  const isMatch = form.get("kind") === "match";
+  const note = parseOutcomeNote(form.get("note"));
+  const data = {
+    outcome: "CANCELLED" as const,
+    cancelledBy: "SUPPLIER" as const,
+    outcomeAt: new Date(),
+    outcomeNote: note,
+    status: "CLOSED" as const,
+  };
+  if (isMatch) {
+    const request = await db.matchRequest.findFirst({ where: { id, supplierId: supplier.id } });
+    if (!request || !canCancel(matchStage(request), "SUPPLIER")) redirect(`/supplier/matches/${id}`);
+    await db.matchRequest.update({ where: { id }, data });
+    await notify([
+      {
+        customerId: request.customerId,
+        kind: "OFFER_CANCELLED",
+        title: `${supplier.companyName} ביטלו את ההצעה שלהם לבקשת ההשוואה`,
+        body: note ?? undefined,
+        href: `/customer/matches/${id}`,
+        dedupeKey: `offer-cancelled:match:${id}`,
+      },
+    ]);
+  } else {
+    const inquiry = await db.negotiationRequest.findFirst({ where: { id, supplierId: supplier.id } });
+    if (!inquiry || !canCancel(inquiryStage(inquiry), "SUPPLIER")) redirect(`/supplier/inquiries/${id}`);
+    await db.negotiationRequest.update({ where: { id }, data });
+    await notify([
+      {
+        customerId: inquiry.customerId,
+        kind: "OFFER_CANCELLED",
+        title: `${supplier.companyName} ביטלו את ההצעה שלהם`,
+        body: note ?? undefined,
+        href: `/customer/inquiries/${id}`,
+        dedupeKey: `offer-cancelled:inquiry:${id}`,
+      },
+    ]);
+  }
+  revalidatePath("/supplier", "layout");
+  redirect(isMatch ? `/supplier/matches/${id}` : `/supplier/inquiries/${id}`);
 }

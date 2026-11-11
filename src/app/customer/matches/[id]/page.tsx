@@ -6,14 +6,11 @@ import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
-import {
-  isValid,
-  MATCH_DECISION_LABEL,
-  MATCH_RESPONSE_LABEL,
-  MATCH_STATUS_LABEL,
-  matchSummary,
-  offeredPrice,
-} from "@/lib/matches";
+import { MATCH_DECISION_LABEL, MATCH_RESPONSE_LABEL, matchSummary, offeredPrice } from "@/lib/matches";
+import { notify } from "@/lib/notifications";
+import { canCancel, canDecide, matchStage, offerStageNote } from "@/lib/offer-status";
+import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
+import { cancelMatch, rejectMatch } from "../../offers/actions";
 import { decideMatchLine } from "../actions";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
@@ -41,9 +38,26 @@ export default async function CustomerMatch({
     include: { supplier: { select: { companyName: true } }, lines: { orderBy: { productName: "asc" } } },
   });
   if (!request) notFound();
+  // פתיחת תשובה של הספק מסמנת אותה כ"נצפתה", והספק מקבל על זה התראה
+  if (matchStage(request) === "SENT") {
+    request.offerSeenAt = new Date();
+    await db.matchRequest.update({ where: { id }, data: { offerSeenAt: request.offerSeenAt } });
+    await notify([
+      {
+        supplierId: request.supplierId,
+        kind: "OFFER_VIEWED",
+        title: `${customer.businessName} צפו בתשובה שלכם לבקשת ההשוואה`,
+        href: `/supplier/matches/${id}`,
+        dedupeKey: `offer-viewed:match:${id}:${request.answeredAt?.getTime()}`,
+      },
+    ]);
+  }
+  const stage = matchStage(request);
+  const open = canDecide(stage);
   const summary = matchSummary(request.lines);
-  const answered = request.status === "ANSWERED" || request.status === "CLOSED";
-  const valid = isValid(request.validUntil);
+  const answered = Boolean(request.answeredAt);
+  const valid = stage !== "EXPIRED";
+  const anyAccepted = request.lines.some((l) => l.decision === "ACCEPTED");
   const validText = request.validUntil?.toLocaleDateString("he-IL");
 
   return (
@@ -53,11 +67,29 @@ export default async function CustomerMatch({
           → כל הפניות
         </Link>
         <h1 className="text-2xl font-bold">בקשת השוואה מ{request.supplier.companyName}</h1>
-        <p className="text-sm text-muted">
-          נשלחה {request.createdAt.toLocaleDateString("he-IL")} · {MATCH_STATUS_LABEL[request.status]} · המחירים ללא
-          מע״מ
-        </p>
+        <p className="text-sm text-muted">נשלחה {request.createdAt.toLocaleDateString("he-IL")} · המחירים ללא מע״מ</p>
       </div>
+
+      <OfferStatus stage={stage} note={offerStageNote(stage, "CUSTOMER", request)}>
+        {open && summary.awaitingDecision > 0 && (
+          <OfferReasonAction
+            action={rejectMatch}
+            fields={{ id: request.id }}
+            label={anyAccepted ? "דחיית שאר המחירים" : "דחיית כל ההצעה"}
+            confirm="לדחות"
+            placeholder="למה? למשל: המחירים עדיין גבוהים (לא חובה)"
+          />
+        )}
+        {canCancel(stage, "CUSTOMER") && !anyAccepted && (
+          <OfferReasonAction
+            action={cancelMatch}
+            fields={{ id: request.id }}
+            label="ביטול הבקשה"
+            confirm="לבטל את הבקשה"
+            placeholder="למה? (לא חובה)"
+          />
+        )}
+      </OfferStatus>
 
       {sent && (
         <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
@@ -109,7 +141,7 @@ export default async function CustomerMatch({
         {!request.validUntil && request.answeredAt && (
           <p className="mb-3 text-sm text-muted">הספק לא קבע תוקף להצעה.</p>
         )}
-        {valid && summary.awaitingDecision > 0 && (
+        {open && summary.awaitingDecision > 0 && (
           <p className="mb-3 text-sm">
             הספק הציע מחיר ל-{summary.awaitingDecision} מוצרים. אשרו את מה שמתאים לכם, והמחיר יתעדכן בסל שלכם כמחיר שאתם
             משלמים היום.
@@ -143,8 +175,8 @@ export default async function CustomerMatch({
                   </p>
                 </div>
                 {price !== null &&
-                  (l.decision === "PENDING" && !valid ? (
-                    <span className="shrink-0 text-sm text-muted">פג תוקף</span>
+                  (l.decision === "PENDING" && !open ? (
+                    <span className="shrink-0 text-sm text-muted">{valid ? "לא נענה" : "פג תוקף"}</span>
                   ) : l.decision === "PENDING" ? (
                     <form action={decideMatchLine} className="flex shrink-0 gap-2">
                       <input type="hidden" name="lineId" value={l.id} />

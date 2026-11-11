@@ -214,4 +214,7 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   PRICE_APPROVED: "✅",
   PRICE_REJECTED: "⛔",
   ACCOUNT_STATUS: "🏷️",
+  OFFER_VIEWED: "👀",
+  OFFER_DECIDED: "✅",
+  OFFER_CANCELLED: "✖️",
 };
