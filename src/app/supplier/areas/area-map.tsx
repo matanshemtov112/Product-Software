@@ -5,10 +5,14 @@ import type { Circle as LeafletCircle, Map as LeafletMap } from "leaflet";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { FormError, Input, SubmitButton } from "@/components/form";
 import { DEFAULT_RADIUS_KM, ISRAEL_CENTER, MAX_RADIUS_KM, MIN_RADIUS_KM, type Circle } from "@/lib/geo";
+import { areaTermsText, WEEK_DAYS } from "@/lib/terms";
 import { saveDeliveryAreas } from "./actions";
 
 export interface Area extends Circle {
   label: string;
+  deliveryDays?: string | null;
+  orderCutoff?: string | null;
+  deliveryNote?: string | null;
 }
 
 interface SearchHit {
@@ -149,6 +153,8 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
   };
 
   const current = selected !== null ? areas[selected] : null;
+  const setField = (field: "deliveryDays" | "orderCutoff" | "deliveryNote", value: string | null) =>
+    update(areas.map((a, i) => (i === selected ? { ...a, [field]: value } : a)));
 
   return (
     <div className="flex flex-col gap-4">
@@ -247,6 +253,59 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
               dir="ltr"
             />
           </label>
+          <fieldset className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+            <legend className="font-semibold">תנאי אספקה באזור הזה (לא חובה)</legend>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-muted">ימי אספקה:</span>
+              {WEEK_DAYS.map((d) => {
+                const days = current.deliveryDays ? current.deliveryDays.split(",") : [];
+                const on = days.includes(d);
+                return (
+                  <label key={d} className="flex items-center gap-1">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      disabled={!canEdit}
+                      aria-label={`יום ${d}׳`}
+                      onChange={() => {
+                        const next = on ? days.filter((x) => x !== d) : [...days, d];
+                        const ordered = WEEK_DAYS.filter((w) => next.includes(w)).join(",");
+                        setField("deliveryDays", ordered || null);
+                      }}
+                    />
+                    {d}׳
+                  </label>
+                );
+              })}
+            </div>
+            <label className="flex flex-wrap items-center gap-2">
+              <span className="text-muted">הזמנה עד השעה</span>
+              <input
+                type="time"
+                value={current.orderCutoff ?? ""}
+                disabled={!canEdit}
+                onChange={(e) => setField("orderCutoff", e.target.value || null)}
+                className="rounded-md border border-border bg-surface px-2 py-1"
+                dir="ltr"
+                aria-label="שעת סגירת הזמנות"
+              />
+              <span className="text-muted">מגיעה באספקה הבאה</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-muted">הערה ללקוחות באזור (למשל: אספקה עד 12:00)</span>
+              <input
+                value={current.deliveryNote ?? ""}
+                maxLength={120}
+                disabled={!canEdit}
+                onChange={(e) => setField("deliveryNote", e.target.value || null)}
+                className="rounded-md border border-border bg-surface px-3 py-2"
+                aria-label="הערת אספקה"
+              />
+            </label>
+            <p className="text-xs text-muted">
+              הלקוח באזור יראה: {areaTermsText(current) ?? "לא מולאו תנאים, אז יוצגו תנאי האספקה הכלליים מהפרופיל."}
+            </p>
+          </fieldset>
         </div>
       )}
 

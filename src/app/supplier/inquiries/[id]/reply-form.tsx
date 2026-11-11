@@ -3,9 +3,18 @@
 import { useActionState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
+import { PaymentTermsSelect } from "@/components/payment-terms-select";
 import { replyInquiry } from "../../actions";
 
-export function ReplyForm({ inquiryId, hasReply }: { inquiryId: string; hasReply: boolean }) {
+export function ReplyForm({
+  inquiryId,
+  hasReply,
+  paymentTermsDays,
+}: {
+  inquiryId: string;
+  hasReply: boolean;
+  paymentTermsDays: number | null;
+}) {
   const [state, action, pending] = useActionState(replyInquiry, {});
   return (
     <ActionForm action={action} className="flex flex-col gap-3">
@@ -30,6 +39,7 @@ export function ReplyForm({ inquiryId, hasReply }: { inquiryId: string; hasReply
           לא נוכל להתאים את המחיר
         </label>
       </fieldset>
+      <PaymentTermsSelect defaultValue={paymentTermsDays} />
       <FormError message={state.error} />
       <div>
         <SubmitButton pending={pending}>{hasReply ? "שליחת תשובה מעודכנת" : "שליחת התשובה"}</SubmitButton>

@@ -1,3 +1,4 @@
+import { paymentTermsLabel } from "@/lib/terms";
 import { isDealSnapshot } from "@/lib/customer/deals";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
@@ -89,6 +90,11 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
                   <p className="rounded-md bg-background px-3 py-2">
                     <span className="text-muted">תשובת הספק: </span>
                     {i.reply}
+                    {i.paymentTermsDays !== null && (
+                      <span className="block text-muted">
+                        תנאי תשלום שהספק הציע לכם: {paymentTermsLabel(i.paymentTermsDays)}
+                      </span>
+                    )}
                   </p>
                 )}
               </li>

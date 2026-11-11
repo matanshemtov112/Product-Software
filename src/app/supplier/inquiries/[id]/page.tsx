@@ -148,7 +148,11 @@ export default async function SupplierInquiry({
             <p className="whitespace-pre-line">{inquiry.reply}</p>
           </div>
         )}
-        <ReplyForm inquiryId={inquiry.id} hasReply={Boolean(inquiry.reply)} />
+        <ReplyForm
+          inquiryId={inquiry.id}
+          hasReply={Boolean(inquiry.reply)}
+          paymentTermsDays={inquiry.paymentTermsDays}
+        />
         <p className="mt-3 text-xs text-muted">
           ההזמנה עצמה נעשית ישירות מולכם. אפשר גם לעדכן מחירים ברשימת המוצרים, כך שההשוואות הבאות יציגו אותם.
         </p>

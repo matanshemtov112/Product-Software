@@ -8,6 +8,7 @@ import { isManager } from "@/lib/auth/team";
 import { db } from "@/lib/db";
 import { isNearIsrael, MAX_RADIUS_KM, MIN_RADIUS_KM } from "@/lib/geo";
 import { supplierForUser } from "@/lib/supplier/catalog";
+import { normalizeCutoff, normalizeDays } from "@/lib/terms";
 
 /** מספר העיגולים המרבי לספק: מספיק לכיסוי מדויק של כל הארץ */
 const MAX_AREAS = 30;
@@ -19,6 +20,20 @@ const areasSchema = z
       lat: z.number().finite(),
       lng: z.number().finite(),
       radiusKm: z.number().min(MIN_RADIUS_KM).max(MAX_RADIUS_KM),
+      deliveryDays: z
+        .string()
+        .nullish()
+        .transform((v) => normalizeDays((v ?? "").split(","))),
+      orderCutoff: z
+        .string()
+        .nullish()
+        .transform((v) => normalizeCutoff(v)),
+      deliveryNote: z
+        .string()
+        .trim()
+        .max(120, "הערת האספקה ארוכה מדי")
+        .nullish()
+        .transform((v) => v || null),
     }),
   )
   .max(MAX_AREAS, `אפשר לסמן עד ${MAX_AREAS} אזורים`);

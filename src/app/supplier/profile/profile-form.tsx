@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionForm } from "@/components/action-form";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { updateProfile } from "../actions";
 
@@ -17,6 +17,7 @@ export function ProfileForm({
     contactEmail: string;
     minOrder: number;
     paymentTermsDays: number;
+    paymentTermsPerCustomer: boolean;
     description: string;
     openingHours: string;
     deliveryTerms: string;
@@ -24,6 +25,7 @@ export function ProfileForm({
   };
 }) {
   const [state, action, pending] = useActionState(updateProfile, {});
+  const [perCustomer, setPerCustomer] = useState(initial.paymentTermsPerCustomer);
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-4">
@@ -72,17 +74,50 @@ export function ProfileForm({
         <Field label="מינימום הזמנה לאספקה (₪, ללא מע״מ)">
           <Input name="minOrder" type="number" step="1" min="0" defaultValue={initial.minOrder} dir="ltr" />
         </Field>
-        <Field label="תנאי תשלום (שוטף + ימים)">
-          <Input
-            name="paymentTermsDays"
-            type="number"
-            step="1"
-            min="0"
-            max="180"
-            defaultValue={initial.paymentTermsDays}
-            dir="ltr"
-          />
-        </Field>
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="font-medium">תנאי תשלום</span>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="paymentTermsMode"
+              value="fixed"
+              checked={!perCustomer}
+              onChange={() => setPerCustomer(false)}
+              className="accent-accent"
+            />
+            קבועים לכל הלקוחות: שוטף +
+            <input
+              name="paymentTermsDays"
+              type="number"
+              step="1"
+              min="0"
+              max="180"
+              defaultValue={initial.paymentTermsDays}
+              disabled={perCustomer}
+              className="w-20 rounded-md border border-border bg-surface px-2 py-1 text-base outline-none focus:border-accent disabled:opacity-50"
+              aria-label="שוטף + ימים"
+              dir="ltr"
+            />
+            ימים
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="paymentTermsMode"
+              value="perCustomer"
+              checked={perCustomer}
+              onChange={() => setPerCustomer(true)}
+              className="accent-accent"
+            />
+            נקבעים מול כל לקוח
+          </label>
+          <span className="text-xs text-muted">
+            {perCustomer
+              ? "הלקוחות יראו \"נקבעים מול כל לקוח\". את התנאים ללקוח מסוים בוחרים כשעונים לפנייה שלו."
+              : "0 ימים = מזומן או תשלום בעת האספקה. אפשר לתת ללקוח מסוים תנאים אחרים כשעונים לפנייה שלו."}
+          </span>
+          {perCustomer && <input type="hidden" name="paymentTermsDays" value={initial.paymentTermsDays} />}
+        </div>
       </div>
       <Field label="תנאי אספקה">
         <textarea

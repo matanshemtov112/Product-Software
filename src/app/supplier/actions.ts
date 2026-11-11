@@ -14,6 +14,7 @@ import { nominalPackSize } from "@/lib/pack";
 import { closePrevious } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
 import { NO_VALIDITY, VALID_DAYS } from "@/lib/matches";
+import { parsePaymentTerms } from "@/lib/terms";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
 
@@ -411,6 +412,7 @@ export async function updateProfile(_: FormState, form: FormData): Promise<FormS
       contactEmail: d.contactEmail || null,
       minOrderAgorot: Math.round(d.minOrder * 100),
       paymentTermsDays: d.paymentTermsDays,
+      paymentTermsPerCustomer: form.get("paymentTermsMode") === "perCustomer",
     },
   });
   revalidatePath("/supplier", "layout");
@@ -454,9 +456,11 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
   const parsed = replySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { inquiryId, reply, status } = parsed.data;
+  const paymentTermsDays = parsePaymentTerms(form.get("paymentTerms"));
+  if (paymentTermsDays === undefined) return { error: "נא לבחור תנאי תשלום מהרשימה" };
   const { count } = await db.negotiationRequest.updateMany({
     where: { id: inquiryId, supplierId: supplier.id },
-    data: { reply, status, repliedAt: new Date() },
+    data: { reply, status, paymentTermsDays, repliedAt: new Date() },
   });
   if (!count) return { error: "הפנייה לא נמצאה" };
   const inquiry = await db.negotiationRequest.findUniqueOrThrow({ where: { id: inquiryId } });
@@ -552,11 +556,13 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
   const days = Number(form.get("validDays"));
   if (days !== NO_VALIDITY && !VALID_DAYS.includes(days)) return { error: "נא לבחור תוקף להצעה, או בלי תוקף" };
   const validUntil = days === NO_VALIDITY ? null : new Date(Date.now() + days * 86_400_000);
+  const paymentTermsDays = parsePaymentTerms(form.get("paymentTerms"));
+  if (paymentTermsDays === undefined) return { error: "נא לבחור תנאי תשלום מהרשימה" };
   await db.$transaction([
     ...updates,
     db.matchRequest.update({
       where: { id: request.id },
-      data: { status: "ANSWERED", supplierNote: note, validUntil, answeredAt: new Date() },
+      data: { status: "ANSWERED", supplierNote: note, validUntil, paymentTermsDays, answeredAt: new Date() },
     }),
   ]);
   await notify([

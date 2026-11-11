@@ -87,6 +87,7 @@ export default async function SupplierMatch({
           requestId={request.id}
           reveal={request.reveal}
           validUntil={request.validUntil ? request.validUntil.toISOString() : null}
+          paymentTermsDays={request.paymentTermsDays}
           note={request.supplierNote}
           answered={request.status === "ANSWERED" || request.status === "CLOSED"}
           lines={lines.map((l) => ({

@@ -169,41 +169,43 @@ model Customer {
 }
 
 model Supplier {
-  id               String               @id @default(cuid())
-  companyName      String
-  companyNumber    String               @unique // ח.פ.
-  status           SupplierStatus       @default(PENDING)
-  minOrderAgorot   Int                  @default(0)
-  paymentTermsDays Int                  @default(30) // שוטף + X
-  reliability      Float                @default(0.9) // 0 עד 1
-  contactPhone     String?
-  contactEmail     String?
+  id                      String               @id @default(cuid())
+  companyName             String
+  companyNumber           String               @unique // ח.פ.
+  status                  SupplierStatus       @default(PENDING)
+  minOrderAgorot          Int                  @default(0)
+  paymentTermsDays        Int                  @default(30) // שוטף + X
+  /// תנאי התשלום נקבעים מול כל לקוח: הלקוחות לא רואים את paymentTermsDays אלא "נקבעים מול כל לקוח"
+  paymentTermsPerCustomer Boolean              @default(false)
+  reliability             Float                @default(0.9) // 0 עד 1
+  contactPhone            String?
+  contactEmail            String?
   /// תיאור קצר של הספק, מוצג ללקוחות
-  description      String?
+  description             String?
   /// שעות פעילות, טקסט חופשי (למשל "א-ה 06:00-14:00")
-  openingHours     String?
+  openingHours            String?
   /// תנאי אספקה, טקסט חופשי (למשל "הזמנה עד 14:00, אספקה למחרת")
-  deliveryTerms    String?
-  logo             SupplierLogo?
-  views            SupplierView[]
-  notifications    Notification[]
+  deliveryTerms           String?
+  logo                    SupplierLogo?
+  views                   SupplierView[]
+  notifications           Notification[]
   /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
-  allCategories    Boolean              @default(false)
+  allCategories           Boolean              @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
-  categoriesSetAt  DateTime?
-  users            User[]
-  categories       SupplierCategory[]
-  deliveryZones    DeliveryZone[]
+  categoriesSetAt         DateTime?
+  users                   User[]
+  categories              SupplierCategory[]
+  deliveryZones           DeliveryZone[]
   /// אזורי החלוקה שהספק סימן על המפה; כשיש כאלה הם קובעים לאן הוא מגיע (במקום האזורים הכלליים)
-  deliveryAreas    DeliveryArea[]
-  priceTiers       PriceTier[]
-  offers           SupplierOffer[]
-  reviews          Review[]
-  customerReviews  CustomerReview[]
-  negotiations     NegotiationRequest[]
-  matchRequests    MatchRequest[]
-  currentBaskets   Basket[]
-  createdAt        DateTime             @default(now())
+  deliveryAreas           DeliveryArea[]
+  priceTiers              PriceTier[]
+  offers                  SupplierOffer[]
+  reviews                 Review[]
+  customerReviews         CustomerReview[]
+  negotiations            NegotiationRequest[]
+  matchRequests           MatchRequest[]
+  currentBaskets          Basket[]
+  createdAt               DateTime             @default(now())
 }
 
 model DeliveryZone {
@@ -213,7 +215,7 @@ model DeliveryZone {
   regionId        String
   region          Region   @relation(fields: [regionId], references: [id])
   // אין דמי משלוח: המשלוח תמיד חינם, ויש רק מינימום הזמנה. השדות נשארים לתאימות ותמיד 0 / ריק
-  feeAgorot       Int  @default(0)
+  feeAgorot       Int      @default(0)
   freeAboveAgorot Int?
   deliveryDays    String // למשל "א,ג,ה"
 
@@ -222,15 +224,19 @@ model DeliveryZone {
 
 /// אזור חלוקה שהספק סימן על המפה: עיגול סביב נקודה, ברדיוס בק״מ
 model DeliveryArea {
-  id         String   @id @default(cuid())
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   /// שם לתצוגה, למשל העיר שבמרכז העיגול
-  label      String
-  lat        Float
-  lng        Float
-  radiusKm   Float
-  createdAt  DateTime @default(now())
+  label        String
+  lat          Float
+  lng          Float
+  radiusKm     Float
+  /// תנאי האספקה באזור הזה: ימי אספקה ("א,ג,ה"), שעת סגירת הזמנות ("14:00") והערה
+  deliveryDays String?
+  orderCutoff  String?
+  deliveryNote String?
+  createdAt    DateTime @default(now())
 
   @@index([supplierId])
 }
@@ -272,11 +278,11 @@ model Product {
 }
 
 model SupplierOffer {
-  id                  String       @id @default(cuid())
+  id                  String        @id @default(cuid())
   supplierId          String
-  supplier            Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier            Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   productId           String
-  product             Product      @relation(fields: [productId], references: [id])
+  product             Product       @relation(fields: [productId], references: [id])
   supplierSku         String?
   /// השם שהספק נותן למוצר (כמו בחשבונית שלו); הלקוחות מוצאים את המוצר גם בשם הזה
   supplierProductName String?
@@ -287,12 +293,12 @@ model SupplierOffer {
   /// במשקל משתנה (למשל קרטון אנטריקוט 15–20 ק״ג): המשקל הגבוה
   packSizeMax         Float?
   /// כמות מינימלית להזמנה ביחידות בסיס
-  minQuantity         Float        @default(0)
+  minQuantity         Float         @default(0)
   /// כמות מינימלית להזמנה באריזות (למשל 2 קרטונים); גובר על minQuantity כשמוגדר
   minPacks            Int?
   /// הספק מזין מחיר לאריזה (למשל לפח 4 ליטר); נשמר תמיד כמחיר ליחידת בסיס
-  pricePerPack        Boolean      @default(false)
-  available           Boolean      @default(true)
+  pricePerPack        Boolean       @default(false)
+  available           Boolean       @default(true)
   prices              OfferPrice[]
   image               OfferImage?
   quantityDeal        QuantityDeal?
@@ -466,27 +472,29 @@ model CustomerReview {
 }
 
 model NegotiationRequest {
-  id              String            @id @default(cuid())
-  customerId      String
-  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId      String
-  supplier        Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  runId           String?
-  run             OptimizationRun?  @relation(fields: [runId], references: [id])
-  gapAgorot       Int // פער מול החלופה הזולה; בלי שם המתחרה
+  id               String            @id @default(cuid())
+  customerId       String
+  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId       String
+  supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId            String?
+  run              OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot        Int // פער מול החלופה הזולה; בלי שם המתחרה
   /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
-  quote           Json?
+  quote            Json?
   /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
-  customerProfile Json?
+  customerProfile  Json?
   /// פנייה בעקבות מבצע (DealInquirySnapshot): המוצר, המבצע והכמות שהלקוח רוצה
-  deal            Json?
+  deal             Json?
   /// סה"כ ההצעה של הספק, כולל משלוח
-  totalAgorot     Int               @default(0)
-  message         String
-  status          NegotiationStatus @default(SENT)
-  reply           String?
-  repliedAt       DateTime?
-  createdAt       DateTime          @default(now())
+  totalAgorot      Int               @default(0)
+  message          String
+  status           NegotiationStatus @default(SENT)
+  reply            String?
+  /// תנאי תשלום שהספק הציע ללקוח הזה בתשובה (שוטף + ימים, 0 = מזומן); null = לא צוין
+  paymentTermsDays Int?
+  repliedAt        DateTime?
+  createdAt        DateTime          @default(now())
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])
@@ -518,25 +526,27 @@ model Subscription {
 /// "בקש מהספק שלי להשוות": הלקוח מבקש מהספק הנוכחי שלו להשוות מחירים למחיר הזול במערכת.
 /// שם הספק המתחרה לא נשמר ולא מוצג לספק.
 model MatchRequest {
-  id              String             @id @default(cuid())
-  customerId      String
-  customer        Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId      String
-  supplier        Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id               String             @id @default(cuid())
+  customerId       String
+  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId       String
+  supplier         Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   /// הסל שממנו נלקחו הכמויות והמחירים; אישור מחיר מעדכן בו את "המחיר היום"
-  basketId        String?
-  message         String?
+  basketId         String?
+  message          String?
   /// פרטי הלקוח ברגע הבקשה (CustomerProfileSnapshot)
-  customerProfile Json?
-  status          MatchStatus        @default(SENT)
+  customerProfile  Json?
+  status           MatchStatus        @default(SENT)
   /// מה הספק רואה: המחיר שנמצא, או רק סף שצריך לרדת ממנו
-  reveal          MatchReveal        @default(EXACT)
-  supplierNote    String?
+  reveal           MatchReveal        @default(EXACT)
+  supplierNote     String?
+  /// תנאי תשלום שהספק הציע ללקוח הזה (שוטף + ימים, 0 = מזומן); null = לא צוין
+  paymentTermsDays Int?
   /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
-  validUntil      DateTime?
-  answeredAt      DateTime?
-  createdAt       DateTime           @default(now())
-  lines           MatchRequestLine[]
+  validUntil       DateTime?
+  answeredAt       DateTime?
+  createdAt        DateTime           @default(now())
+  lines            MatchRequestLine[]
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
-import { servesCustomer, type Point } from "@/lib/geo";
+import { distanceKm, servesCustomer, type Point } from "@/lib/geo";
+import { areaTermsText } from "@/lib/terms";
 import { geocodeCity } from "@/lib/geocode";
 
 export interface CoverageCustomer {
@@ -46,4 +47,26 @@ export async function servingSupplierIds(customer: CoverageCustomer): Promise<st
       ),
     )
     .map((s) => s.id);
+}
+
+/**
+ * תנאי האספקה של ספק ללקוח: לפי אזור החלוקה על המפה שהעסק נמצא בו (הקטן ביותר אם יש כמה),
+ * ואם לאזור אין תנאים או שהלקוח לא אותר, תנאי האספקה הכלליים של הספק.
+ */
+export async function deliveryTermsFor(
+  supplierId: string,
+  customer: CoverageCustomer,
+  general: string | null,
+): Promise<string | null> {
+  const point = await customerPoint(customer);
+  if (point) {
+    const areas = await db.deliveryArea.findMany({ where: { supplierId } });
+    const inside = areas
+      .filter((a) => distanceKm(a, point) <= a.radiusKm)
+      .sort((a, b) => a.radiusKm - b.radiusKm)
+      .map((a) => areaTermsText(a))
+      .find((t) => t !== null);
+    if (inside) return inside;
+  }
+  return general;
 }

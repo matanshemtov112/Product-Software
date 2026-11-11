@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
 import { shekels } from "@/lib/format";
 import { NO_VALIDITY, revealText, VALID_DAYS } from "@/lib/matches";
+import { PaymentTermsSelect } from "@/components/payment-terms-select";
 import { respondMatch } from "../../actions";
 
 export interface RespondLine {
@@ -89,6 +90,7 @@ export function RespondForm({
   requestId,
   reveal,
   validUntil,
+  paymentTermsDays,
   lines,
   note,
   answered,
@@ -97,6 +99,7 @@ export function RespondForm({
   reveal: "EXACT" | "CEILING";
   /** התוקף שהספק כבר נתן (ISO), או null */
   validUntil: string | null;
+  paymentTermsDays: number | null;
   lines: RespondLine[];
   note: string | null;
   answered: boolean;
@@ -125,6 +128,7 @@ export function RespondForm({
           ))}
         </select>
       </label>
+      <PaymentTermsSelect defaultValue={paymentTermsDays} />
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted">הודעה ללקוח (לא חובה)</span>
         <textarea

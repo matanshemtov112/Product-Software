@@ -9,6 +9,8 @@ import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INQUIRY_STATUS_LABEL, OPEN_INQUIRY, profileRows } from "@/lib/inquiries";
 import { supplierLogoUrl } from "@/lib/supplier/logo";
+import { deliveryTermsFor } from "@/lib/coverage";
+import { publicPaymentTerms } from "@/lib/terms";
 import { InquiryForm } from "./inquiry-form";
 
 export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
@@ -27,11 +29,14 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
       openingHours: true,
       deliveryTerms: true,
       paymentTermsDays: true,
+      paymentTermsPerCustomer: true,
       minOrderAgorot: true,
       logo: { select: { updatedAt: true } },
     },
   });
   const logoUrl = about ? supplierLogoUrl(supplierId, about.logo) : null;
+  // תנאי האספקה באזור של הלקוח (לפי המפה של הספק), ואם אין, התנאים הכלליים
+  const deliveryTerms = about ? await deliveryTermsFor(supplierId, customer, about.deliveryTerms) : null;
   const paidLines = row.snapshot.lines.filter((l) => l.customerPaidAgorot != null);
   const cheaperToday = paidLines.filter((l) => l.customerPaidAgorot! < l.unitPriceAgorot);
   const cheaperHere = paidLines.filter((l) => l.customerPaidAgorot! > l.unitPriceAgorot);
@@ -85,9 +90,9 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
               {(
                 [
                   ["שעות פעילות", about.openingHours],
-                  ["תנאי אספקה", about.deliveryTerms],
+                  ["תנאי אספקה", deliveryTerms],
                   ["מינימום הזמנה", about.minOrderAgorot ? shekels(about.minOrderAgorot) : "אין"],
-                  ["תנאי תשלום", `שוטף + ${about.paymentTermsDays}`],
+                  ["תנאי תשלום", publicPaymentTerms(about)],
                 ] as const
               )
                 .filter(([, v]) => v)

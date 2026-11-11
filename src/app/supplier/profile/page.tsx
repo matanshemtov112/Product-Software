@@ -48,6 +48,7 @@ export default async function SupplierProfile() {
             contactEmail: supplier.contactEmail ?? "",
             minOrder: supplier.minOrderAgorot / 100,
             paymentTermsDays: supplier.paymentTermsDays,
+            paymentTermsPerCustomer: supplier.paymentTermsPerCustomer,
             description: supplier.description ?? "",
             openingHours: supplier.openingHours ?? "",
             deliveryTerms: supplier.deliveryTerms ?? "",

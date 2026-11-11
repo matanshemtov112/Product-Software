@@ -1,3 +1,4 @@
+import { paymentTermsLabel } from "@/lib/terms";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -86,9 +87,14 @@ export default async function CustomerMatch({
         </div>
       </div>
 
-      {request.supplierNote && (
+      {(request.supplierNote || request.paymentTermsDays !== null) && (
         <Card title="הודעה מהספק">
-          <p className="whitespace-pre-line text-sm">{request.supplierNote}</p>
+          {request.supplierNote && <p className="whitespace-pre-line text-sm">{request.supplierNote}</p>}
+          {request.paymentTermsDays !== null && (
+            <p className="mt-1 text-sm text-muted">
+              תנאי תשלום שהספק הציע לכם: {paymentTermsLabel(request.paymentTermsDays)}
+            </p>
+          )}
         </Card>
       )}
 
