@@ -100,6 +100,11 @@ export function SupplierSidebar({
             </Link>
           </li>
           <li>
+            <Link href="/supplier/verification" className={item(pathname === "/supplier/verification")}>
+              אימות החשבון
+            </Link>
+          </li>
+          <li>
             <Link href="/supplier/team" className={item(pathname === "/supplier/team")}>
               משתמשים
             </Link>

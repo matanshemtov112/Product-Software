@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -54,6 +55,7 @@ export default async function DealPage({ params }: { params: Promise<{ offerId: 
         <h1 className="text-2xl font-bold">
           <SaleMark />
           {deal.productName} · {deal.supplierName}
+          <VerifiedBadge supplierId={deal.supplierId} />
         </h1>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

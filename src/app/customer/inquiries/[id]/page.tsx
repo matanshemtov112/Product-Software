@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -50,7 +51,10 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
         <Link href="/customer/inquiries" className="text-sm text-muted hover:text-foreground">
           → כל הפניות
         </Link>
-        <h1 className="text-2xl font-bold">פנייה ל{inquiry.supplier.companyName}</h1>
+        <h1 className="text-2xl font-bold">
+          פנייה ל{inquiry.supplier.companyName}
+          <VerifiedBadge supplierId={inquiry.supplierId} />
+        </h1>
         <p className="text-sm text-muted">נשלחה {inquiry.createdAt.toLocaleDateString("he-IL")} · המחירים ללא מע״מ</p>
       </div>
 

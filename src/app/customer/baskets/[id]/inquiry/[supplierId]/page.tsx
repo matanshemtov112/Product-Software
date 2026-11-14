@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -67,7 +68,10 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         <Link href={`/customer/baskets/${basket.id}`} className="text-sm text-muted hover:text-foreground">
           → חזרה להשוואה
         </Link>
-        <h1 className="text-2xl font-bold">פנייה ל{row.supplierName}</h1>
+        <h1 className="text-2xl font-bold">
+          פנייה ל{row.supplierName}
+          <VerifiedBadge supplierId={row.supplierId} />
+        </h1>
         <p className="text-sm text-muted">
           הספק יקבל את ההצעה, ההודעה שלכם וכל הפרטים שמסרתם בהרשמה ובסל
           {paidLines.length ? ", כולל המחירים שאתם משלמים היום" : ""}. שם הספק המתחרה ושם הספק הנוכחי שלכם לא נחשפים.

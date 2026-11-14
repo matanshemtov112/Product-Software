@@ -193,6 +193,13 @@ model Supplier {
   /// האמינות לפני ההורדה בשלב 3, כדי להחזיר אותה כשהשלב יורד
   reliabilityBeforePenalty Float?
   priceViolations          PriceViolationReport[]
+  /// מפעל שמייצר בעצמו: נדרשים גם רישיון יצרן ואישור משרד הבריאות
+  isManufacturer           Boolean                @default(false)
+  /// מתי כל המסמכים הנדרשים אושרו; null = טרם אומת
+  verifiedAt               DateTime?
+  /// עד מתי האימות בתוקף (התוקף הקרוב של המסמכים); null = בלי תוקף
+  verifiedUntil            DateTime?
+  documents                SupplierDocument[]
   contactPhone             String?
   contactEmail             String?
   /// תיאור קצר של הספק, מוצג ללקוחות
@@ -645,6 +652,7 @@ enum NotificationKind {
   PRICE_REJECTED
   ACCOUNT_STATUS
   PRICE_VIOLATION
+  VERIFICATION
 }
 
 /// התראה במערכת ללקוח או לספק
@@ -758,4 +766,41 @@ model PriceViolationReport {
   @@index([supplierId, createdAt])
   @@index([status, createdAt])
   @@index([customerId, supplierId, productId, createdAt])
+}
+
+enum DocumentKind {
+  /// תעודת עוסק מורשה / תעודת התאגדות
+  BUSINESS_LICENSE
+  /// רישיון יצרן (רק למפעלים)
+  MANUFACTURER_LICENSE
+  /// אישור משרד הבריאות (רק למפעלים)
+  HEALTH_LICENSE
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// מסמך שהספק העלה לאימות. מסמך אחד מכל סוג; העלאה חדשה מחליפה את הקודם וחוזרת לבדיקה
+model SupplierDocument {
+  id           String         @id @default(cuid())
+  supplierId   String
+  supplier     Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  kind         DocumentKind
+  fileName     String
+  data         Bytes
+  contentType  String
+  size         Int
+  /// תוקף המסמך כפי שהספק מסר (ואפשר לתקן בבדיקה); null = בלי תוקף
+  validUntil   DateTime?
+  status       DocumentStatus @default(PENDING)
+  rejectReason String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([supplierId, kind])
+  @@index([status, updatedAt])
 }

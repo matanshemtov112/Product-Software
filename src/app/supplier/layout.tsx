@@ -7,6 +7,7 @@ import { categoryCounts, supplierForUser } from "@/lib/supplier/catalog";
 import { DomainPicker } from "./domain-picker";
 import { SupplierSidebar } from "./sidebar";
 import { ViolationNotice } from "./violation-notice";
+import { isVerified } from "@/lib/verification";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,15 @@ export default async function SupplierLayout({ children }: { children: React.Rea
               סמנו אותם על המפה
             </Link>{" "}
             כדי שלקוחות באזורים שלכם יראו אתכם בהשוואות.
+          </p>
+        )}
+        {!isVerified(supplier) && (
+          <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm">
+            ללקוחות אתם מופיעים כרגע עם ״טרם אומת״.{" "}
+            <Link href="/supplier/verification" className="font-medium text-accent underline">
+              העלו את המסמכים לאימות
+            </Link>{" "}
+            כדי לקבל את התגית ״ספק מאומת ✓״.
           </p>
         )}
         {children}

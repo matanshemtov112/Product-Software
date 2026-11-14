@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Stars } from "@/components/stars";
@@ -30,7 +31,8 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
         <div>
           <h1 className="text-2xl font-bold">מתחרים לספק שלי</h1>
           <p className="text-sm text-muted">
-            בחרו את הספק שאתם עובדים איתו היום, ונראה לכם אילו ספקים באזור {customer.region.name} מוכרים את אותם מוצרים ובכמה.
+            בחרו את הספק שאתם עובדים איתו היום, ונראה לכם אילו ספקים באזור {customer.region.name} מוכרים את אותם מוצרים
+            ובכמה.
           </p>
         </div>
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -40,7 +42,10 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                 href={`?supplier=${s.id}`}
                 className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4 hover:border-accent"
               >
-                <span className="font-medium">{s.companyName}</span>
+                <span className="font-medium">
+                  {s.companyName}
+                  <VerifiedBadge supplierId={s.id} />
+                </span>
                 <span className="text-sm text-muted">
                   {s._count.offers} מוצרים · {domains(s)}
                 </span>
@@ -65,7 +70,10 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
       _count: true,
     }),
   ]);
-  const competitors = findCompetitors(mine, lists.filter((l) => l !== null));
+  const competitors = findCompetitors(
+    mine,
+    lists.filter((l) => l !== null),
+  );
   const info = new Map(others.map((s) => [s.id, s]));
   const rating = new Map(ratings.map((r) => [r.supplierId, r]));
 
@@ -104,11 +112,14 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                 <div>
                   <p className="font-semibold">
                     {index + 1}. {c.supplierName}
+                    <VerifiedBadge supplierId={c.supplierId} />
                   </p>
                   <p className="text-xs text-muted">{domains(s)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-sm">
-                  <span className={c.avgDiffPct < 0 ? "font-semibold text-accent" : "text-muted"}>{pct(c.avgDiffPct)}</span>
+                  <span className={c.avgDiffPct < 0 ? "font-semibold text-accent" : "text-muted"}>
+                    {pct(c.avgDiffPct)}
+                  </span>
                   {avg ? (
                     <span className="flex items-center gap-1 text-xs text-muted">
                       <Stars value={avg} size={13} /> {avg.toFixed(1)}
@@ -147,7 +158,9 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                             {shekels(l.competitorAgorot, 2)} / {unit}
                           </td>
                           <td className={`py-1.5 ${diff < 0 ? "font-medium text-accent" : "text-muted"}`}>
-                            <bdi dir="ltr">{diff === 0 ? "—" : `${diff < 0 ? "−" : "+"}${shekels(Math.abs(diff), 2)}`}</bdi>
+                            <bdi dir="ltr">
+                              {diff === 0 ? "—" : `${diff < 0 ? "−" : "+"}${shekels(Math.abs(diff), 2)}`}
+                            </bdi>
                           </td>
                         </tr>
                       );

@@ -7,6 +7,8 @@ import { requireRole } from "@/lib/auth/current";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
+import { DOC_LABEL } from "@/lib/verification";
+import { syncVerification } from "@/lib/verification-sync";
 import { syncViolationStage } from "@/lib/price-violations-sync";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { closePrevious } from "@/lib/supplier/prices";
@@ -276,5 +278,49 @@ export async function reviewViolation(form: FormData) {
     details: { reportId: id, from: report.status, to: status, product: report.productName },
   });
   await syncViolationStage(report.supplierId);
+  revalidatePath("/admin", "layout");
+}
+
+/** בדיקת מסמך אימות של ספק: אישור (אפשר לתקן את התוקף) או דחייה עם סיבה שהספק רואה */
+export async function reviewDocument(form: FormData) {
+  await requireRole("ADMIN");
+  const id = str(form, "documentId");
+  const decision = str(form, "decision");
+  if (decision !== "APPROVED" && decision !== "REJECTED") return;
+  const doc = await db.supplierDocument.findUnique({
+    where: { id },
+    select: { id: true, kind: true, supplierId: true, validUntil: true },
+  });
+  if (!doc) return;
+  const reason = str(form, "reason").slice(0, 300) || null;
+  const rawDate = str(form, "validUntil");
+  const validUntil = rawDate ? new Date(`${rawDate}T23:59:59`) : doc.validUntil;
+  await db.supplierDocument.update({
+    where: { id },
+    data: {
+      status: decision,
+      rejectReason: decision === "REJECTED" ? (reason ?? "המסמך לא קריא או לא תואם לפרטי החברה") : null,
+      validUntil: validUntil && !Number.isNaN(validUntil.getTime()) ? validUntil : null,
+      reviewedAt: new Date(),
+    },
+  });
+  if (decision === "REJECTED") {
+    await notify([
+      {
+        supplierId: doc.supplierId,
+        kind: "VERIFICATION",
+        title: `המסמך "${DOC_LABEL[doc.kind]}" לא אושר`,
+        body: reason ?? "המסמך לא קריא או לא תואם לפרטי החברה. העלו מסמך מעודכן.",
+        href: "/supplier/verification",
+      },
+    ]);
+  }
+  await audit({
+    action: "supplier.document_review",
+    targetType: "supplier",
+    targetId: doc.supplierId,
+    details: { kind: DOC_LABEL[doc.kind], decision, reason },
+  });
+  await syncVerification(doc.supplierId);
   revalidatePath("/admin", "layout");
 }

@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PaidComparisonLine, SystemOffer } from "@/lib/customer/paid-prices";
 import { DealBadge, PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
@@ -53,6 +54,7 @@ export function ProductComparison({
                       </span>
                       <span className="block text-xs text-muted">
                         {l.best.supplierName}
+                        <VerifiedBadge supplierId={l.best.supplierId} compact />
                         {l.best.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                       </span>
                       <OtherPacks offer={l.best} />
@@ -101,6 +103,7 @@ export function ProductComparison({
                           <td className="py-1.5">
                             {(o.priceKind === "PROMOTION" || o.deal) && <SaleMark />}
                             {o.supplierName}
+                            <VerifiedBadge supplierId={o.supplierId} compact />
                             {o.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                             <OtherPacks offer={o} />
                           </td>

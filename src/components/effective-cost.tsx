@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import type { EffectiveCost } from "@/lib/customer/effective-cost";
 import { shekels } from "@/lib/format";
 
@@ -36,7 +37,10 @@ export function BlockedList({
       <ul className="flex flex-col gap-2">
         {items.map((b, i) => (
           <li key={`${b.supplierId}:${i}`} className="rounded-lg border border-dashed border-border p-3 text-sm">
-            <p className="font-medium">{b.supplierName}</p>
+            <p className="font-medium">
+              {b.supplierName}
+              <VerifiedBadge supplierId={b.supplierId} />
+            </p>
             <p className="text-muted">
               {b.products.join(", ")}: זול יותר ב-{shekels(b.cost.productSavingAgorot)} בחודש לפי מחיר ליחידה.
             </p>

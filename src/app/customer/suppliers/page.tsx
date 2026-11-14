@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { SupplierStatusBadge } from "@/components/supplier-status";
 import { requireRole } from "@/lib/auth/current";
@@ -41,7 +42,10 @@ export default async function MySuppliersPage() {
                 className="grid grid-cols-2 items-center gap-3 rounded-lg border border-border bg-surface p-4 hover:border-accent sm:grid-cols-[2fr_1fr_1fr_1.2fr]"
               >
                 <span className="col-span-2 sm:col-span-1">
-                  <span className="block font-semibold">{s.name}</span>
+                  <span className="block font-semibold">
+                    {s.name}
+                    <VerifiedBadge supplierId={s.supplierId} />
+                  </span>
                   <span className="text-xs text-muted">
                     {s.score.products} מוצרים{s.supplierId ? "" : " · לא רשום במערכת"}
                   </span>

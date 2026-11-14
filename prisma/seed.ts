@@ -93,7 +93,14 @@ interface DemoSupplier {
 /** איך כל מוצר מגיע אצל ספקי הדמו: סוג אריזה, משקל משתנה ומינימום באריזות */
 const DEMO_PACKS: Record<
   string,
-  { packType: PackType; packSize?: number; packSizeMax?: number; minPacks?: number; minQuantity?: number; pricePerPack?: boolean }
+  {
+    packType: PackType;
+    packSize?: number;
+    packSizeMax?: number;
+    minPacks?: number;
+    minQuantity?: number;
+    pricePerPack?: boolean;
+  }
 > = {
   אנטריקוט: { packType: "CARTON", packSize: 15, packSizeMax: 20, minPacks: 1 },
   "חזה עוף טרי": { packType: "CARTON", packSize: 5, packSizeMax: 6 },
@@ -129,13 +136,20 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["בשר ועוף", "קפואים"],
     minOrder: 400,
     reliability: 0.96,
-    tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 100000]],
-    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 20000],
+      ["היקף גבוה", 100000],
+    ],
+    zones: [
+      { region: "מרכז", fee: 0, freeAbove: null },
+      { region: "שרון", fee: 0, freeAbove: null },
+    ],
     offers: {
       "חזה עוף טרי": [5, 31.9],
       "שוקיים עוף": [5, 21.5],
       "בקר טחון": [2, 62],
-      "אנטריקוט": [1, 139],
+      אנטריקוט: [1, 139],
       "צ׳יפס קפוא": [10, 9.4, "צ'יפס חתוך דק"],
     },
   },
@@ -146,22 +160,25 @@ const SUPPLIERS: DemoSupplier[] = [
     // ספק ירקות אדמה ופרי: זול שם, יקר בירוקים
     minOrder: 120,
     reliability: 0.9,
-    tiers: [["רגיל", 0], ["עסקי", 5000]],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 5000],
+    ],
     zones: [{ region: "מרכז", fee: 0, freeAbove: null }],
     offers: {
-      "עגבניות": [10, 6.2],
+      עגבניות: [10, 6.2],
       "בצל יבש": [10, 4.1],
       "תפוחי אדמה": [10, 3.9],
-      "מלפפונים": [10, 5.5],
+      מלפפונים: [10, 5.5],
       "חסה ערבית": [12, 4.5],
-      "לימונים": [5, 7.9],
+      לימונים: [5, 7.9],
       "ביצים L": [30, 0.95],
-      "בטטה": [10, 5.2],
-      "גזר": [10, 3.6],
+      בטטה: [10, 5.2],
+      גזר: [10, 3.6],
       "כרוב לבן": [10, 3.9],
       // ירוקים ופטריות הם לא ההתמחות שלו, והמחיר בהתאם
-      "כוסברה": [10, 3.9],
-      "פטרוזיליה": [10, 3.9],
+      כוסברה: [10, 3.9],
+      פטרוזיליה: [10, 3.9],
       "פטריות שמפיניון": [2, 24],
     },
   },
@@ -171,7 +188,12 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: null,
     minOrder: 600,
     reliability: 0.88,
-    tiers: [["רגיל", 0], ["עסקי", 20000], ["היקף גבוה", 50000], ["ארגוני", 100000]],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 20000],
+      ["היקף גבוה", 50000],
+      ["ארגוני", 100000],
+    ],
     zones: [
       { region: "מרכז", fee: 0, freeAbove: null },
       { region: "שרון", fee: 0, freeAbove: null },
@@ -180,7 +202,7 @@ const SUPPLIERS: DemoSupplier[] = [
     offers: {
       "חזה עוף טרי": [5, 33.5],
       "בקר טחון": [2, 64.9],
-      "עגבניות": [10, 6.9],
+      עגבניות: [10, 6.9],
       "בצל יבש": [10, 4.4],
       "תפוחי אדמה": [10, 4.2],
       "גבינה צהובה 28%": [1, 44],
@@ -212,8 +234,14 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["מוצרי חלב"],
     minOrder: 120,
     reliability: 0.97,
-    tiers: [["רגיל", 0], ["עסקי", 10000]],
-    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 10000],
+    ],
+    zones: [
+      { region: "מרכז", fee: 0, freeAbove: null },
+      { region: "שרון", fee: 0, freeAbove: null },
+    ],
     offers: {
       "גבינה צהובה 28%": [1, 41.5],
       "גבינה לבנה 5%": [1, 18.9],
@@ -228,12 +256,18 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["ירוקים, עשבי תיבול ופטריות"],
     minOrder: 60,
     reliability: 0.94,
-    tiers: [["רגיל", 0], ["עסקי", 5000]],
-    zones: [{ region: "מרכז", fee: 0, freeAbove: null }, { region: "שרון", fee: 0, freeAbove: null }],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 5000],
+    ],
+    zones: [
+      { region: "מרכז", fee: 0, freeAbove: null },
+      { region: "שרון", fee: 0, freeAbove: null },
+    ],
     offers: {
       "חסה ערבית": [12, 3.4],
-      "כוסברה": [10, 2.3],
-      "פטרוזיליה": [10, 2.3],
+      כוסברה: [10, 2.3],
+      פטרוזיליה: [10, 2.3],
       "נבטי אלפלפא": [6, 4.5],
       "פטריות שמפיניון": [2, 16.5],
     },
@@ -245,13 +279,16 @@ const SUPPLIERS: DemoSupplier[] = [
     categories: ["בשר ועוף", "קפואים", "פירות וירקות", "מוצרי חלב", "ביצים"],
     minOrder: 500,
     reliability: 0.9,
-    tiers: [["רגיל", 0], ["עסקי", 20000]],
+    tiers: [
+      ["רגיל", 0],
+      ["עסקי", 20000],
+    ],
     zones: [{ region: "דרום", fee: 0, freeAbove: null }],
     offers: {
       "חזה עוף טרי": [5, 32.9],
       "בקר טחון": [2, 66],
       "צ׳יפס קפוא": [10, 9.9],
-      "עגבניות": [10, 6.5],
+      עגבניות: [10, 6.5],
       "בצל יבש": [10, 4.3],
       "תפוחי אדמה": [10, 3.8],
       "גבינה צהובה 28%": [1, 43],
@@ -354,7 +391,13 @@ async function main() {
   const products = new Map<string, string>();
   for (const p of PRODUCTS) {
     const created = await db.product.create({
-      data: { name: p.name, unit: p.unit, spec: p.spec, aliases: p.aliases ?? [], categoryId: categories.get(p.category)! },
+      data: {
+        name: p.name,
+        unit: p.unit,
+        spec: p.spec,
+        aliases: p.aliases ?? [],
+        categoryId: categories.get(p.category)!,
+      },
     });
     products.set(p.name, created.id);
   }
@@ -572,7 +615,14 @@ async function main() {
       supplierId: meat.id,
       gapAgorot: ils(64),
       totalAgorot: productsAgorot,
-      quote: { tierName: "רגיל", lines, productsAgorot, deliveryAgorot: 0, totalAgorot: productsAgorot, missingProducts: [] },
+      quote: {
+        tierName: "רגיל",
+        lines,
+        productsAgorot,
+        deliveryAgorot: 0,
+        totalAgorot: productsAgorot,
+        missingProducts: [],
+      },
       customerProfile: {
         businessName: "קפה דמו",
         businessType: "בית קפה",
@@ -596,16 +646,43 @@ async function main() {
 
   // מסעדת הדמו פנתה בעבר לשני ספקים, והם כתבו עליה ביקורת
   const pastInquiries: [string, string, string, number, number, number, string][] = [
-    ["510000011", "נשמח לשמוע על מחיר קבוע לחזה עוף.", "נוכל לתת ₪33 לק״ג בהתחייבות חודשית.", 5, 5, 4, "לקוח מסודר, משלמים בזמן ומזמינים יום מראש."],
-    ["510000037", "יש אפשרות למשלוח פעמיים בשבוע?", "כן, ללא תוספת מעל ₪1,500 להזמנה.", 4, 4, 5, "תקשורת מצוינת. פעם אחת התשלום התעכב בשבוע."],
+    [
+      "510000011",
+      "נשמח לשמוע על מחיר קבוע לחזה עוף.",
+      "נוכל לתת ₪33 לק״ג בהתחייבות חודשית.",
+      5,
+      5,
+      4,
+      "לקוח מסודר, משלמים בזמן ומזמינים יום מראש.",
+    ],
+    [
+      "510000037",
+      "יש אפשרות למשלוח פעמיים בשבוע?",
+      "כן, ללא תוספת מעל ₪1,500 להזמנה.",
+      4,
+      4,
+      5,
+      "תקשורת מצוינת. פעם אחת התשלום התעכב בשבוע.",
+    ],
   ];
   for (const [number, message, reply, overall, payment, communication, text] of pastInquiries) {
     const supplierId = supplierIds[number].id;
     const at = new Date(Date.now() - 20 * 86_400_000);
     await db.negotiationRequest.create({
-      data: { customerId: customer.id, supplierId, gapAgorot: 0, message, reply, status: "OFFERED", repliedAt: at, createdAt: at },
+      data: {
+        customerId: customer.id,
+        supplierId,
+        gapAgorot: 0,
+        message,
+        reply,
+        status: "OFFERED",
+        repliedAt: at,
+        createdAt: at,
+      },
     });
-    await db.customerReview.create({ data: { customerId: customer.id, supplierId, overall, payment, communication, text } });
+    await db.customerReview.create({
+      data: { customerId: customer.id, supplierId, overall, payment, communication, text },
+    });
   }
 
   // התראות לדוגמה, כדי שיהיה מה לראות במסך ההתראות
@@ -842,6 +919,26 @@ async function main() {
       path: "/customer/suppliers",
     },
   });
+
+  // אימות: שני ספקי דמו מאומתים (מסמך אושר), כדי שיראו בהשוואות גם "ספק מאומת" וגם "טרם אומת"
+  const verifiedDemo = await db.supplier.findMany({
+    where: { companyName: { in: ["ספק דמו: בשרים הגליל", "ספק דמו: מחלבות השרון"] } },
+  });
+  for (const s of verifiedDemo) {
+    await db.supplierDocument.create({
+      data: {
+        supplierId: s.id,
+        kind: "BUSINESS_LICENSE",
+        fileName: "תעודת עוסק (דמו).pdf",
+        data: Buffer.from("%PDF-1.4\n% demo\n"),
+        contentType: "application/pdf",
+        size: 16,
+        status: "APPROVED",
+        reviewedAt: new Date(),
+      },
+    });
+    await db.supplier.update({ where: { id: s.id }, data: { verifiedAt: new Date() } });
+  }
 
   // משתמשי הדמו הם מנהלי העסק או הספק שלהם
   await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });

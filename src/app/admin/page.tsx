@@ -42,6 +42,7 @@ export default async function AdminHome() {
     activeCustomers,
     openViolations,
     flaggedSuppliers,
+    pendingDocuments,
   ] = await Promise.all([
     db.customer.count(),
     db.customer.count({ where: { createdAt: { gte: since } } }),
@@ -61,12 +62,20 @@ export default async function AdminHome() {
     db.basket.groupBy({ by: ["customerId"], where: { runs: { some: { createdAt: { gte: since } } } } }),
     db.priceViolationReport.count({ where: { status: "OPEN" } }),
     db.supplier.count({ where: { violationStage: { gt: 0 } } }),
+    db.supplierDocument.count({ where: { status: "PENDING" } }),
   ]);
   const saved = accepted.reduce((sum, l) => {
     const price = offeredPrice(l);
     return price === null ? sum : sum + Math.max(0, Math.round((l.currentPriceAgorot - price) * l.monthlyQuantity));
   }, 0);
-  const waiting = pendingSuppliers + pendingPrices + pendingProducts + pendingReviews + openReports + openViolations;
+  const waiting =
+    pendingSuppliers +
+    pendingPrices +
+    pendingProducts +
+    pendingReviews +
+    openReports +
+    openViolations +
+    pendingDocuments;
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,6 +90,7 @@ export default async function AdminHome() {
         <h2 className="font-semibold">ממתין לטיפול</h2>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Stat label="ספקים לאישור" value={pendingSuppliers} href="/admin/suppliers" />
+          <Stat label="מסמכי אימות לבדיקה" value={pendingDocuments} href="/admin/verification" />
           <Stat label="שינויי מחיר לאישור" value={pendingPrices} note="שינוי של יותר מ-30%" href="/admin/prices" />
           <Stat
             label="מוצרים חדשים לבדיקה"

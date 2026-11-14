@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { notFound } from "next/navigation";
 import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
@@ -238,6 +239,7 @@ export default async function BasketPage({
                       <div className="min-w-0">
                         <p className="font-medium">
                           {s.supplierName}
+                          <VerifiedBadge supplierId={s.supplierId} />
                           {s.supplierId === basket.currentSupplierId && (
                             <span className="ms-2 rounded bg-background px-2 py-0.5 text-xs text-muted">הספק שלכם</span>
                           )}
@@ -266,7 +268,10 @@ export default async function BasketPage({
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-lg border border-border bg-surface p-4">
             <p className="text-sm text-muted">הספק שלכם היום</p>
-            <p className="font-medium">{current.supplierName}</p>
+            <p className="font-medium">
+              {current.supplierName}
+              <VerifiedBadge supplierId={current.supplierId} />
+            </p>
             <p className="text-2xl font-bold">{shekels(current.quote.share.totalAgorot)}</p>
             <p className="text-xs text-muted">לחודש לפי המחירון שלו, משלוח חינם</p>
           </div>
@@ -336,6 +341,7 @@ export default async function BasketPage({
                     <div className="min-w-0">
                       <p className="font-medium">
                         {r.supplierName}
+                        <VerifiedBadge supplierId={r.supplierId} />
                         {r.supplierId === basket.currentSupplierId && (
                           <span className="ms-2 rounded bg-background px-2 py-0.5 text-xs text-muted">הספק שלכם</span>
                         )}

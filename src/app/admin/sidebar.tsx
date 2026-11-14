@@ -10,6 +10,7 @@ interface Pending {
   reviews: number;
   reports: number;
   violations: number;
+  documents: number;
 }
 
 const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
@@ -19,6 +20,7 @@ const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
   { href: "/admin/products", label: "מוצרים ושמות נרדפים", pending: "products" },
   { href: "/admin/categories", label: "קטגוריות" },
   { href: "/admin/reviews", label: "ביקורות", pending: "reviews" },
+  { href: "/admin/verification", label: "אימות ספקים", pending: "documents" },
   { href: "/admin/violations", label: "הפרות מחיר", pending: "violations" },
   { href: "/admin/reports", label: "דיווחים", pending: "reports" },
   { href: "/admin/users", label: "משתמשים" },

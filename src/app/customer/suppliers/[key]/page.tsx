@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { ReportButton } from "@/components/report/report-button";
 import { PriceViolationButton } from "@/components/report/price-violation-button";
@@ -40,6 +41,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold">{supplier.name}</h1>
+          <VerifiedBadge supplierId={supplier.supplierId} />
           <SupplierStatusBadge status={score.status} />
         </div>
         <p className="text-sm text-muted">
@@ -118,7 +120,10 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
                     className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium">{o.supplierName}</p>
+                      <p className="font-medium">
+                        {o.supplierName}
+                        <VerifiedBadge supplierId={o.supplierId} />
+                      </p>
                       <p className="text-sm text-muted">
                         חיסכון של {shekels(o.monthlySavingAgorot)} בחודש על {o.products.join(", ")}
                       </p>

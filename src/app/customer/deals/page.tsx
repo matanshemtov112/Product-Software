@@ -1,3 +1,4 @@
+import { VerifiedBadge } from "@/components/verified-badge";
 import { Card } from "@/components/form";
 import { SaleMark } from "@/components/price-badge";
 import { SendToSupplierLink } from "@/components/send-to-supplier";
@@ -15,6 +16,7 @@ function DealCard({ d }: { d: CustomerDeal }) {
           <SaleMark />
           <span className="font-medium">{d.productName}</span>
           <span className="text-sm text-muted"> · {d.supplierName}</span>
+          <VerifiedBadge supplierId={d.supplierId} compact />
         </p>
         <p className="text-xs text-muted">{d.pack}</p>
         {d.promotion && (
