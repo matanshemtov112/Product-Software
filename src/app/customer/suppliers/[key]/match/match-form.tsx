@@ -7,6 +7,7 @@ import { SendToSupplierButton } from "@/components/send-to-supplier";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { matchRequestText, suggestedCeiling, validCeiling, type MatchCandidate } from "@/lib/matches";
 import { sendMatchRequest } from "../../../matches/actions";
+import { seenQuote } from "@/lib/quote-changes";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
 
@@ -184,6 +185,18 @@ export function MatchForm({
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="key" value={supplierKey} />
+      {/* המחירים כפי שהוצגו, לזיהוי שינוי עד השליחה */}
+      <input
+        type="hidden"
+        name="seen"
+        value={
+          state.seen ??
+          seenQuote(
+            candidates.map((c) => ({ productName: c.productName, unitPriceAgorot: c.targetPriceAgorot })),
+            0,
+          )
+        }
+      />
       <RevealPicker reveal={reveal} setReveal={setReveal} />
       <CandidateList
         candidates={candidates}
@@ -208,6 +221,13 @@ export function MatchForm({
         />
       </label>
       <FormError message={state.error} />
+      {state.changes && (
+        <ul role="alert" className="flex flex-col gap-1 rounded-md border border-danger bg-danger/5 px-3 py-2 text-sm">
+          {state.changes.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
+      )}
       <div>
         <SendToSupplierButton pending={pending} label="שליחת הבקשה לספק" />
       </div>

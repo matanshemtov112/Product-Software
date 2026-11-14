@@ -21,7 +21,8 @@ export function ActionForm({
     startTransition(() => action(form));
   };
   return (
-    <form onSubmit={onSubmit} className={className}>
+    // action גם על הטופס עצמו: שליחה לפני שהדף סיים להיטען נשלחת לשרת (POST) ולא הולכת לאיבוד
+    <form action={action} onSubmit={onSubmit} className={className}>
       {children}
     </form>
   );

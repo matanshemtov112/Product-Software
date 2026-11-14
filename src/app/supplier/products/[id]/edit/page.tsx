@@ -1,3 +1,5 @@
+import { db } from "@/lib/db";
+import { priceVersion } from "@/lib/supplier/prices";
 import { nominalPackSize } from "@/lib/pack";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
@@ -45,6 +47,7 @@ export default async function EditProductPage({
             unit: offer.product.unit,
             brand: offer.brand ?? "",
             pendingBrand: offer.pendingBrand,
+            priceVersion: await priceVersion(db, offer.id),
             barcode: offer.barcode ?? "",
             supplierSku: offer.supplierSku ?? "",
             supplierProductName: offer.supplierProductName ?? "",

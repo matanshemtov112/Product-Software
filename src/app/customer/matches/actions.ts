@@ -12,9 +12,14 @@ import { notify } from "@/lib/notifications";
 import { matchCandidates, offeredPrice, OPEN_MATCH, validCeiling } from "@/lib/matches";
 import { canDecide, matchStage } from "@/lib/offer-status";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
+import { withLock } from "@/lib/locks";
+import { onlyChosen, quoteChanges, seenQuote } from "@/lib/quote-changes";
 
 export interface MatchFormState {
   error?: string;
+  /** מה השתנה מאז שהלקוח פתח את הדף */
+  changes?: string[];
+  seen?: string;
 }
 
 async function currentCustomer() {
@@ -43,13 +48,23 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       shown.set(l.productId, ceiling);
     }
   }
+  // המחיר שנמצא אצל ספק אחר השתנה מאז שהלקוח פתח את הדף: מראים לו לפני ששולחים
+  const current = {
+    lines: lines.map((l) => ({ productName: l.productName, unitPriceAgorot: l.targetPriceAgorot })),
+    total: 0,
+  };
+  const seen = form.get("seen")?.toString();
+  const changes = quoteChanges(seen ? onlyChosen(seen, current.lines) : null, current);
+  if (changes.length) {
+    return {
+      error: "המחירים שמצאנו השתנו מאז שפתחתם את הדף. בדקו את השינויים, ושלחו שוב כדי לאשר.",
+      changes,
+      seen: seenQuote(current.lines, current.total),
+    };
+  }
   if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
-  const open = await db.matchRequest.findFirst({
-    where: { customerId: customer.id, supplierId: supplier.supplierId, status: { in: OPEN_MATCH } },
-  });
-  if (open) return { error: "כבר יש בקשה פתוחה לספק הזה. אפשר לשלוח חדשה אחרי שיענה" };
 
   const basketId = supplier.baskets[0]?.id ?? null;
   const basket = basketId ? await db.basket.findUnique({ where: { id: basketId }, include: { items: true } }) : null;
@@ -57,27 +72,37 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
     String(form.get("message") ?? "")
       .trim()
       .slice(0, 1000) || null;
-  const request = await db.matchRequest.create({
-    data: {
-      customerId: customer.id,
-      supplierId: supplier.supplierId,
-      basketId,
-      message,
-      reveal,
-      customerProfile: basket ? JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))) : undefined,
-      lines: {
-        create: lines.map((l) => ({
-          productId: l.productId,
-          productName: l.productName,
-          unit: l.unit,
-          monthlyQuantity: l.monthlyQuantity,
-          currentPriceAgorot: l.currentPriceAgorot,
-          targetPriceAgorot: l.targetPriceAgorot,
-          shownPriceAgorot: shown.get(l.productId) ?? null,
-        })),
+  const supplierId = supplier.supplierId;
+  const profile = basket ? JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))) : undefined;
+  // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי בקשות פתוחות
+  const request = await withLock(`match:${customer.id}:${supplierId}`, async (tx) => {
+    const open = await tx.matchRequest.findFirst({
+      where: { customerId: customer.id, supplierId, status: { in: OPEN_MATCH } },
+    });
+    if (open) return null;
+    return tx.matchRequest.create({
+      data: {
+        customerId: customer.id,
+        supplierId,
+        basketId,
+        message,
+        reveal,
+        customerProfile: profile,
+        lines: {
+          create: lines.map((l) => ({
+            productId: l.productId,
+            productName: l.productName,
+            unit: l.unit,
+            monthlyQuantity: l.monthlyQuantity,
+            currentPriceAgorot: l.currentPriceAgorot,
+            targetPriceAgorot: l.targetPriceAgorot,
+            shownPriceAgorot: shown.get(l.productId) ?? null,
+          })),
+        },
       },
-    },
+    });
   });
+  if (!request) return { error: "כבר יש בקשה פתוחה לספק הזה. אפשר לשלוח חדשה אחרי שיענה" };
   await notify([
     {
       supplierId: supplier.supplierId,

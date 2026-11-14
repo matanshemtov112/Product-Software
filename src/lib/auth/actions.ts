@@ -35,26 +35,23 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "נא למלא אימייל וסיסמה" };
   const { email } = parsed.data;
-  // אחרי כמה ניסיונות שגויים, אותו אימייל מאותה כתובת נחסם לזמן קצר
-  const key = `login:${email}:${await clientIp()}`;
-  if (rateLimit.blocked(key, LIMITS.loginFailures)) {
+  // הגבלה לפי אימייל (לא תלויה בכתובת, שאפשר לזייף) ובנוסף לפי כתובת.
+  // הניסיון נספר לפני בדיקת הסיסמה, כך שגם ניסיונות רבים באותו רגע נעצרים במגבלה; כניסה מוצלחת מאפסת
+  const key = `login:${email}`;
+  const ipKey = `login-ip:${await clientIp()}`;
+  if (rateLimit.blocked(ipKey, LIMITS.loginPerIp) || !rateLimit.hit(key, LIMITS.loginFailures)) {
     await audit({ action: "login.blocked", actor: email });
     return { error: `יותר מדי ניסיונות. נסו שוב בעוד ${rateLimit.retryMinutes(key, LIMITS.loginFailures)} דקות.` };
   }
   const user = await db.user.findUnique({ where: { email } });
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-    rateLimit.hit(key, LIMITS.loginFailures);
+    rateLimit.hit(ipKey, LIMITS.loginPerIp);
     await audit({ action: "login.failed", actor: email, userId: user?.id });
     return { error: "אימייל או סיסמה שגויים" };
   }
   rateLimit.reset(key);
-  // צוות הפלטפורמה נכנס מכל אחת מהלשוניות
-  if (parsed.data.kind === "supplier" && user.role === "CUSTOMER") {
-    return { error: 'החשבון הזה שייך למסעדה. נא לבחור "כניסה כמסעדה"' };
-  }
-  if (parsed.data.kind === "customer" && user.role === "SUPPLIER") {
-    return { error: 'החשבון הזה שייך לספק. נא לבחור "כניסה כספק"' };
-  }
+  // הצד (מסעדה או ספק) נקבע לפי החשבון עצמו, ולא לפי הלשונית שנבחרה: כך כניסה עובדת גם אם הלשונית
+  // נלחצה לפני שהדף סיים להיטען, וכל משתמש מגיע לאזור שלו
   await startSession({ userId: user.id, role: user.role, name: user.name });
   await audit({ action: "login.success", userId: user.id, actor: user.name });
   redirect(HOME_BY_ROLE[user.role]);

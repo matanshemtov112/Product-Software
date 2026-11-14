@@ -3,11 +3,14 @@ import { headers } from "next/headers";
 import { getSession } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 
-/** כתובת ה-IP של הבקשה (מאחורי פרוקסי: הראשונה ב-x-forwarded-for) */
+/**
+ * כתובת ה-IP של הבקשה. מאחורי פרוקסי: x-real-ip שהפרוקסי קובע, או הכתובת האחרונה ב-x-forwarded-for
+ * (שהפרוקסי מוסיף). הכתובת הראשונה ברשימה מגיעה מהדפדפן ואפשר לזייף אותה, ולכן לא סומכים עליה.
+ */
 export async function clientIp(): Promise<string | null> {
   try {
     const h = await headers();
-    return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+    return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
   } catch {
     return null;
   }

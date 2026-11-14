@@ -11,6 +11,8 @@ export interface Limit {
 export const LIMITS = {
   /** ניסיונות כניסה שנכשלו, לכל אימייל וכתובת */
   loginFailures: { max: 5, windowMs: 15 * 60_000 },
+  /** ניסיונות כניסה מאותה כתובת, לכל האימיילים יחד */
+  loginPerIp: { max: 30, windowMs: 15 * 60_000 },
   /** הרשמות מאותה כתובת */
   register: { max: 5, windowMs: 60 * 60_000 },
   /** קריאות ל-Claude (חשבוניות וצילומים) לכל עסק: עולות כסף */

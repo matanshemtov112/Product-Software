@@ -19,6 +19,8 @@ interface CatalogProduct {
 
 export interface OfferFormValues {
   offerId?: string;
+  /** גרסת המחירים כשהטופס נפתח, כדי שטופס ישן לא ידרוס מחירים חדשים */
+  priceVersion?: string;
   /** אריזה נוספת למוצר שכבר ברשימה: המוצר קבוע, ממלאים רק אריזה ומחיר */
   addPack?: boolean;
   productName: string;
@@ -151,6 +153,9 @@ export function ProductForm({
 
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
+      {initial.offerId && initial.priceVersion !== undefined && (
+        <input type="hidden" name="priceVersion" value={initial.priceVersion} />
+      )}
       {editing && <input type="hidden" name="offerId" value={initial.offerId} />}
       {back && <input type="hidden" name="back" value={back} />}
       {initial.addPack && (

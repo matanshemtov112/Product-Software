@@ -12,7 +12,7 @@ import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize, packLabel } from "@/lib/pack";
 import { brandChangeNeedsDecision, diffOffer } from "@/lib/supplier/offer-changes";
-import { closePrevious } from "@/lib/supplier/prices";
+import { closeOpenPrices, lockOffer, priceVersion } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
 import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
 import { listUrl } from "@/lib/supplier/list-return";
@@ -24,6 +24,9 @@ import { isManager } from "@/lib/auth/team";
 export interface FormState {
   error?: string;
 }
+
+/** טופס עריכה שנפתח לפני שמירה אחרת של אותו מוצר */
+class StaleFormError extends Error {}
 
 const offerSchema = z.object({
   offerId: z.string().optional(),
@@ -248,136 +251,189 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
       )
     : [];
   const packChange = changes.find((c) => c.kind === "PACK");
-  const offer = target
-    ? await db.supplierOffer.update({
-        where: { id: target.id },
-        data: {
-          ...offerData,
-          ...(packChange ? { packChangedAt: now, previousPackLabel: packChange.oldValue } : {}),
-          changes: {
-            create: [
-              ...changes,
-              ...(brandPending
-                ? [{ kind: "BRAND_REQUESTED" as const, oldValue: target.brand, newValue: data.brand! }]
-                : []),
-            ],
-          },
-        },
-      })
-    : await db.supplierOffer.create({ data: { ...offerData, supplierId: supplier.id, productId: productId! } });
-  if (replacing) {
-    await db.$transaction([
-      db.supplierOffer.update({
-        where: { id: replacing.id },
-        data: {
-          archivedAt: now,
-          available: false,
-          replacedById: offer.id,
-          changes: { create: { kind: "REPLACED", oldValue: replacing.brand, newValue: offer.brand } },
-        },
-      }),
-      db.offerChange.create({
-        data: { offerId: offer.id, kind: "REPLACED", oldValue: replacing.brand, newValue: offer.brand },
-      }),
-    ]);
-    await audit({
-      action: "offer.replaced",
-      targetType: "offer",
-      targetId: offer.id,
-      details: { supplier: supplier.companyName, product: data.productName, from: replacing.brand, to: offer.brand },
-    });
+  // כל הכתיבה בטרנזקציה אחת עם נעילה על המוצר: לקוח לא רואה מצב חצי שמור (מדרגה אחת חדשה ואחת ישנה),
+  // ושתי שמירות במקביל לא יוצרות שני מחירים פתוחים לאותה מדרגה
+  const audits: Parameters<typeof audit>[0][] = [];
+  const alerts: Parameters<typeof notifyPriceChange>[0][] = [];
+  let held = 0;
+  const formVersion = typeof form.get("priceVersion") === "string" ? String(form.get("priceVersion")) : null;
+  let offer: { id: string; productId: string; brand: string | null };
+  try {
+    offer = await db.$transaction(
+      async (tx) => {
+        if (existing) await lockOffer(tx, existing.id);
+        // טופס שנפתח לפני שמירה אחרת (לשונית נוספת, איש צוות אחר) לא דורס את המחירים החדשים
+        if (existing && formVersion !== null && (await priceVersion(tx, existing.id)) !== formVersion) {
+          throw new StaleFormError();
+        }
+        const at = new Date();
+        // המחירים כפי שהם עכשיו, אחרי הנעילה (לא כפי שנקראו לפני השמירה)
+        const livePrices = existing
+          ? await tx.offerPrice.findMany({
+              where: {
+                offerId: existing.id,
+                status: "LIVE",
+                validFrom: { lte: at },
+                OR: [{ validTo: null }, { validTo: { gt: at } }],
+              },
+              orderBy: [{ validFrom: "desc" }, { createdAt: "desc" }],
+            })
+          : [];
+
+        const saved = target
+          ? await tx.supplierOffer.update({
+              where: { id: target.id },
+              data: {
+                ...offerData,
+                ...(packChange ? { packChangedAt: at, previousPackLabel: packChange.oldValue } : {}),
+                changes: {
+                  create: [
+                    ...changes,
+                    ...(brandPending
+                      ? [{ kind: "BRAND_REQUESTED" as const, oldValue: target.brand, newValue: data.brand! }]
+                      : []),
+                  ],
+                },
+              },
+            })
+          : await tx.supplierOffer.create({ data: { ...offerData, supplierId: supplier.id, productId: productId! } });
+        if (replacing) {
+          await tx.supplierOffer.update({
+            where: { id: replacing.id },
+            data: {
+              archivedAt: at,
+              available: false,
+              replacedById: saved.id,
+              changes: { create: { kind: "REPLACED", oldValue: replacing.brand, newValue: saved.brand } },
+            },
+          });
+          await tx.offerChange.create({
+            data: { offerId: saved.id, kind: "REPLACED", oldValue: replacing.brand, newValue: saved.brand },
+          });
+          audits.push({
+            action: "offer.replaced",
+            targetType: "offer",
+            targetId: saved.id,
+            details: {
+              supplier: supplier.companyName,
+              product: data.productName,
+              from: replacing.brand,
+              to: saved.brand,
+            },
+          });
+        }
+
+        const previousDeal = await tx.quantityDeal.findUnique({ where: { offerId: saved.id } });
+        if (deal) {
+          await tx.quantityDeal.upsert({
+            where: { offerId: saved.id },
+            create: { ...deal, offerId: saved.id },
+            update: deal,
+          });
+        } else if (previousDeal) {
+          await tx.quantityDeal.delete({ where: { offerId: saved.id } });
+        }
+        if (deal || previousDeal) {
+          const changed =
+            !deal ||
+            !previousDeal ||
+            deal.minPerOrder !== previousDeal.minPerOrder ||
+            deal.discountPct !== previousDeal.discountPct ||
+            deal.priceAgorot !== previousDeal.priceAgorot ||
+            deal.validTo?.getTime() !== previousDeal.validTo?.getTime();
+          if (changed) {
+            audits.push({
+              action: deal ? "deal.saved" : "deal.removed",
+              targetType: "offer",
+              targetId: saved.id,
+              details: {
+                supplier: supplier.companyName,
+                product: data.productName,
+                ...(deal ? { ...deal, validTo: deal.validTo?.toISOString() ?? null } : {}),
+              },
+            });
+          }
+        }
+
+        const kind = promotion ? "PROMOTION" : "REGULAR";
+        for (const { tier, agorot } of prices) {
+          if (agorot === null) continue;
+          // במוצר חלופי ההשוואה היא מול המחיר של המוצר שהוחלף: שינוי של יותר מ-30% ממתין לאישור גם כאן
+          const tierPrices = livePrices.filter((p) => p.tierId === tier.id);
+          const regular = tierPrices.find((p) => p.kind === "REGULAR") ?? null;
+          const promo = tierPrices.find((p) => p.kind === "PROMOTION") ?? null;
+          const same = promotion ? promo : regular;
+          if (!replacing && same && same.unitPriceAgorot === agorot && same.validTo?.getTime() === validTo?.getTime()) {
+            continue;
+          }
+          // שינוי של יותר מ-30% ממתין לאישור; מבצע נבדק מול המחיר הרגיל
+          const current = regular?.unitPriceAgorot ?? null;
+          const status = priceChangeStatus(promotion ? current : (same?.unitPriceAgorot ?? null), agorot);
+          if (status === "PENDING_APPROVAL") held++;
+          // מחיר חדש מחליף בקשה קודמת שעוד ממתינה לאישור, כדי שמנהל לא יאשר מחיר שהספק כבר שינה
+          await tx.offerPrice.updateMany({
+            where: { offerId: saved.id, tierId: tier.id, kind, status: "PENDING_APPROVAL" },
+            data: { status: "REJECTED" },
+          });
+          // מחיר שנכנס לתוקף סוגר קודם את המחיר הפתוח מאותו סוג, כדי שלא יהיו שניים פתוחים
+          if (status === "LIVE") await closeOpenPrices(tx, { offerId: saved.id, tierId: tier.id, kind, at });
+          await tx.offerPrice.create({
+            data: {
+              offerId: saved.id,
+              tierId: tier.id,
+              unitPriceAgorot: agorot,
+              status,
+              kind,
+              validFrom: at,
+              validTo,
+              termEndsAt: validTo,
+            },
+          });
+          audits.push({
+            action: status === "LIVE" ? "price.changed" : "price.held",
+            targetType: "offer",
+            targetId: saved.id,
+            details: {
+              supplier: supplier.companyName,
+              tier: tier.name,
+              from: same?.unitPriceAgorot ?? null,
+              to: agorot,
+              type: priceType,
+              validTo: validTo?.toISOString() ?? null,
+            },
+          });
+          // התראות ללקוחות לפי המחיר הבסיסי, כשהמחיר נכנס לתוקף מיד (נשלחות אחרי שהשמירה הושלמה)
+          const before = promo && regular ? Math.min(promo.unitPriceAgorot, regular.unitPriceAgorot) : current;
+          const after = !promotion && promo ? Math.min(promo.unitPriceAgorot, agorot) : agorot;
+          if (status === "LIVE" && tier.minMonthlyAgorot === 0 && before !== after) {
+            alerts.push({
+              supplierId: supplier.id,
+              supplierName: supplier.companyName,
+              productId: saved.productId,
+              productName: data.productName,
+              unitLabel: UNIT_LABEL[unit],
+              oldAgorot: before,
+              newAgorot: after,
+            });
+          }
+        }
+        return saved;
+      },
+      { timeout: 20_000 },
+    );
+  } catch (e) {
+    if (e instanceof StaleFormError) {
+      return {
+        error:
+          "המחירים של המוצר השתנו מאז שפתחתם את הטופס (אולי בלשונית אחרת או על ידי איש צוות אחר). רעננו את הדף כדי לראות את המחירים העדכניים, ואז שמרו שוב.",
+      };
+    }
+    throw e;
   }
 
   if (image?.ok) await storeImage(offer.id, image);
-
-  const previousDeal = await db.quantityDeal.findUnique({ where: { offerId: offer.id } });
-  if (deal) {
-    await db.quantityDeal.upsert({
-      where: { offerId: offer.id },
-      create: { ...deal, offerId: offer.id },
-      update: deal,
-    });
-  } else if (previousDeal) {
-    await db.quantityDeal.delete({ where: { offerId: offer.id } });
-  }
-  if (deal || previousDeal) {
-    const changed =
-      !deal ||
-      !previousDeal ||
-      deal.minPerOrder !== previousDeal.minPerOrder ||
-      deal.discountPct !== previousDeal.discountPct ||
-      deal.priceAgorot !== previousDeal.priceAgorot ||
-      deal.validTo?.getTime() !== previousDeal.validTo?.getTime();
-    if (changed) {
-      await audit({
-        action: deal ? "deal.saved" : "deal.removed",
-        targetType: "offer",
-        targetId: offer.id,
-        details: {
-          supplier: supplier.companyName,
-          product: data.productName,
-          ...(deal ? { ...deal, validTo: deal.validTo?.toISOString() ?? null } : {}),
-        },
-      });
-    }
-  }
-
-  let held = 0;
-  const kind = promotion ? "PROMOTION" : "REGULAR";
-  for (const { tier, agorot } of prices) {
-    if (agorot === null) continue;
-    const tierPrices = target?.prices.filter((p) => p.tierId === tier.id) ?? [];
-    const regular = tierPrices.find((p) => p.kind === "REGULAR") ?? null;
-    const promo = tierPrices.find((p) => p.kind === "PROMOTION") ?? null;
-    const same = promotion ? promo : regular;
-    if (same && same.unitPriceAgorot === agorot && same.validTo?.getTime() === validTo?.getTime()) continue;
-    // שינוי של יותר מ-30% ממתין לאישור; מבצע נבדק מול המחיר הרגיל
-    const current = regular?.unitPriceAgorot ?? null;
-    const status = priceChangeStatus(promotion ? current : (same?.unitPriceAgorot ?? null), agorot);
-    if (status === "PENDING_APPROVAL") held++;
-    const created = await db.offerPrice.create({
-      data: {
-        offerId: offer.id,
-        tierId: tier.id,
-        unitPriceAgorot: agorot,
-        status,
-        kind,
-        validFrom: now,
-        validTo,
-        termEndsAt: validTo,
-      },
-    });
-    // מחיר חדש שנכנס לתוקף מחליף את הקודם מאותו סוג, כדי שמחיר ישן לא יחזור כשהחדש יפוג
-    if (status === "LIVE") await closePrevious(created);
-    await audit({
-      action: status === "LIVE" ? "price.changed" : "price.held",
-      targetType: "offer",
-      targetId: offer.id,
-      details: {
-        supplier: supplier.companyName,
-        tier: tier.name,
-        from: same?.unitPriceAgorot ?? null,
-        to: agorot,
-        type: priceType,
-        validTo: validTo?.toISOString() ?? null,
-      },
-    });
-    // התראות ללקוחות לפי המחיר הבסיסי, כשהמחיר נכנס לתוקף מיד
-    const before = promo && regular ? Math.min(promo.unitPriceAgorot, regular.unitPriceAgorot) : current;
-    const after = !promotion && promo ? Math.min(promo.unitPriceAgorot, agorot) : agorot;
-    if (status === "LIVE" && tier.minMonthlyAgorot === 0 && before !== after) {
-      const product = await db.product.findUniqueOrThrow({ where: { id: offer.productId } });
-      await notifyPriceChange({
-        supplierId: supplier.id,
-        supplierName: supplier.companyName,
-        productId: product.id,
-        productName: product.name,
-        unitLabel: UNIT_LABEL[product.unit],
-        oldAgorot: before,
-        newAgorot: after,
-      });
-    }
-  }
+  for (const entry of audits) await audit(entry);
+  for (const alert of alerts) await notifyPriceChange(alert);
 
   revalidatePath("/supplier");
   // חזרה לאותו מקום ברשימה (אותו חיפוש ותצוגה), עם גלילה למוצר שנשמר

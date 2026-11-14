@@ -3,11 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/current";
-import { supplierPriceList } from "@/lib/customer/catalog";
+import { violationProducts } from "@/lib/customer/violation-products";
 import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
-import { UNIT_LABEL } from "@/lib/format";
 import { REPEAT_REPORT_DAYS, VIOLATION_WINDOW_DAYS, windowStart } from "@/lib/price-violations";
 import { syncViolationStage } from "@/lib/price-violations-sync";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
@@ -31,9 +30,10 @@ export async function reportPriceViolation(_: ViolationFormState, form: FormData
     (await db.matchRequest.count({ where: { customerId: customer.id, supplierId } })) > 0;
   if (!related) return { error: "אפשר לדווח רק על ספק שאתם עובדים איתו או שפניתם אליו" };
 
-  const list = await supplierPriceList(supplierId);
-  const item = list?.items.find((i) => i.product.id === String(form.get("productId") ?? ""));
-  if (!list || !item) return { error: "נא לבחור מוצר מהרשימה" };
+  // כולל מוצרים שהספק העביר לארכיון בתקופת הדיווח
+  const productId = String(form.get("productId") ?? "");
+  const item = (await violationProducts(supplierId)).find((p) => p.id === productId);
+  if (!item) return { error: "נא לבחור מוצר מהרשימה" };
   const shown = parseShekels(form.get("shownPrice"));
   const charged = parseShekels(form.get("chargedPrice"));
   if (shown === null) return { error: "נא לרשום את המחיר שהופיע במערכת או שסוכם" };
@@ -48,7 +48,7 @@ export async function reportPriceViolation(_: ViolationFormState, form: FormData
     where: {
       customerId: customer.id,
       supplierId,
-      productId: item.product.id,
+      productId: item.id,
       createdAt: { gte: windowStart(now, REPEAT_REPORT_DAYS) },
     },
   });
@@ -64,9 +64,9 @@ export async function reportPriceViolation(_: ViolationFormState, form: FormData
     data: {
       supplierId,
       customerId: customer.id,
-      productId: item.product.id,
-      productName: item.product.name,
-      unit: UNIT_LABEL[item.product.unit] ?? item.product.unit,
+      productId: item.id,
+      productName: item.name,
+      unit: item.unitLabel,
       shownPriceAgorot: shown,
       chargedPriceAgorot: charged,
       occurredOn,
@@ -77,7 +77,7 @@ export async function reportPriceViolation(_: ViolationFormState, form: FormData
     action: "violation.reported",
     targetType: "supplier",
     targetId: supplierId,
-    details: { reportId: report.id, product: item.product.name, shown, charged, supplier: list.name },
+    details: { reportId: report.id, product: item.name, shown, charged, supplierId },
   });
   await syncViolationStage(supplierId, now);
   revalidatePath("/admin", "layout");

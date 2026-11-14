@@ -749,6 +749,8 @@ async function main() {
           unitPriceAgorot: Math.round(p.unitPriceAgorot * factor),
           validFrom: longAgo,
           createdAt: longAgo,
+          // המחיר הישן היה בתוקף עד שהמחיר הנוכחי נכנס
+          validTo: midLastMonth,
         },
       });
     }

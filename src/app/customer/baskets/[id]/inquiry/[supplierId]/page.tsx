@@ -13,6 +13,7 @@ import { supplierLogoUrl } from "@/lib/supplier/logo";
 import { deliveryTermsFor } from "@/lib/coverage";
 import { publicPaymentTerms } from "@/lib/terms";
 import { InquiryForm } from "./inquiry-form";
+import { seenQuote } from "@/lib/quote-changes";
 
 export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
   const { id, supplierId } = await params;
@@ -165,7 +166,12 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
             חדשה אחרי שהספק יענה.
           </p>
         ) : (
-          <InquiryForm basketId={basket.id} supplierId={supplierId} defaultMessage={defaultMessage} />
+          <InquiryForm
+            basketId={basket.id}
+            supplierId={supplierId}
+            defaultMessage={defaultMessage}
+            seen={seenQuote(row.snapshot.lines, row.snapshot.totalAgorot)}
+          />
         )}
       </Card>
     </div>

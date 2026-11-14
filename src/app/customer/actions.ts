@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { withLock } from "@/lib/locks";
+import { quoteChanges, seenQuote } from "@/lib/quote-changes";
 import { requireRole } from "@/lib/auth/current";
 import { checkSnapshot } from "@/lib/customer/checks";
 import { customerProfile } from "@/lib/customer/profile";
@@ -91,7 +93,12 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
 
   const productIds = [...new Set(form.getAll("productId").map(String))];
   const products = await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } });
-  const items = [];
+  const items: {
+    productId: string;
+    monthlyQuantity: number;
+    currentUnitPriceAgorot: number | null;
+    preferredBrand: string | null;
+  }[] = [];
   for (const p of products) {
     const quantity = Number(form.get(`quantity_${p.id}`));
     if (!Number.isFinite(quantity) || quantity <= 0) return { error: `נא למלא כמות חודשית ל"${p.name}"` };
@@ -130,10 +137,13 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
   let basketId = data.basketId;
   if (basketId) {
     if (!(await getBasket(customer.id, basketId))) return { error: "הסל לא נמצא" };
-    await db.$transaction([
-      db.basketItem.deleteMany({ where: { basketId } }),
-      db.basket.update({ where: { id: basketId }, data: { ...fields, items: { create: items } } }),
-    ]);
+    // נעילה על הסל: שתי שמירות במקביל (שתי לשוניות) רצות אחת אחרי השנייה ולא משכפלות את המוצרים
+    const id = basketId;
+    await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Basket" WHERE id = ${id} FOR UPDATE`;
+      await tx.basketItem.deleteMany({ where: { basketId: id } });
+      await tx.basket.update({ where: { id }, data: { ...fields, items: { create: items } } });
+    });
   } else {
     basketId = (await db.basket.create({ data: { ...fields, customerId: customer.id, items: { create: items } } })).id;
   }
@@ -184,36 +194,59 @@ const inquirySchema = z.object({
  * פנייה לספק עם ההצעה שהלקוח קיבל. ההצעה והפער מחושבים מחדש כאן, ולא נלקחים מהטופס,
  * כדי שהספק יקבל את המספרים שהמערכת באמת הציגה.
  */
-export async function sendInquiry(_: FormState, form: FormData): Promise<FormState> {
+export interface InquiryFormState extends FormState {
+  /** מה השתנה מאז שהלקוח פתח את הדף; הלקוח רואה ושולח שוב כדי לאשר */
+  changes?: string[];
+  /** ההצעה העדכנית, להשוואה בשליחה הבאה */
+  seen?: string;
+}
+
+export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<InquiryFormState> {
   const customer = await currentCustomer();
   const parsed = inquirySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { basketId, supplierId, message } = parsed.data;
-  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
-    return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
-  }
 
   const basket = await getBasket(customer.id, basketId);
   if (!basket) return { error: "הסל לא נמצא" };
   const row = (await analyzeBasket(basket.id)).rows.find((r) => r.supplierId === supplierId);
   if (!row) return { error: "הספק הזה לא מציע כרגע מוצרים מהסל שלך" };
 
-  const open = await db.negotiationRequest.findFirst({
-    where: { customerId: customer.id, supplierId, status: { in: OPEN_INQUIRY } },
-  });
-  if (open) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
+  // הספק שינה מחיר מאז שהלקוח פתח את הדף: לא שולחים בשקט מחיר שהלקוח לא ראה
+  const current = { lines: row.snapshot.lines, total: row.snapshot.totalAgorot };
+  const changes = quoteChanges(form.get("seen")?.toString(), current);
+  if (changes.length) {
+    return {
+      error: "המחירים של הספק השתנו מאז שפתחתם את הדף. בדקו את השינויים ואת ההודעה, ושלחו שוב כדי לאשר.",
+      changes,
+      seen: seenQuote(current.lines, current.total),
+    };
+  }
 
-  const inquiry = await db.negotiationRequest.create({
-    data: {
-      customerId: customer.id,
-      supplierId,
-      gapAgorot: row.quote.gapAgorot,
-      totalAgorot: row.snapshot.totalAgorot,
-      quote: JSON.parse(JSON.stringify(row.snapshot)),
-      customerProfile: JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))),
-      message,
-    },
+  // המכסה היומית נספרת רק לשליחה אמיתית, לא לשגיאה או לאזהרת שינוי מחיר
+  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+    return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
+  }
+  const profile = JSON.parse(JSON.stringify(await customerProfile(customer.id, basket)));
+  // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
+  const inquiry = await withLock(`inquiry:${customer.id}:${supplierId}`, async (tx) => {
+    const open = await tx.negotiationRequest.findFirst({
+      where: { customerId: customer.id, supplierId, status: { in: OPEN_INQUIRY } },
+    });
+    if (open) return null;
+    return tx.negotiationRequest.create({
+      data: {
+        customerId: customer.id,
+        supplierId,
+        gapAgorot: row.quote.gapAgorot,
+        totalAgorot: row.snapshot.totalAgorot,
+        quote: JSON.parse(JSON.stringify(row.snapshot)),
+        customerProfile: profile,
+        message,
+      },
+    });
   });
+  if (!inquiry) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
   await notify([
     {
       supplierId,
@@ -240,15 +273,11 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
   const parsed = dealInquirySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { offerId, quantity, deliveries, message } = parsed.data;
+  const deal = (await customerDeals(customer.id)).find((d) => d.offerId === offerId);
+  if (!deal) return { error: "המבצע כבר לא בתוקף" };
   if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
-  const deal = (await customerDeals(customer.id)).find((d) => d.offerId === offerId);
-  if (!deal) return { error: "המבצע כבר לא בתוקף" };
-  const open = await db.negotiationRequest.findFirst({
-    where: { customerId: customer.id, supplierId: deal.supplierId, status: { in: OPEN_INQUIRY } },
-  });
-  if (open) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
 
   const dealText = [
     deal.promotion &&
@@ -266,25 +295,34 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
     quantityPerOrder: typeof quantity === "number" ? quantity : null,
     deliveriesPerMonth: deliveries,
   };
-  const inquiry = await db.negotiationRequest.create({
-    data: {
-      customerId: customer.id,
-      supplierId: deal.supplierId,
-      gapAgorot: 0,
-      deal: JSON.parse(JSON.stringify(snapshot)),
-      customerProfile: JSON.parse(
-        JSON.stringify(
-          await customerProfile(customer.id, {
-            name: `מבצע: ${deal.productName}`,
-            deliveriesPerMonth: deliveries,
-            monthlyVolumeMinAgorot: null,
-            items: [],
-          }),
-        ),
-      ),
-      message,
-    },
+  const profile = JSON.parse(
+    JSON.stringify(
+      await customerProfile(customer.id, {
+        name: `מבצע: ${deal.productName}`,
+        deliveriesPerMonth: deliveries,
+        monthlyVolumeMinAgorot: null,
+        items: [],
+      }),
+    ),
+  );
+  // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
+  const inquiry = await withLock(`inquiry:${customer.id}:${deal.supplierId}`, async (tx) => {
+    const open = await tx.negotiationRequest.findFirst({
+      where: { customerId: customer.id, supplierId: deal.supplierId, status: { in: OPEN_INQUIRY } },
+    });
+    if (open) return null;
+    return tx.negotiationRequest.create({
+      data: {
+        customerId: customer.id,
+        supplierId: deal.supplierId,
+        gapAgorot: 0,
+        deal: JSON.parse(JSON.stringify(snapshot)),
+        customerProfile: profile,
+        message,
+      },
+    });
   });
+  if (!inquiry) return { error: "כבר שלחת פנייה לספק הזה והיא ממתינה לתשובה" };
   await notify([
     {
       supplierId: deal.supplierId,

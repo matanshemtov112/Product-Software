@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
 import { reportPriceViolation } from "@/app/customer/violations/actions";
+import { priceOn, type PricePeriod } from "@/lib/price-on";
 
 export interface ViolationProduct {
   id: string;
@@ -11,6 +12,8 @@ export interface ViolationProduct {
   unitLabel: string;
   /** המחיר במערכת במדרגה הראשונה, כנקודת התחלה; הלקוח יכול לתקן למחיר שסוכם איתו */
   priceAgorot: number | null;
+  /** המחירים בתקופת הדיווח, כדי למלא את המחיר שהיה בתוקף ביום האספקה */
+  history?: PricePeriod[];
 }
 
 const field =
@@ -33,6 +36,12 @@ export function PriceViolationButton({
   const [state, action, pending] = useActionState(reportPriceViolation, {});
   const product = products.find((p) => p.id === productId);
   const today = new Date().toISOString().slice(0, 10);
+  const [day, setDay] = useState(today);
+  // המחיר שהיה במערכת ביום האספקה (לא המחיר של היום, שאולי השתנה מאז)
+  const priceFor = (id: string, on: string) => {
+    const p = products.find((x) => x.id === id);
+    return toShekels(p ? (priceOn(p.history ?? [], on) ?? p.priceAgorot) : null);
+  };
 
   if (state.sent) {
     return (
@@ -68,7 +77,7 @@ export function PriceViolationButton({
           value={productId}
           onChange={(e) => {
             setProductId(e.target.value);
-            setShown(toShekels(products.find((p) => p.id === e.target.value)?.priceAgorot ?? null));
+            setShown(priceFor(e.target.value, day));
           }}
           className={field}
         >
@@ -99,7 +108,18 @@ export function PriceViolationButton({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-muted">תאריך האספקה</span>
-          <input name="occurredOn" type="date" required defaultValue={today} max={today} className={field} />
+          <input
+            name="occurredOn"
+            type="date"
+            required
+            value={day}
+            max={today}
+            onChange={(e) => {
+              setDay(e.target.value);
+              if (productId) setShown(priceFor(productId, e.target.value));
+            }}
+            className={field}
+          />
         </label>
       </div>
       <label className="flex flex-col gap-1 text-sm">

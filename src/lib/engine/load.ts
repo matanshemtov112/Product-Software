@@ -40,7 +40,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
               validFrom: { lte: now },
               OR: [{ validTo: null }, { validTo: { gt: now } }],
             },
-            orderBy: { validFrom: "desc" },
+            orderBy: [{ validFrom: "desc" }, { createdAt: "desc" }],
           },
         },
       },

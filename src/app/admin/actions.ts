@@ -11,7 +11,7 @@ import { DOC_LABEL } from "@/lib/verification";
 import { syncVerification } from "@/lib/verification-sync";
 import { syncViolationStage } from "@/lib/price-violations-sync";
 import { notify, notifyPriceChange } from "@/lib/notifications";
-import { closePrevious } from "@/lib/supplier/prices";
+import { closeOpenPrices, lockOffer } from "@/lib/supplier/prices";
 
 const str = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
@@ -66,11 +66,25 @@ export async function decidePrice(form: FormData) {
     revalidatePath("/admin", "layout");
     return;
   }
-  const updated = await db.offerPrice.update({
-    where: { id },
-    data: approve ? { status: "LIVE", validFrom: now } : { status: "REJECTED" },
+  // אישור בטרנזקציה עם נעילה על המוצר: המחיר הפתוח הקודם נסגר באותו רגע שהמאושר נכנס לתוקף
+  const decided = await db.$transaction(async (tx) => {
+    await lockOffer(tx, offer.id);
+    const fresh = await tx.offerPrice.findUnique({ where: { id } });
+    // בינתיים הספק שמר מחיר חדש, שהחליף את הבקשה הזו
+    if (fresh?.status !== "PENDING_APPROVAL") return false;
+    const at = new Date();
+    if (approve)
+      await closeOpenPrices(tx, { offerId: offer.id, tierId: price.tierId, kind: price.kind, at, exceptId: id });
+    await tx.offerPrice.update({
+      where: { id },
+      data: approve ? { status: "LIVE", validFrom: at } : { status: "REJECTED" },
+    });
+    return true;
   });
-  if (approve) await closePrevious(updated);
+  if (!decided) {
+    revalidatePath("/admin", "layout");
+    return;
+  }
   await audit({
     action: approve ? "price.approved" : "price.rejected",
     targetType: "offer",

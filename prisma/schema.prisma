@@ -483,6 +483,8 @@ model BasketItem {
   excludedSupplierIds    String[] @default([])
   /// מותג שהלקוח רוצה דווקא; null = כל מותג
   preferredBrand         String?
+
+  @@unique([basketId, productId])
 }
 
 model OptimizationRun {
