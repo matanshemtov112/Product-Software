@@ -1,5 +1,5 @@
 import { nominalPackSize } from "@/lib/pack";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
 import { categoryTree, selectableCategories } from "@/lib/categories";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
@@ -19,6 +19,8 @@ export default async function EditProductPage({
   const supplier = await supplierForUser(session.userId);
   const offer = await getOffer(supplier.id, id);
   if (!offer) notFound();
+  // מוצר בארכיון לא נערך; מחזירים אותו מהארכיון קודם
+  if (offer.archivedAt) redirect(`/supplier/products/${offer.id}`);
   const categories = selectableCategories(await categoryTree(), null);
   const byTier = pricesByTier(offer);
   // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
@@ -42,6 +44,8 @@ export default async function EditProductPage({
             categoryId: offer.product.categoryId,
             unit: offer.product.unit,
             brand: offer.brand ?? "",
+            pendingBrand: offer.pendingBrand,
+            barcode: offer.barcode ?? "",
             supplierSku: offer.supplierSku ?? "",
             supplierProductName: offer.supplierProductName ?? "",
             packType: offer.packType ?? "",

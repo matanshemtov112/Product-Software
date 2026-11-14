@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { db } from "@/lib/db";
 import { DealBadge, PriceStatusBadge } from "@/components/price-badge";
 import { dealInput } from "@/lib/deal-label";
 import { lastValidDay, shortDate } from "@/lib/price-status";
@@ -163,6 +164,7 @@ export default async function SupplierProducts({
   // לאן לחזור אחרי עריכה: אותו חיפוש ואותה תצוגה
   const back = listQuery({ q, category, view: view === "grid" ? "grid" : undefined });
   const stats = filtered ? null : await supplierStats(supplier.id, offers);
+  const archivedCount = await db.supplierOffer.count({ where: { supplierId: supplier.id, archivedAt: { not: null } } });
 
   return (
     <div className="flex flex-col gap-4">
@@ -173,6 +175,14 @@ export default async function SupplierProducts({
           <p className="text-sm text-muted">
             {categoryName ? `${categoryName} · ` : ""}
             {offers.length} מוצרים{firstTier ? ` · מחירים במדרגת "${firstTier.name}", ללא מע״מ` : ""}
+            {archivedCount > 0 && (
+              <>
+                {" · "}
+                <Link href="/supplier/archive" className="text-accent hover:underline">
+                  ארכיון ({archivedCount})
+                </Link>
+              </>
+            )}
           </p>
         </div>
         <Link

@@ -16,7 +16,7 @@ interface Pending {
 const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
   { href: "/admin", label: "סקירה ודוחות" },
   { href: "/admin/suppliers", label: "ספקים", pending: "suppliers" },
-  { href: "/admin/prices", label: "אישור מחירים", pending: "prices" },
+  { href: "/admin/prices", label: "אישור מחירים ומותגים", pending: "prices" },
   { href: "/admin/products", label: "מוצרים ושמות נרדפים", pending: "products" },
   { href: "/admin/categories", label: "קטגוריות" },
   { href: "/admin/reviews", label: "ביקורות", pending: "reviews" },

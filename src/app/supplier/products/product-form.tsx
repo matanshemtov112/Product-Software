@@ -8,6 +8,7 @@ import { Field, FormError, Input, Select, SubmitButton } from "@/components/form
 import { shekels } from "@/lib/format";
 import { nominalPackSize, PACK_LABEL, packContent, type PackTypeKey } from "@/lib/pack";
 import { saveOffer } from "../actions";
+import { brandChangeNeedsDecision } from "@/lib/supplier/offer-changes";
 import { ImageField } from "./image-field";
 
 interface CatalogProduct {
@@ -24,6 +25,9 @@ export interface OfferFormValues {
   categoryId: string;
   unit: "KG" | "LITER" | "UNIT";
   brand: string;
+  /** מותג חדש שממתין לאישור מנהל */
+  pendingBrand?: string | null;
+  barcode?: string;
   supplierSku: string;
   supplierProductName: string;
   packType: PackTypeKey | "";
@@ -96,6 +100,9 @@ export function ProductForm({
 }) {
   const [state, action, pending] = useActionState(saveOffer, {});
   const editing = Boolean(initial.offerId);
+  const [brand, setBrand] = useState(initial.brand);
+  // מותג אחר במוצר קיים: הספק צריך לבחור אם זה מוצר חלופי או אותו מוצר
+  const brandChanged = editing && brandChangeNeedsDecision(initial.brand, brand);
   const productLocked = editing || Boolean(initial.addPack);
   const [categoryId, setCategoryId] = useState(initial.categoryId);
   const [unit, setUnit] = useState(initial.unit);
@@ -227,11 +234,46 @@ export function ProductForm({
             />
           </Field>
           <Field label="מותג (לא חובה)">
-            <Input name="brand" defaultValue={initial.brand} />
+            <Input name="brand" value={brand} onChange={(e) => setBrand(e.target.value)} />
           </Field>
           <Field label='מק"ט אצלכם (לא חובה)'>
             <Input name="supplierSku" defaultValue={initial.supplierSku} dir="ltr" />
           </Field>
+          <Field label="ברקוד (לא חובה)">
+            <Input name="barcode" defaultValue={initial.barcode ?? ""} dir="ltr" inputMode="numeric" maxLength={32} />
+          </Field>
+          {initial.pendingBrand && (
+            <p className="rounded-md bg-background px-3 py-2 text-sm text-muted sm:col-span-2">
+              ביקשתם לשנות את המותג ל-{initial.pendingBrand}. הבקשה ממתינה לאישור צוות הפלטפורמה, ועד אז המותג הקודם
+              נשאר.
+            </p>
+          )}
+          {brandChanged && (
+            <fieldset className="flex flex-col gap-2 rounded-md border border-accent bg-accent-soft p-3 text-sm sm:col-span-2">
+              <legend className="px-1 font-medium">
+                שיניתם את המותג מ-{initial.brand} ל-{brand.trim() || "בלי מותג"}. מה קרה?
+              </legend>
+              <label className="flex items-start gap-2">
+                <input type="radio" name="brandChange" value="replacement" required className="mt-1 accent-accent" />
+                <span>
+                  <span className="font-medium">מוצר חלופי: הבאתי מוצר אחר במקום הקודם</span>
+                  <span className="block text-xs text-muted">
+                    נפתח מוצר חדש עם היסטוריית מחירים משלו. המוצר הקודם עובר לארכיון עם ההיסטוריה שלו, והלקוחות יראו שזה
+                    תחליף ולא אותו מוצר.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2">
+                <input type="radio" name="brandChange" value="same" required className="mt-1 accent-accent" />
+                <span>
+                  <span className="font-medium">אותו מוצר בדיוק, רק שם המותג השתנה</span>
+                  <span className="block text-xs text-muted">
+                    ההיסטוריה ממשיכה. השינוי נכנס לתוקף אחרי אישור של צוות הפלטפורמה.
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+          )}
           <Field label="איך המוצר מגיע">
             <Select name="packType" value={packType} onChange={(e) => setPackType(e.target.value as PackTypeKey | "")}>
               <option value="">{`בתפזורת, לפי ${unitLabel}`}</option>

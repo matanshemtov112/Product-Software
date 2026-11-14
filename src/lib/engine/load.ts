@@ -2,6 +2,7 @@ import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel } from "@/lib/pack";
 import { volumeScale } from "./optimize";
+import { offerChangeNote } from "@/lib/supplier/offer-changes";
 import type { BasketLine, SupplierInput } from "./types";
 
 /** מספר הביקורות המינימלי שממנו משתמשים בדירוג האמיתי של ספק */
@@ -32,6 +33,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
         include: {
           product: { select: { unit: true } },
           quantityDeal: true,
+          replaces: { select: { brand: true, archivedAt: true } },
           prices: {
             where: {
               status: "LIVE",
@@ -93,11 +95,14 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
           }
         }
         const pack = { ...o, unit: o.product.unit };
+        // אריזה שהשתנתה לאחרונה או מוצר חלופי: מסמנים ללקוח ליד המחיר
+        const changeNote = offerChangeNote(o, packLabel(pack), now);
         return {
           offerId: o.id,
           productId: o.productId,
           packSize: nominalPackSize(o),
           ...(o.brand ? { brand: o.brand } : {}),
+          ...(changeNote ? { changeNote } : {}),
           minQuantity: minBaseQuantity(pack),
           packLabel: packLabel(pack),
           minOrderLabel: minOrderLabel(pack),

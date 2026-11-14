@@ -1,3 +1,4 @@
+import { ChangeNote } from "./brand-choices";
 import { PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
 import { shekels } from "@/lib/format";
 import type { QuoteSnapshot } from "@/lib/inquiries";
@@ -27,6 +28,7 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                   {(l.priceKind === "PROMOTION" || l.deal) && <SaleMark />}
                   {l.productName}
                   {l.brand && <span className="text-muted"> · {l.brand}</span>}
+                  <ChangeNote note={l.changeNote} />
                   {l.pack && (
                     <span className="block text-xs text-muted">
                       {l.pack}

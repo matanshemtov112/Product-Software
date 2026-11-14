@@ -5,7 +5,9 @@ import { requireRole } from "@/lib/auth/current";
 import { shekels } from "@/lib/format";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel } from "@/lib/pack";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser, UNIT_LABEL } from "@/lib/supplier/catalog";
-import { endPromotion, removeOfferImage } from "../../actions";
+import { endPromotion, removeOfferImage, restoreOffer } from "../../actions";
+import { db } from "@/lib/db";
+import { CHANGE_LABEL } from "@/lib/supplier/offer-changes";
 import { DealBadge, PriceStatusBadge } from "@/components/price-badge";
 import { dealInput } from "@/lib/deal-label";
 import { lastValidDay } from "@/lib/price-status";
@@ -33,6 +35,18 @@ export default async function ProductDetails({
   const byTier = pricesByTier(offer);
   const date = (d: Date) => d.toLocaleDateString("he-IL");
   const imageSrc = offerImageUrl(offer);
+  // יומן השינויים, והקשר למוצר החלופי (בשני הכיוונים)
+  const [changes, related] = await Promise.all([
+    db.offerChange.findMany({ where: { offerId: offer.id }, orderBy: { createdAt: "desc" } }),
+    db.supplierOffer.findUnique({
+      where: { id: offer.id },
+      select: {
+        replacedBy: { select: { id: true, brand: true } },
+        replaces: { select: { id: true, brand: true } },
+      },
+    }),
+  ]);
+  const archived = Boolean(offer.archivedAt);
 
   const details = [
     ["סוג מוצר", offer.product.category.name],
@@ -42,6 +56,7 @@ export default async function ProductDetails({
     ["השם שלכם למוצר", offer.supplierProductName ?? "לא צוין"],
     ["מותג", offer.brand ?? "לא צוין"],
     ['מק"ט', offer.supplierSku ?? "לא צוין"],
+    ["ברקוד", offer.barcode ?? "לא צוין"],
     ["זמינות", offer.available ? "זמין" : "לא זמין"],
   ];
 
@@ -57,22 +72,68 @@ export default async function ProductDetails({
             <p className="text-sm text-muted">מוצר חדש בקטלוג, ממתין לבדיקת צוות הפלטפורמה.</p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={`/supplier/products/${offer.id}/edit`}
-            className="rounded-md bg-accent px-4 py-2 text-sm text-white"
-          >
-            עריכה
-          </Link>
-          <Link
-            href={`/supplier/products/new?addPack=${offer.id}`}
-            className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft"
-          >
-            + אריזה נוספת
-          </Link>
-          <DeleteOfferButton offerId={offer.id} productName={offer.product.name} />
-        </div>
+        {archived ? (
+          <form action={restoreOffer}>
+            <input type="hidden" name="offerId" value={offer.id} />
+            <button className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft">
+              החזרה מהארכיון
+            </button>
+          </form>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/supplier/products/${offer.id}/edit`}
+              className="rounded-md bg-accent px-4 py-2 text-sm text-white"
+            >
+              עריכה
+            </Link>
+            <Link
+              href={`/supplier/products/new?addPack=${offer.id}`}
+              className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft"
+            >
+              + אריזה נוספת
+            </Link>
+            <DeleteOfferButton offerId={offer.id} productName={offer.product.name} />
+          </div>
+        )}
       </div>
+
+      {archived && (
+        <p role="status" className="rounded-md bg-background px-4 py-3 text-sm">
+          המוצר בארכיון מ-{date(offer.archivedAt!)} ולא מופיע בהשוואות. ההיסטוריה שלו נשמרת כאן.
+          {related?.replacedBy && (
+            <>
+              {" "}
+              הוא הוחלף במוצר חלופי:{" "}
+              <Link href={`/supplier/products/${related.replacedBy.id}`} className="text-accent hover:underline">
+                {offer.product.name}
+                {related.replacedBy.brand ? ` של ${related.replacedBy.brand}` : ""}
+              </Link>
+              .
+            </>
+          )}
+        </p>
+      )}
+      {!archived && related && related.replaces.length > 0 && (
+        <p className="rounded-md bg-background px-4 py-3 text-sm">
+          מוצר חלופי. הוא החליף את{" "}
+          {related.replaces.map((r, i) => (
+            <span key={r.id}>
+              {i > 0 && ", "}
+              <Link href={`/supplier/products/${r.id}`} className="text-accent hover:underline">
+                {offer.product.name}
+                {r.brand ? ` של ${r.brand}` : ""}
+              </Link>
+            </span>
+          ))}
+          . ללקוחות מוצג שזה תחליף ולא אותו מוצר.
+        </p>
+      )}
+      {offer.pendingBrand && (
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
+          ביקשתם לשנות את המותג ל-{offer.pendingBrand}. הבקשה ממתינה לאישור צוות הפלטפורמה, ועד אז מוצג המותג הקודם.
+        </p>
+      )}
 
       {held && (
         <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
@@ -176,6 +237,28 @@ export default async function ProductDetails({
           </p>
         </Card>
       </div>
+
+      <Card title="יומן שינויים">
+        {changes.length === 0 ? (
+          <p className="text-sm text-muted">
+            עוד לא היו שינויים בפרטי המוצר. כל שינוי בברקוד, במק״ט, באריזה או במותג יישמר כאן.
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-border text-sm">
+            {changes.map((c) => (
+              <li key={c.id} className="flex flex-wrap gap-x-3 py-2">
+                <span className="text-muted">{date(c.createdAt)}</span>
+                <span className="font-medium">{CHANGE_LABEL[c.kind]}</span>
+                {(c.oldValue || c.newValue) && (
+                  <span>
+                    {c.oldValue ?? "ריק"} ← {c.newValue ?? "ריק"}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card title="היסטוריית מחירים">
         {offer.prices.length === 0 ? (

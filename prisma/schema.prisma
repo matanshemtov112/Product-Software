@@ -321,12 +321,53 @@ model SupplierOffer {
   /// הספק מזין מחיר לאריזה (למשל לפח 4 ליטר); נשמר תמיד כמחיר ליחידת בסיס
   pricePerPack        Boolean       @default(false)
   available           Boolean       @default(true)
+  /// ברקוד נוכחי; ברקודים קודמים נשמרים ביומן השינויים
+  barcode             String?
+  /// מותג חדש שהספק אומר שהוא אותו מוצר; ממתין לאישור מנהל
+  pendingBrand        String?
+  /// מתי האריזה השתנתה, ואיך היא נראתה קודם (לסימון ללקוח)
+  packChangedAt       DateTime?
+  previousPackLabel   String?
+  /// במקום מחיקה: המוצר עובר לארכיון וההיסטוריה שלו נשמרת
+  archivedAt          DateTime?
+  /// מוצר חלופי (מותג אחר) שהחליף את המוצר הזה
+  replacedById        String?
+  replacedBy          SupplierOffer?  @relation("OfferReplacement", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces            SupplierOffer[] @relation("OfferReplacement")
+  changes             OfferChange[]
   prices              OfferPrice[]
   image               OfferImage?
   quantityDeal        QuantityDeal?
 
   // ספק יכול למכור את אותו מוצר בכמה אריזות (למשל אורז בשק 5 ק״ג ובשק 25 ק״ג): כל אריזה היא הצעה נפרדת
   @@index([supplierId, productId])
+}
+
+enum OfferChangeKind {
+  BARCODE
+  SKU
+  NAME
+  PACK
+  BRAND
+  BRAND_REQUESTED
+  BRAND_APPROVED
+  BRAND_REJECTED
+  REPLACED
+  ARCHIVED
+  RESTORED
+}
+
+/// יומן השינויים של מוצר אצל ספק: כל שינוי בפרטים המזהים נשמר, שום דבר לא נמחק
+model OfferChange {
+  id        String          @id @default(cuid())
+  offerId   String
+  offer     SupplierOffer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  kind      OfferChangeKind
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime        @default(now())
+
+  @@index([offerId, createdAt])
 }
 
 // תמונת מוצר של ספק. נשמרת במסד בגודל מוקטן, בטבלה נפרדת כדי שהרשימות לא יטענו את הקובץ.

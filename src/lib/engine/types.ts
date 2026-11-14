@@ -38,6 +38,8 @@ export interface Offer {
   packSize: number;
   /** המותג של המוצר אצל הספק, כפי שהספק כתב אותו */
   brand?: string;
+  /** סימון ללקוח על שינוי אחרון: אריזה שהשתנתה או מוצר חלופי */
+  changeNote?: string;
   minQuantity?: number;
   /** לתצוגה: איך המוצר מגיע והמינימום להזמנה, למשל "קרטון 15–20 ק״ג" */
   packLabel?: string;
@@ -97,6 +99,8 @@ export interface PricedLine {
   packSize?: number;
   /** המותג של ההצעה שנבחרה */
   brand?: string;
+  /** סימון על שינוי אחרון במוצר (אריזה שהשתנתה, מוצר חלופי) */
+  changeNote?: string;
   /** אריזות אחרות של אותו ספק לאותו מוצר, שיצאו יקרות יותר לכמות של הלקוח */
   otherPacks?: { offerId?: string; packLabel?: string; packSize: number; unitPriceAgorot: number }[];
   quantity: number;

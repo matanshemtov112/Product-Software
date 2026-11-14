@@ -108,6 +108,57 @@ export async function decidePrice(form: FormData) {
   revalidatePath("/admin", "layout");
 }
 
+/**
+ * שינוי מותג שהספק אומר שהוא אותו מוצר: אישור מעדכן את המותג וההיסטוריה ממשיכה,
+ * דחייה משאירה את המותג הקודם (הספק יכול להכניס את המוצר כמוצר חלופי).
+ */
+export async function decideBrand(form: FormData) {
+  await requireRole("ADMIN");
+  const approve = form.get("decision") === "approve";
+  const offer = await db.supplierOffer.findUnique({
+    where: { id: str(form, "offerId") },
+    include: { product: true, supplier: true },
+  });
+  if (!offer?.pendingBrand) return;
+  await db.supplierOffer.update({
+    where: { id: offer.id },
+    data: {
+      pendingBrand: null,
+      ...(approve ? { brand: offer.pendingBrand } : {}),
+      changes: {
+        create: {
+          kind: approve ? "BRAND_APPROVED" : "BRAND_REJECTED",
+          oldValue: offer.brand,
+          newValue: offer.pendingBrand,
+        },
+      },
+    },
+  });
+  await audit({
+    action: approve ? "brand.approved" : "brand.rejected",
+    targetType: "offer",
+    targetId: offer.id,
+    details: {
+      supplier: offer.supplier.companyName,
+      product: offer.product.name,
+      from: offer.brand,
+      to: offer.pendingBrand,
+    },
+  });
+  await notify([
+    {
+      supplierId: offer.supplierId,
+      kind: approve ? "PRICE_APPROVED" : "PRICE_REJECTED",
+      title: `${approve ? "אושר" : "לא אושר"} שינוי המותג של ${offer.product.name} ל-${offer.pendingBrand}`,
+      body: approve
+        ? "המותג עודכן, והיסטוריית המחירים ממשיכה."
+        : `המותג ${offer.brand ?? "הקודם"} נשאר. אם הבאתם מוצר אחר במקום הקודם, ערכו את המוצר ובחרו ״מוצר חלופי״.`,
+      href: `/supplier/products/${offer.id}`,
+    },
+  ]);
+  revalidatePath("/admin", "layout");
+}
+
 /** עדכון מוצר בקטלוג; שמירה מסמנת אותו כנבדק, כך שהוא מופיע ללקוחות */
 export async function updateProduct(form: FormData) {
   await requireRole("ADMIN");

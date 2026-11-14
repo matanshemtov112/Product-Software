@@ -67,3 +67,9 @@ export function BrandTag({ brand }: { brand?: string | null }) {
   if (!brand) return null;
   return <span className="text-muted"> · {brand}</span>;
 }
+
+/** סימון ליד המחיר כשהספק שינה לאחרונה את האריזה או החליף את המוצר במוצר חלופי */
+export function ChangeNote({ note }: { note?: string }) {
+  if (!note) return null;
+  return <span className="mt-0.5 block text-xs font-medium text-danger">{note}</span>;
+}

@@ -10,7 +10,8 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { checkImage } from "@/lib/supplier/images";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
-import { nominalPackSize } from "@/lib/pack";
+import { nominalPackSize, packLabel } from "@/lib/pack";
+import { brandChangeNeedsDecision, diffOffer } from "@/lib/supplier/offer-changes";
 import { closePrevious } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
 import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
@@ -31,6 +32,13 @@ const offerSchema = z.object({
   unit: z.enum(["KG", "LITER", "UNIT"]),
   brand: z.string().trim().optional(),
   supplierSku: z.string().trim().optional(),
+  barcode: z
+    .string()
+    .trim()
+    .max(32)
+    .regex(/^[0-9A-Za-z-]*$/, "ברקוד יכול להכיל רק ספרות ואותיות לועזיות")
+    .optional(),
+  brandChange: z.enum(["", "replacement", "same"]).default(""),
   supplierProductName: z.string().trim().max(80).optional(),
   packType: z.enum(["", "UNIT", "CARTON", "CRATE", "SACK", "TIN", "BOTTLE", "PACK", "TRAY", "BUCKET"]).default(""),
   packSize: z.coerce.number().positive("גודל אריזה חייב להיות חיובי"),
@@ -98,6 +106,7 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     ? await db.supplierOffer.findFirst({
         where: { id: data.offerId, supplierId: supplier.id },
         include: {
+          product: { select: { unit: true } },
           prices: {
             where: { status: "LIVE", validFrom: { lte: now }, OR: [{ validTo: null }, { validTo: { gt: now } }] },
             orderBy: { validFrom: "desc" },
@@ -106,6 +115,24 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
       })
     : null;
   if (data.offerId && !existing) return { error: "המוצר לא נמצא" };
+  if (existing?.archivedAt) return { error: "המוצר בארכיון. אפשר להחזיר אותו מהארכיון ואז לערוך." };
+  // מותג אחר: לא מאחדים אוטומטית. הספק בוחר אם זה מוצר חלופי או אותו מוצר (שממתין לאישור מנהל)
+  const brandDecision = existing && brandChangeNeedsDecision(existing.brand, data.brand ?? null);
+  if (brandDecision && !data.brandChange) {
+    return {
+      error: `שיניתם את המותג מ-${existing.brand} ל-${data.brand || "בלי מותג"}. נא לבחור אם זה מוצר חלופי או אותו מוצר.`,
+    };
+  }
+  const replacing = brandDecision && data.brandChange === "replacement" ? existing : null;
+  const brandPending = brandDecision && data.brandChange === "same";
+  if (brandPending && !data.brand) {
+    return { error: "אי אפשר למחוק את המותג מאותו מוצר. אם המוצר הוחלף במוצר בלי מותג, בחרו ״מוצר חלופי״." };
+  }
+  if (replacing && promotion) {
+    return { error: "מוצר חלופי נכנס עם מחיר קבוע או מחיר עם תוקף. אפשר להגדיר לו מבצע אחרי השמירה." };
+  }
+  // המוצר שמתעדכן: במוצר חלופי נוצר פריט חדש עם היסטוריה משלו, והישן עובר לארכיון
+  const target = replacing ? null : existing;
   if (promotion) {
     if (!existing) return { error: "מבצע מגדירים למוצר קיים, אחרי שיש לו מחיר קבוע או מחיר עם תוקף" };
     for (const { tier, agorot } of prices) {
@@ -183,6 +210,7 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
       productId: productId!,
       packType: data.packType || null,
       packSize: data.packSize,
+      archivedAt: null,
       ...(existing ? { id: { not: existing.id } } : {}),
     },
   });
@@ -194,7 +222,10 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
 
   const minAmount = typeof data.minAmount === "number" ? data.minAmount : 0;
   const offerData = {
-    brand: data.brand || null,
+    // שינוי מותג שממתין לאישור: המותג הקיים נשאר עד שהמנהל מאשר
+    brand: brandPending ? existing!.brand : data.brand || null,
+    ...(brandPending ? { pendingBrand: data.brand } : {}),
+    barcode: data.barcode || null,
     supplierSku: data.supplierSku || null,
     supplierProductName: data.supplierProductName || null,
     packType: data.packType || null,
@@ -206,9 +237,56 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     available: data.available === "on",
     pricePerPack: perPack,
   };
-  const offer = existing
-    ? await db.supplierOffer.update({ where: { id: existing.id }, data: offerData })
+  // יומן שינויים: כל שינוי בפרטים המזהים נשמר; שינוי אריזה מסומן גם ללקוחות
+  const unit = existing?.product.unit ?? data.unit;
+  const packOf = (o: { packType: typeof offerData.packType; packSize: number; packSizeMax: number | null }) =>
+    packLabel({ ...o, unit });
+  const changes = target
+    ? diffOffer(
+        { ...target, pack: packOf(target) },
+        { ...offerData, brand: data.brand || null, pack: packOf(offerData) },
+      )
+    : [];
+  const packChange = changes.find((c) => c.kind === "PACK");
+  const offer = target
+    ? await db.supplierOffer.update({
+        where: { id: target.id },
+        data: {
+          ...offerData,
+          ...(packChange ? { packChangedAt: now, previousPackLabel: packChange.oldValue } : {}),
+          changes: {
+            create: [
+              ...changes,
+              ...(brandPending
+                ? [{ kind: "BRAND_REQUESTED" as const, oldValue: target.brand, newValue: data.brand! }]
+                : []),
+            ],
+          },
+        },
+      })
     : await db.supplierOffer.create({ data: { ...offerData, supplierId: supplier.id, productId: productId! } });
+  if (replacing) {
+    await db.$transaction([
+      db.supplierOffer.update({
+        where: { id: replacing.id },
+        data: {
+          archivedAt: now,
+          available: false,
+          replacedById: offer.id,
+          changes: { create: { kind: "REPLACED", oldValue: replacing.brand, newValue: offer.brand } },
+        },
+      }),
+      db.offerChange.create({
+        data: { offerId: offer.id, kind: "REPLACED", oldValue: replacing.brand, newValue: offer.brand },
+      }),
+    ]);
+    await audit({
+      action: "offer.replaced",
+      targetType: "offer",
+      targetId: offer.id,
+      details: { supplier: supplier.companyName, product: data.productName, from: replacing.brand, to: offer.brand },
+    });
+  }
 
   if (image?.ok) await storeImage(offer.id, image);
 
@@ -248,7 +326,7 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   const kind = promotion ? "PROMOTION" : "REGULAR";
   for (const { tier, agorot } of prices) {
     if (agorot === null) continue;
-    const tierPrices = existing?.prices.filter((p) => p.tierId === tier.id) ?? [];
+    const tierPrices = target?.prices.filter((p) => p.tierId === tier.id) ?? [];
     const regular = tierPrices.find((p) => p.kind === "REGULAR") ?? null;
     const promo = tierPrices.find((p) => p.kind === "PROMOTION") ?? null;
     const same = promotion ? promo : regular;
@@ -367,12 +445,45 @@ export async function removeOfferImage(form: FormData) {
   revalidatePath("/supplier", "layout");
 }
 
+/** "מחיקה" מעבירה לארכיון: המוצר יוצא מההשוואות, וההיסטוריה שלו (מחירים, ברקודים, שינויים) נשמרת */
 export async function deleteOffer(form: FormData) {
   const supplier = await currentSupplier();
   const offerId = String(form.get("offerId") ?? "");
-  await db.supplierOffer.deleteMany({ where: { id: offerId, supplierId: supplier.id } });
-  revalidatePath("/supplier");
+  const offer = await db.supplierOffer.findFirst({ where: { id: offerId, supplierId: supplier.id, archivedAt: null } });
+  if (offer) {
+    await db.supplierOffer.update({
+      where: { id: offer.id },
+      data: { archivedAt: new Date(), available: false, changes: { create: { kind: "ARCHIVED" } } },
+    });
+  }
+  revalidatePath("/supplier", "layout");
   if (!form.get("stay")) redirect("/supplier");
+}
+
+/** החזרה מהארכיון: המוצר חוזר לרשימה (לא זמין עד שהספק מסמן אותו), עם כל ההיסטוריה */
+export async function restoreOffer(form: FormData) {
+  const supplier = await currentSupplier();
+  const offerId = String(form.get("offerId") ?? "");
+  const offer = await db.supplierOffer.findFirst({
+    where: { id: offerId, supplierId: supplier.id, archivedAt: { not: null } },
+  });
+  if (!offer) redirect("/supplier/archive");
+  const samePack = await db.supplierOffer.findFirst({
+    where: {
+      supplierId: supplier.id,
+      productId: offer.productId,
+      packType: offer.packType,
+      packSize: offer.packSize,
+      archivedAt: null,
+    },
+  });
+  if (samePack) redirect(`/supplier/archive?conflict=${offer.id}`);
+  await db.supplierOffer.update({
+    where: { id: offer.id },
+    data: { archivedAt: null, changes: { create: { kind: "RESTORED" } } },
+  });
+  revalidatePath("/supplier", "layout");
+  redirect(`/supplier/products/${offer.id}`);
 }
 
 const profileSchema = z.object({

@@ -26,6 +26,8 @@ export interface QuoteSnapshot {
     pack?: string;
     /** המותג של המוצר אצל הספק */
     brand?: string;
+    /** שינוי אחרון במוצר: אריזה שהשתנתה או מוצר חלופי */
+    changeNote?: string;
     minOrder?: string | null;
     /** המחיר לאריזה, למשל "₪72.00 לפח 4 ליטר" */
     packPrice?: string;

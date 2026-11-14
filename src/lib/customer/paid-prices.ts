@@ -26,6 +26,8 @@ export interface SystemOffer {
   otherPacks?: string[];
   /** המותג של ההצעה */
   brand?: string;
+  /** שינוי אחרון במוצר: אריזה שהשתנתה או מוצר חלופי */
+  changeNote?: string;
   /** מבצע כמות של הספק למוצר */
   deal?: PricedLine["deal"];
 }

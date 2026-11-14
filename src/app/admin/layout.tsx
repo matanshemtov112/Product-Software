@@ -8,7 +8,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireRole("ADMIN");
   const [suppliers, prices, products, reviews, reports, violations, documents] = await Promise.all([
     db.supplier.count({ where: { status: "PENDING" } }),
-    db.offerPrice.count({ where: { status: "PENDING_APPROVAL" } }),
+    Promise.all([
+      db.offerPrice.count({ where: { status: "PENDING_APPROVAL" } }),
+      db.supplierOffer.count({ where: { pendingBrand: { not: null } } }),
+    ]).then(([a, b]) => a + b),
     db.product.count({ where: { pendingReview: true } }),
     db.review.count({ where: { status: "PENDING" } }),
     db.abuseReport.count({ where: { status: "OPEN" } }),

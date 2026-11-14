@@ -126,6 +126,7 @@ function packLine(p: Prepared, line: BasketLine, offer: Offer, tierIndex: number
     ...(offer.packLabel ? { packLabel: offer.packLabel } : {}),
     packSize: offer.packSize,
     ...(offer.brand ? { brand: offer.brand } : {}),
+    ...(offer.changeNote ? { changeNote: offer.changeNote } : {}),
     quantity: line.quantity,
     billedQuantity: billed,
     unitPriceAgorot,

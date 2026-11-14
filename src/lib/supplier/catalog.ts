@@ -48,7 +48,11 @@ export type OfferWithPrices = Prisma.SupplierOfferGetPayload<{ include: typeof o
 
 export async function listOffers(supplierId: string, filters: { q?: string; categoryId?: string }) {
   const offers = await db.supplierOffer.findMany({
-    where: { supplierId, ...(filters.categoryId ? { product: { categoryId: filters.categoryId } } : {}) },
+    where: {
+      supplierId,
+      archivedAt: null,
+      ...(filters.categoryId ? { product: { categoryId: filters.categoryId } } : {}),
+    },
     include: offerInclude,
     orderBy: { product: { name: "asc" } },
   });
@@ -60,13 +64,18 @@ export function offerSearchFields(offer: {
   supplierProductName: string | null;
   brand: string | null;
   supplierSku: string | null;
+  barcode?: string | null;
   product: { name: string; aliases: string[]; category: { name: string; parent: { name: string } | null } };
 }): SearchFields {
   return {
     name: offer.product.name,
-    aliases: [offer.supplierProductName, offer.brand, offer.supplierSku, ...offer.product.aliases].filter(
-      (a): a is string => Boolean(a),
-    ),
+    aliases: [
+      offer.supplierProductName,
+      offer.brand,
+      offer.supplierSku,
+      offer.barcode,
+      ...offer.product.aliases,
+    ].filter((a): a is string => Boolean(a)),
     categories: [offer.product.category.name, offer.product.category.parent?.name].filter((c): c is string =>
       Boolean(c),
     ),
@@ -80,7 +89,7 @@ export async function getOffer(supplierId: string, offerId: string) {
 /** סוגי המוצרים שיש לספק, עם מספר המוצרים בכל אחד, לסרגל הצד */
 export async function categoryCounts(supplierId: string) {
   const offers = await db.supplierOffer.findMany({
-    where: { supplierId },
+    where: { supplierId, archivedAt: null },
     select: { product: { select: { category: { select: { id: true, name: true } } } } },
   });
   const counts = new Map<string, { id: string; name: string; count: number }>();

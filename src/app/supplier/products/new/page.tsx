@@ -22,7 +22,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
     db.product.findMany({
       where: {
         pendingReview: false,
-        offers: { none: { supplierId: supplier.id } },
+        offers: { none: { supplierId: supplier.id, archivedAt: null } },
         ...(domains ? { categoryId: { in: domains } } : {}),
       },
       orderBy: { name: "asc" },

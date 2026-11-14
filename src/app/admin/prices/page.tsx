@@ -2,7 +2,7 @@ import { lastValidDay, shortDate } from "@/lib/price-status";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
-import { decidePrice } from "../actions";
+import { decideBrand, decidePrice } from "../actions";
 
 export default async function AdminPrices() {
   await requireRole("ADMIN");
@@ -10,6 +10,14 @@ export default async function AdminPrices() {
     where: { status: "PENDING_APPROVAL" },
     include: { tier: true, offer: { include: { product: true, supplier: { select: { companyName: true } } } } },
     orderBy: { createdAt: "asc" },
+  });
+  const brands = await db.supplierOffer.findMany({
+    where: { pendingBrand: { not: null } },
+    include: {
+      product: true,
+      supplier: { select: { companyName: true } },
+      changes: { where: { kind: "BRAND_REQUESTED" }, orderBy: { createdAt: "desc" }, take: 1 },
+    },
   });
   const now = new Date();
   const current = await Promise.all(
@@ -30,6 +38,56 @@ export default async function AdminPrices() {
           לק״ג). מחיר שאושר נכנס לתוקף מיד, והלקוחות מקבלים התראה.
         </p>
       </div>
+      {brands.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="font-semibold">שינויי מותג שממתינים</h2>
+            <p className="text-sm text-muted">
+              הספק אומר שזה אותו מוצר בדיוק ורק שם המותג השתנה. אישור ממשיך את היסטוריית המחירים תחת המותג החדש. אם זה
+              מוצר אחר, דחו: הספק יכניס אותו כמוצר חלופי עם היסטוריה משלו.
+            </p>
+          </div>
+          <ul className="flex flex-col gap-3">
+            {brands.map((o) => (
+              <li
+                key={o.id}
+                className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {o.product.name} · {o.supplier.companyName}
+                  </p>
+                  <p className="text-sm text-muted">
+                    מותג: {o.brand ?? "לא צוין"} ← <strong className="text-foreground">{o.pendingBrand}</strong>
+                    {o.barcode ? ` · ברקוד ${o.barcode}` : ""}
+                  </p>
+                  {o.changes[0] && (
+                    <p className="text-xs text-muted">נשלח {o.changes[0].createdAt.toLocaleString("he-IL")}</p>
+                  )}
+                </div>
+                <form action={decideBrand} className="flex shrink-0 gap-2">
+                  <input type="hidden" name="offerId" value={o.id} />
+                  <button
+                    name="decision"
+                    value="approve"
+                    className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+                  >
+                    אישור: אותו מוצר
+                  </button>
+                  <button
+                    name="decision"
+                    value="reject"
+                    className="rounded-md border border-border bg-surface px-4 py-2 text-sm"
+                  >
+                    דחייה
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+          <h2 className="font-semibold">שינויי מחיר</h2>
+        </section>
+      )}
       {pending.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-5 text-sm text-muted">אין שינויי מחיר שממתינים.</p>
       ) : (
