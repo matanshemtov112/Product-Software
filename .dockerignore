@@ -1,0 +1,6 @@
+node_modules
+.next
+# סודות לא נכנסים לתמונת Docker
+.env*
+!.env.example
+.git

@@ -1,0 +1,110 @@
+import { isDealSnapshot } from "@/lib/customer/deals";
+import { Card } from "@/components/form";
+import { requireRole } from "@/lib/auth/current";
+import { customerForUser } from "@/lib/customer/quotes";
+import { db } from "@/lib/db";
+import { shekels } from "@/lib/format";
+import { OfferBadge } from "@/components/offer-badge";
+import { canDecide, inquiryStage, matchStage } from "@/lib/offer-status";
+import Link from "next/link";
+import { matchSummary } from "@/lib/matches";
+
+export default async function CustomerInquiries({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
+  const { sent } = await searchParams;
+  const session = await requireRole("CUSTOMER");
+  const customer = await customerForUser(session.userId);
+  const inquiries = await db.negotiationRequest.findMany({
+    where: { customerId: customer.id },
+    include: { supplier: { select: { companyName: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+  const matches = await db.matchRequest.findMany({
+    where: { customerId: customer.id },
+    include: { supplier: { select: { companyName: true } }, lines: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h1 className="text-2xl font-bold">פניות לספקים</h1>
+        <p className="text-sm text-muted">פניות ששלחתם לספקים מתוך ההשוואה, והתשובות שלהם.</p>
+      </div>
+      {sent && (
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
+          הפנייה נשלחה לספק. התשובה תופיע כאן.
+        </p>
+      )}
+      {matches.length > 0 && (
+        <Card title="בקשות השוואה מהספקים שלכם">
+          <ul className="divide-y divide-border">
+            {matches.map((m) => {
+              const sum = matchSummary(m.lines);
+              const stage = matchStage(m);
+              return (
+                <li key={m.id}>
+                  <Link
+                    href={`/customer/matches/${m.id}`}
+                    className="flex flex-col gap-1 py-3 text-sm hover:bg-background sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <span className="flex flex-wrap items-center gap-2">
+                      {stage === "SENT" && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
+                      <span className="font-medium">{m.supplier.companyName}</span>
+                      <OfferBadge stage={stage} />
+                    </span>
+                    <span className="text-muted">
+                      {m.lines.length} מוצרים · {m.createdAt.toLocaleDateString("he-IL")}
+                      {!m.answeredAt
+                        ? ` · ביקשתם חיסכון של ${shekels(sum.requestedAgorot)} בחודש`
+                        : ` · הספק הציע חיסכון של ${shekels(sum.offeredAgorot)} בחודש`}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+      <Card title={matches.length > 0 ? "פניות לספקים חדשים" : undefined}>
+        {inquiries.length === 0 ? (
+          <p className="text-sm text-muted">עדיין לא שלחתם פניות. אפשר לפנות לספק מתוך עמוד ההשוואה של סל.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {inquiries.map((i) => {
+              const stage = inquiryStage(i);
+              return (
+                <li key={i.id}>
+                  <Link
+                    href={`/customer/inquiries/${i.id}`}
+                    className="flex flex-col gap-1 py-3 text-sm hover:bg-background"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="flex items-center gap-2">
+                        {stage === "SENT" && <span className="size-2 rounded-full bg-accent" aria-hidden="true" />}
+                        <span className="font-medium">{i.supplier.companyName}</span>
+                        <OfferBadge stage={stage} />
+                      </span>
+                      <span className="text-muted">{i.createdAt.toLocaleDateString("he-IL")}</span>
+                    </div>
+                    <p className="text-muted">
+                      {isDealSnapshot(i.deal)
+                        ? `בעקבות מבצע: ${i.deal.productName}, ${i.deal.dealText}`
+                        : `הצעה של ${shekels(i.totalAgorot)} לחודש${i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}`}
+                    </p>
+                    {i.reply && (
+                      <p className="truncate rounded-md bg-background px-3 py-2">
+                        <span className="text-muted">תשובת הספק: </span>
+                        {i.reply}
+                      </p>
+                    )}
+                    {canDecide(stage) && <span className="text-accent">לפתיחת ההצעה ←</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
