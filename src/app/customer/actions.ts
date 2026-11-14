@@ -96,7 +96,12 @@ export async function saveBasket(_: FormState, form: FormData): Promise<FormStat
     const quantity = Number(form.get(`quantity_${p.id}`));
     if (!Number.isFinite(quantity) || quantity <= 0) return { error: `נא למלא כמות חודשית ל"${p.name}"` };
     const price = parseShekels(form.get(`price_${p.id}`));
-    items.push({ productId: p.id, monthlyQuantity: quantity, currentUnitPriceAgorot: price });
+    // מותג שהלקוח רוצה דווקא; ריק = כל מותג
+    const brand =
+      String(form.get(`brand_${p.id}`) ?? "")
+        .trim()
+        .slice(0, 60) || null;
+    items.push({ productId: p.id, monthlyQuantity: quantity, currentUnitPriceAgorot: price, preferredBrand: brand });
   }
   if (items.length === 0) return { error: "נא לבחור לפחות מוצר אחד" };
 

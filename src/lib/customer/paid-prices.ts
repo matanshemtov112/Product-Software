@@ -24,6 +24,8 @@ export interface SystemOffer {
   /** האריזה שנבחרה, והאריזות האחרות של הספק לאותו מוצר (טקסט לתצוגה) */
   packLabel?: string;
   otherPacks?: string[];
+  /** המותג של ההצעה */
+  brand?: string;
   /** מבצע כמות של הספק למוצר */
   deal?: PricedLine["deal"];
 }

@@ -19,15 +19,15 @@ export default async function EditBasket({ params }: { params: Promise<{ id: str
     quantity: String(i.monthlyQuantity),
     price: price(i.currentUnitPriceAgorot),
     included: true,
+    brand: i.preferredBrand ?? "",
   }));
 
   // סל לפי ספק נוכחי: מציגים שוב את כל הקטלוג של הספק, עם הבחירות שנשמרו
-  const list = basket.source === "CURRENT_SUPPLIER" && basket.currentSupplierId
-    ? await supplierPriceList(basket.currentSupplierId)
-    : null;
-  const catalog = list
-    ? list.items.map((i) => i.product)
-    : await catalogForBasket();
+  const list =
+    basket.source === "CURRENT_SUPPLIER" && basket.currentSupplierId
+      ? await supplierPriceList(basket.currentSupplierId)
+      : null;
+  const catalog = list ? list.items.map((i) => i.product) : await catalogForBasket();
   const rows = list
     ? list.items.map(
         (i): BuilderRow =>

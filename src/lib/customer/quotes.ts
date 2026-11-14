@@ -8,7 +8,11 @@ import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PricedLine } from "@/lib/engine";
 import {
   optimizeBasket,
+  priceLineAt,
   quoteForSupplier,
+  sameBrand,
+  type BasketLine,
+  type EngineOptions,
   type EngineResult,
   type SupplierInput,
   type SupplierQuote,
@@ -57,6 +61,30 @@ export interface BasketAnalysis {
   lineCount: number;
   /** פי כמה היקף הרכש המוצהר גדול מהסל (1 אם לא הוצהר או קטן ממנו) */
   volumeScale: number;
+  /** מוצרים שהלקוח ביקש במותג מסוים: המחיר הזול באותו מותג, ומוצר דומה זול יותר ממותג אחר אם יש */
+  brandChoices: BrandChoice[];
+}
+
+export interface BrandOffer {
+  supplierId: string;
+  supplierName: string;
+  brand?: string;
+  unitPriceAgorot: number;
+}
+
+export interface BrandChoice {
+  productId: string;
+  productName: string;
+  unit: Unit;
+  quantity: number;
+  /** המותג שהלקוח ביקש */
+  brand: string;
+  /** ההצעה הזולה באותו מותג בדיוק; null אם אף ספק לא מוכר את המותג */
+  exact: BrandOffer | null;
+  /** מוצר דומה ממותג אחר שזול יותר מהמותג המבוקש (או היחיד שיש); null אם אין */
+  similar: BrandOffer | null;
+  /** כמה המוצר הדומה חוסך בחודש מול המותג המבוקש; null כשאין מחיר למותג המבוקש */
+  similarSavingAgorot: number | null;
 }
 
 /** מריץ את המנוע על סל: שלוש האפשרויות, וההצעה של כל ספק מול החלופה הזולה לאותם מוצרים */
@@ -86,7 +114,80 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
     rows,
     lineCount: lines.filter((l) => l.quantity > 0).length,
     volumeScale: options.volumeScale ?? 1,
+    brandChoices: brandChoices(lines, suppliers, options, rows, units),
   };
+}
+
+/**
+ * לכל מוצר שהלקוח ביקש במותג מסוים: ההצעה הזולה באותו מותג (מההצעות של הספקים בניתוח),
+ * ומוצר דומה ממותג אחר שזול ממנה, במדרגה שהלקוח מקבל אצל אותו ספק.
+ */
+export function brandChoices(
+  lines: BasketLine[],
+  suppliers: SupplierInput[],
+  options: EngineOptions,
+  rows: Pick<QuoteRow, "supplierId" | "supplierName" | "quote">[],
+  units: Map<string, Unit>,
+): BrandChoice[] {
+  const choices: BrandChoice[] = [];
+  for (const line of lines) {
+    if (!line.brand || line.quantity <= 0) continue;
+    let exact: BrandOffer | null = null;
+    for (const r of rows) {
+      const l = r.quote.share.lines.find((x) => x.productId === line.productId);
+      if (l && (!exact || l.unitPriceAgorot < exact.unitPriceAgorot)) {
+        exact = {
+          supplierId: r.supplierId,
+          supplierName: r.supplierName,
+          brand: l.brand,
+          unitPriceAgorot: l.unitPriceAgorot,
+        };
+      }
+    }
+    let similar: BrandOffer | null = null;
+    const anyBrand = { ...line, brand: undefined };
+    for (const s of suppliers) {
+      const tierName = rows.find((r) => r.supplierId === s.id)?.quote.share.tierName;
+      const priced = priceLineAt(s, anyBrand, tierName, options.deliveriesPerMonth);
+      if (!priced || sameBrand(priced.brand, line.brand)) {
+        // הזולה אצל הספק היא מהמותג המבוקש; בודקים אם יש לו גם אריזה ממותג אחר
+        const others = s.offers.filter((o) => o.productId === line.productId && !sameBrand(o.brand, line.brand));
+        if (!priced || others.length === 0) continue;
+        const other = priceLineAt({ ...s, offers: others }, anyBrand, tierName, options.deliveriesPerMonth);
+        if (other && (!similar || other.unitPriceAgorot < similar.unitPriceAgorot)) {
+          similar = {
+            supplierId: s.id,
+            supplierName: s.name,
+            brand: other.brand,
+            unitPriceAgorot: other.unitPriceAgorot,
+          };
+        }
+        continue;
+      }
+      if (!similar || priced.unitPriceAgorot < similar.unitPriceAgorot) {
+        similar = {
+          supplierId: s.id,
+          supplierName: s.name,
+          brand: priced.brand,
+          unitPriceAgorot: priced.unitPriceAgorot,
+        };
+      }
+    }
+    if (similar && exact && similar.unitPriceAgorot >= exact.unitPriceAgorot) similar = null;
+    if (!exact && !similar) continue;
+    choices.push({
+      productId: line.productId,
+      productName: line.productName,
+      unit: units.get(line.productId) ?? "UNIT",
+      quantity: line.quantity,
+      brand: line.brand,
+      exact,
+      similar,
+      similarSavingAgorot:
+        similar && exact ? Math.round((exact.unitPriceAgorot - similar.unitPriceAgorot) * line.quantity) : null,
+    });
+  }
+  return choices;
 }
 
 function packPriceFor(unitPriceAgorot: number, pack: SupplierInput["offers"][number]["packInfo"]) {
@@ -116,6 +217,7 @@ function snapshot(
       lineTotalAgorot: l.lineTotalAgorot,
       customerPaidAgorot: paid.get(l.productId) ?? null,
       pack: offerOf(l)?.packLabel,
+      brand: l.brand,
       otherPacks: otherPacksText(l, units.get(l.productId) ?? "UNIT"),
       minOrder: offerOf(l)?.minOrderLabel,
       packPrice: packPriceFor(l.unitPriceAgorot, offerOf(l)?.packInfo),
@@ -168,6 +270,7 @@ export function paidComparison(
         priceValidTo: l.priceValidTo,
         regularUnitAgorot: l.regularUnitAgorot,
         packLabel: l.packLabel,
+        brand: l.brand,
         otherPacks: otherPacksText(l, unitOf.get(l.productId) ?? "UNIT"),
         deal: l.deal,
       })),

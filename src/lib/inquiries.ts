@@ -24,6 +24,8 @@ export interface QuoteSnapshot {
     customerPaidAgorot?: number | null;
     /** איך המוצר מגיע אצל הספק והמינימום להזמנה */
     pack?: string;
+    /** המותג של המוצר אצל הספק */
+    brand?: string;
     minOrder?: string | null;
     /** המחיר לאריזה, למשל "₪72.00 לפח 4 ליטר" */
     packPrice?: string;

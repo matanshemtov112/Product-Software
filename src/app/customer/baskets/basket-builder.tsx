@@ -22,6 +22,8 @@ export interface CatalogItem {
   pack?: string;
   minOrder?: string;
   packPrice?: string;
+  /** המותגים שספקים מוכרים למוצר, לבחירת "רק מותג מסוים" */
+  brands?: string[];
 }
 
 const searchFields = (p: CatalogItem) => ({
@@ -38,6 +40,8 @@ export interface BuilderRow {
   /** המחיר ליחידה שהלקוח משלם היום, בשקלים; ריק אם לא ידוע */
   price: string;
   included: boolean;
+  /** מותג שהלקוח רוצה דווקא; ריק = כל מותג */
+  brand?: string;
 }
 
 /**
@@ -280,6 +284,22 @@ export function BasketBuilder({
                         dir="ltr"
                       />
                     </label>
+                    {(p.brands?.length ?? 0) > 0 && (
+                      <select
+                        name={r.included ? `brand_${r.productId}` : undefined}
+                        value={r.brand ?? ""}
+                        onChange={(e) => update(r.productId, { brand: e.target.value })}
+                        aria-label={`מותג של ${p.name}`}
+                        className="max-w-36 rounded-md border border-border bg-surface px-2 py-1.5 text-sm outline-none focus:border-accent"
+                      >
+                        <option value="">כל מותג</option>
+                        {[...new Set([...(r.brand ? [r.brand] : []), ...(p.brands ?? [])])].map((b) => (
+                          <option key={b} value={b}>
+                            רק {b}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {!checklist && (
                       <button
                         type="button"

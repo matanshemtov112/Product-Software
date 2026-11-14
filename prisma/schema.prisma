@@ -440,6 +440,8 @@ model BasketItem {
   currentSupplierName    String?
   currentUnitPriceAgorot Int?
   excludedSupplierIds    String[] @default([])
+  /// מותג שהלקוח רוצה דווקא; null = כל מותג
+  preferredBrand         String?
 }
 
 model OptimizationRun {

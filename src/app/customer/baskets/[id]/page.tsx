@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
+import { BrandChoices } from "@/components/brand-choices";
 import { ProductComparison } from "@/components/product-comparison";
 import { SendToSupplierLink } from "@/components/send-to-supplier";
 import { requireRole } from "@/lib/auth/current";
@@ -195,6 +196,18 @@ export default async function BasketPage({
             </button>
           </form>
         </div>
+      )}
+
+      {analysis.brandChoices.length > 0 && (
+        <Card title="המותגים שביקשתם">
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted">
+              בכל מוצר שבחרתם לו מותג ההשוואה כוללת רק את המותג הזה. כשיש מוצר דומה ממותג אחר שזול יותר, נראה אותו כאן
+              כדי שתחליטו בעצמכם.
+            </p>
+            <BrandChoices choices={analysis.brandChoices} />
+          </div>
+        </Card>
       )}
 
       {paid.lines.length > 0 && (

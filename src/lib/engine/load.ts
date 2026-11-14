@@ -51,6 +51,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
     productName: i.product.name,
     quantity: i.monthlyQuantity,
     excludedSupplierIds: i.excludedSupplierIds,
+    ...(i.preferredBrand ? { brand: i.preferredBrand } : {}),
   }));
 
   const supplierInputs: SupplierInput[] = suppliers.map((s) => {
@@ -96,6 +97,7 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
           offerId: o.id,
           productId: o.productId,
           packSize: nominalPackSize(o),
+          ...(o.brand ? { brand: o.brand } : {}),
           minQuantity: minBaseQuantity(pack),
           packLabel: packLabel(pack),
           minOrderLabel: minOrderLabel(pack),

@@ -12,6 +12,17 @@ import type {
 } from "./types";
 import { applyQuantityDeal } from "./quantity-deal";
 
+/** השוואת מותגים בלי רווחים, גרשיים ואותיות גדולות: "סוגת" = " סוגת " */
+export function sameBrand(a: string | undefined | null, b: string | undefined | null): boolean {
+  const key = (x: string) =>
+    x
+      .toLowerCase()
+      .replace(/["'׳״`]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  return Boolean(a && b && key(a) === key(b));
+}
+
 export const PREFERENCE_WEIGHTS: Record<Preference, { price: number; service: number; reliability: number }> = {
   PRICE: { price: 1, service: 0, reliability: 0 },
   BALANCED: { price: 0.6, service: 0.2, reliability: 0.2 },
@@ -59,7 +70,10 @@ function prepare(supplier: SupplierInput, deliveries = 1): Prepared {
   return {
     supplier: sorted,
     deliveries,
-    offers: supplier.offers.reduce((m, o) => m.set(o.productId, [...(m.get(o.productId) ?? []), o]), new Map<string, Offer[]>()),
+    offers: supplier.offers.reduce(
+      (m, o) => m.set(o.productId, [...(m.get(o.productId) ?? []), o]),
+      new Map<string, Offer[]>(),
+    ),
     cache: new Map(),
   };
 }
@@ -75,7 +89,9 @@ function lineAt(p: Prepared, line: BasketLine, tierIndex: number): PricedLine | 
 
 function priceLine(p: Prepared, line: BasketLine, tierIndex: number): PricedLine | null {
   if (line.excludedSupplierIds?.includes(p.supplier.id)) return null;
+  // לקוח שביקש מותג מסוים: רק האריזות של אותו מותג נחשבות כאותו מוצר
   const packs = (p.offers.get(line.productId) ?? [])
+    .filter((offer) => !line.brand || sameBrand(offer.brand, line.brand))
     .map((offer) => packLine(p, line, offer, tierIndex))
     .filter((x): x is PricedLine => x !== null);
   if (packs.length === 0) return null;
@@ -109,6 +125,7 @@ function packLine(p: Prepared, line: BasketLine, offer: Offer, tierIndex: number
     ...(offer.offerId ? { offerId: offer.offerId } : {}),
     ...(offer.packLabel ? { packLabel: offer.packLabel } : {}),
     packSize: offer.packSize,
+    ...(offer.brand ? { brand: offer.brand } : {}),
     quantity: line.quantity,
     billedQuantity: billed,
     unitPriceAgorot,
@@ -128,6 +145,25 @@ function packLine(p: Prepared, line: BasketLine, offer: Offer, tierIndex: number
     priceValidTo: price.validTo,
     ...(regular !== undefined && regular > unitPriceAgorot ? { regularUnitAgorot: regular } : {}),
   };
+}
+
+/**
+ * המחיר של שורה אחת אצל ספק במדרגה בשם נתון (או המדרגה הראשונה), לחישוב חלופות מחוץ לתוכנית.
+ * null אם הספק לא מוכר את המוצר (או לא במותג שהשורה מבקשת).
+ */
+export function priceLineAt(
+  supplier: SupplierInput,
+  line: BasketLine,
+  tierName?: string,
+  deliveries = 1,
+): PricedLine | null {
+  const p = prepare(supplier, deliveries);
+  const index = Math.max(
+    0,
+    p.supplier.tiers.findIndex((t) => t.name === tierName),
+  );
+  if (p.supplier.tiers.length === 0) return null;
+  return priceLine(p, line, index);
 }
 
 /**

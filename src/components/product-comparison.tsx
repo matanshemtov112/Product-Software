@@ -1,6 +1,7 @@
 import { VerifiedBadge } from "@/components/verified-badge";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import type { PaidComparisonLine, SystemOffer } from "@/lib/customer/paid-prices";
+import { BrandTag } from "./brand-choices";
 import { DealBadge, PriceStatusBadge, SaleMark, WasPrice } from "./price-badge";
 
 /** תובנה קצרה: בכמה הלקוח משלם יותר (או פחות) מהמחיר הזול ביותר שמצאנו */
@@ -55,6 +56,7 @@ export function ProductComparison({
                       <span className="block text-xs text-muted">
                         {l.best.supplierName}
                         <VerifiedBadge supplierId={l.best.supplierId} compact />
+                        <BrandTag brand={l.best.brand} />
                         {l.best.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                       </span>
                       <OtherPacks offer={l.best} />
@@ -104,6 +106,7 @@ export function ProductComparison({
                             {(o.priceKind === "PROMOTION" || o.deal) && <SaleMark />}
                             {o.supplierName}
                             <VerifiedBadge supplierId={o.supplierId} compact />
+                            <BrandTag brand={o.brand} />
                             {o.supplierId === currentSupplierId ? " (הספק שלכם)" : ""}
                             <OtherPacks offer={o} />
                           </td>

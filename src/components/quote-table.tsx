@@ -26,6 +26,7 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                 <td className="py-2">
                   {(l.priceKind === "PROMOTION" || l.deal) && <SaleMark />}
                   {l.productName}
+                  {l.brand && <span className="text-muted"> · {l.brand}</span>}
                   {l.pack && (
                     <span className="block text-xs text-muted">
                       {l.pack}

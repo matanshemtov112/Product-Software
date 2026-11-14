@@ -15,6 +15,8 @@ export interface BasketLine {
   quantity: number;
   /** ספקים שהלקוח החריג עבור הפריט הזה */
   excludedSupplierIds?: string[];
+  /** מותג שהלקוח רוצה דווקא (למשל "סוגת"); חסר = כל מותג */
+  brand?: string;
 }
 
 export interface TierPrice {
@@ -34,6 +36,8 @@ export interface Offer {
   productId: string;
   /** גודל אריזה ביחידות בסיס; הכמות מעוגלת כלפי מעלה לכפולה שלו */
   packSize: number;
+  /** המותג של המוצר אצל הספק, כפי שהספק כתב אותו */
+  brand?: string;
   minQuantity?: number;
   /** לתצוגה: איך המוצר מגיע והמינימום להזמנה, למשל "קרטון 15–20 ק״ג" */
   packLabel?: string;
@@ -91,6 +95,8 @@ export interface PricedLine {
   offerId?: string;
   packLabel?: string;
   packSize?: number;
+  /** המותג של ההצעה שנבחרה */
+  brand?: string;
   /** אריזות אחרות של אותו ספק לאותו מוצר, שיצאו יקרות יותר לכמות של הלקוח */
   otherPacks?: { offerId?: string; packLabel?: string; packSize: number; unitPriceAgorot: number }[];
   quantity: number;

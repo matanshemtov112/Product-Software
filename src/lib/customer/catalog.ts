@@ -2,6 +2,30 @@ import { servingSupplierIds, type CoverageCustomer } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel, type PackInfo } from "@/lib/pack";
 import type { CatalogItem } from "@/app/customer/baskets/basket-builder";
+import { sameBrand } from "@/lib/engine";
+
+/** המותגים השונים שספקים מוכרים לכל מוצר (בלי כפילויות של רווחים או גרשיים) */
+export async function productBrands(productIds?: string[]): Promise<Map<string, string[]>> {
+  const offers = await db.supplierOffer.findMany({
+    where: {
+      available: true,
+      brand: { not: null },
+      supplier: { status: "APPROVED" },
+      ...(productIds ? { productId: { in: productIds } } : {}),
+    },
+    select: { productId: true, brand: true },
+    orderBy: { brand: "asc" },
+  });
+  const result = new Map<string, string[]>();
+  for (const o of offers) {
+    const brand = o.brand!.trim();
+    if (!brand) continue;
+    const list = result.get(o.productId) ?? [];
+    if (!list.some((b) => sameBrand(b, brand))) list.push(brand);
+    result.set(o.productId, list);
+  }
+  return result;
+}
 
 /** הקטלוג הקנוני לבחירת מוצרים לסל (בלי מוצרים שממתינים לבדיקה) */
 export async function catalogForBasket(): Promise<CatalogItem[]> {
@@ -14,7 +38,9 @@ export async function catalogForBasket(): Promise<CatalogItem[]> {
     },
     orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
   });
+  const brands = await productBrands();
   return products.map((p) => ({
+    brands: brands.get(p.id),
     id: p.id,
     name: p.name,
     unit: p.unit,
@@ -71,21 +97,23 @@ export async function supplierPriceList(supplierId: string, now = new Date()) {
   });
   if (!supplier) return null;
   const tierId = supplier.priceTiers[0]?.id;
+  const brands = await productBrands(supplier.offers.map((o) => o.productId));
   const items = supplier.offers.map((o) => ({
-      product: {
-        id: o.product.id,
-        name: o.product.name,
-        unit: o.product.unit,
-        category: o.product.category.name,
-        parentCategory: o.product.category.parent?.name,
-        aliases: [o.supplierProductName, o.brand, ...o.product.aliases].filter((a): a is string => Boolean(a)),
-        supplierName: o.supplierProductName ?? undefined,
-        pack: packLabel({ ...o, unit: o.product.unit }),
-        minOrder: minOrderLabel({ ...o, unit: o.product.unit }) ?? undefined,
-        packPrice: packPriceOf(o, o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot),
-      },
-      priceAgorot: o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot ?? null,
-    }));
+    product: {
+      id: o.product.id,
+      name: o.product.name,
+      unit: o.product.unit,
+      category: o.product.category.name,
+      parentCategory: o.product.category.parent?.name,
+      aliases: [o.supplierProductName, o.brand, ...o.product.aliases].filter((a): a is string => Boolean(a)),
+      supplierName: o.supplierProductName ?? undefined,
+      brands: brands.get(o.product.id),
+      pack: packLabel({ ...o, unit: o.product.unit }),
+      minOrder: minOrderLabel({ ...o, unit: o.product.unit }) ?? undefined,
+      packPrice: packPriceOf(o, o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot),
+    },
+    priceAgorot: o.prices.find((p) => p.tierId === tierId)?.unitPriceAgorot ?? null,
+  }));
   // מוצר שהספק מוכר בכמה אריזות מופיע פעם אחת, עם כל האריזות והמחיר הזול לק״ג
   const byProduct = new Map<string, (typeof items)[number]>();
   for (const item of items) {
