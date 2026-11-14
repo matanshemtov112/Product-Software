@@ -5,13 +5,19 @@ import { isValidIsraeliNumber } from "@/lib/business-number";
 import { db } from "@/lib/db";
 import { setSupplierStatus } from "../actions";
 
-const LABEL: Record<SupplierStatus, string> = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "לא אושר" };
+const LABEL: Record<SupplierStatus, string> = {
+  PENDING: "ממתין לאישור",
+  APPROVED: "מאושר",
+  REJECTED: "לא אושר",
+  SUSPENDED: "מושעה",
+};
 const STYLE: Record<SupplierStatus, string> = {
   PENDING: "bg-[#fff4c2] text-[#6b5500]",
   APPROVED: "bg-accent-soft text-accent",
   REJECTED: "bg-background text-danger",
+  SUSPENDED: "bg-[#fde2e1] text-danger",
 };
-const FILTERS: (SupplierStatus | "ALL")[] = ["ALL", "PENDING", "APPROVED", "REJECTED"];
+const FILTERS: (SupplierStatus | "ALL")[] = ["ALL", "PENDING", "APPROVED", "SUSPENDED", "REJECTED"];
 
 function StatusButton({
   id,

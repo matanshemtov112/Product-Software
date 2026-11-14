@@ -217,4 +217,5 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   OFFER_VIEWED: "👀",
   OFFER_DECIDED: "✅",
   OFFER_CANCELLED: "✖️",
+  PRICE_VIOLATION: "⚠️",
 };

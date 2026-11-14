@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { OfferButton, OfferReasonAction, OfferStatus } from "@/components/offer-actions";
 import { QuoteTable } from "@/components/quote-table";
+import { PriceViolationButton } from "@/components/report/price-violation-button";
+import { violationProducts } from "@/lib/customer/violation-products";
 import { requireRole } from "@/lib/auth/current";
 import { isDealSnapshot } from "@/lib/customer/deals";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -40,6 +42,7 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
   const stage = inquiryStage(inquiry);
   const deal = isDealSnapshot(inquiry.deal) ? inquiry.deal : null;
   const fields = { id: inquiry.id };
+  const reportable = stage === "ACCEPTED" ? await violationProducts(inquiry.supplierId) : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -134,6 +137,14 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
       <Card title="ההודעה ששלחתם">
         <p className="whitespace-pre-line text-sm">{inquiry.message}</p>
       </Card>
+
+      {reportable.length > 0 && (
+        <PriceViolationButton
+          supplierId={inquiry.supplierId}
+          supplierName={inquiry.supplier.companyName}
+          products={reportable}
+        />
+      )}
     </div>
   );
 }

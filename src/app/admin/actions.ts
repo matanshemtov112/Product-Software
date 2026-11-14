@@ -7,6 +7,7 @@ import { requireRole } from "@/lib/auth/current";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
+import { syncViolationStage } from "@/lib/price-violations-sync";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { closePrevious } from "@/lib/supplier/prices";
 
@@ -16,6 +17,7 @@ const STATUS_TEXT: Record<SupplierStatus, string> = {
   APPROVED: "החשבון שלכם אושר. המוצרים שלכם מופיעים עכשיו בהשוואות של הלקוחות.",
   REJECTED: "החשבון שלכם לא אושר. לפרטים נא לפנות לצוות הפלטפורמה.",
   PENDING: "החשבון שלכם חזר לבדיקה של צוות הפלטפורמה.",
+  SUSPENDED: "החשבון שלכם הושעה, ולקוחות לא רואים אתכם בהשוואות. לפרטים נא לפנות לצוות הפלטפורמה.",
 };
 
 /** אישור, דחייה או השהיה של ספק */
@@ -23,7 +25,7 @@ export async function setSupplierStatus(form: FormData) {
   await requireRole("ADMIN");
   const id = str(form, "supplierId");
   const status = str(form, "status") as SupplierStatus;
-  if (!["APPROVED", "REJECTED", "PENDING"].includes(status)) return;
+  if (!["APPROVED", "REJECTED", "PENDING", "SUSPENDED"].includes(status)) return;
   const supplier = await db.supplier.findUnique({ where: { id } });
   if (!supplier || supplier.status === status) return;
   await db.supplier.update({ where: { id }, data: { status } });
@@ -248,5 +250,31 @@ export async function closeReport(form: FormData) {
   if (!report || report.status !== "OPEN") return;
   await db.abuseReport.update({ where: { id }, data: { status, resolution, resolvedAt: new Date() } });
   await audit({ action: "report.closed", targetType: "report", targetId: id, details: { status, resolution } });
+  revalidatePath("/admin", "layout");
+}
+
+/** מנהל בודק דיווח על הפרת מחיר: מוצדק (נספר) או ביטול (לא נספר). השלב של הספק מתעדכן מיד */
+export async function reviewViolation(form: FormData) {
+  await requireRole("ADMIN");
+  const id = str(form, "reportId");
+  const status = str(form, "status");
+  if (status !== "CONFIRMED" && status !== "DISMISSED" && status !== "OPEN") return;
+  const report = await db.priceViolationReport.findUnique({ where: { id } });
+  if (!report) return;
+  await db.priceViolationReport.update({
+    where: { id },
+    data: {
+      status,
+      adminNote: str(form, "note").slice(0, 300) || null,
+      reviewedAt: status === "OPEN" ? null : new Date(),
+    },
+  });
+  await audit({
+    action: "violation.reviewed",
+    targetType: "supplier",
+    targetId: report.supplierId,
+    details: { reportId: id, from: report.status, to: status, product: report.productName },
+  });
+  await syncViolationStage(report.supplierId);
   revalidatePath("/admin", "layout");
 }

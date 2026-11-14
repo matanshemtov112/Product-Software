@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ReportButton } from "@/components/report/report-button";
+import { PriceViolationButton } from "@/components/report/price-violation-button";
+import { violationProducts } from "@/lib/customer/violation-products";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { BlockedList, CostBreakdown } from "@/components/effective-cost";
@@ -28,6 +30,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         take: 5,
       })
     : [];
+  const reportable = supplier.supplierId ? await violationProducts(supplier.supplierId) : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -99,8 +102,8 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         <Card title="הזדמנויות לחיסכון">
           {supplier.opportunities.length === 0 ? (
             <p className="text-sm text-muted">
-              לא מצאנו כרגע ספק במערכת שאצלו המוצרים שאתם קונים אצל {supplier.name} יוצאים זולים יותר, כולל
-              מינימום הזמנה.
+              לא מצאנו כרגע ספק במערכת שאצלו המוצרים שאתם קונים אצל {supplier.name} יוצאים זולים יותר, כולל מינימום
+              הזמנה.
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -141,6 +144,9 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
           הספק.
         </p>
       </Card>
+      {supplier.supplierId && (
+        <PriceViolationButton supplierId={supplier.supplierId} supplierName={supplier.name} products={reportable} />
+      )}
       {supplier.supplierId && (
         <ReportButton
           targetId={supplier.supplierId}

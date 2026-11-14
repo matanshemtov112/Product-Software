@@ -11,7 +11,7 @@ import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
 import { TiersForm } from "./tiers-form";
 
-const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה" } as const;
+const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה", SUSPENDED: "מושעה" } as const;
 
 export default async function SupplierProfile() {
   const session = await requireRole("SUPPLIER");
@@ -90,10 +90,7 @@ export default async function SupplierProfile() {
           ) : (
             <p className="text-sm text-muted">עדיין לא הוגדרו אזורי חלוקה.</p>
           )}
-          <Link
-            href="/supplier/areas"
-            className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm text-white"
-          >
+          <Link href="/supplier/areas" className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm text-white">
             {supplier.deliveryAreas.length > 0 ? "עריכת האזורים על המפה" : "סימון האזורים על המפה"}
           </Link>
         </Card>

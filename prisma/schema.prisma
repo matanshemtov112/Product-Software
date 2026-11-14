@@ -44,6 +44,8 @@ enum SupplierStatus {
   PENDING
   APPROVED
   REJECTED
+  /// מושעה אוטומטית אחרי הרבה דיווחים על הפרת מחיר (או ידנית); לא מופיע ללקוחות
+  SUSPENDED
 }
 
 enum BasketSource {
@@ -145,14 +147,14 @@ model Region {
 }
 
 model Customer {
-  id                   String               @id @default(cuid())
+  id                   String                 @id @default(cuid())
   businessName         String
   businessType         String
   city                 String
   /// כתובת העסק (רחוב ומספר)
   address              String?
   regionId             String
-  region               Region               @relation(fields: [regionId], references: [id])
+  region               Region                 @relation(fields: [regionId], references: [id])
   /// מיקום העסק על המפה (לפי העיר), לבדיקה אילו ספקים מגיעים אליו; null עד שאותר
   lat                  Float?
   lng                  Float?
@@ -160,7 +162,7 @@ model Customer {
   totalVolumeMinAgorot Int?
   totalVolumeMaxAgorot Int?
   monthlyBudgetAgorot  Int?
-  preference           PricePreference      @default(BALANCED)
+  preference           PricePreference        @default(BALANCED)
   /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
   cuisine              String?
   users                User[]
@@ -170,49 +172,55 @@ model Customer {
   invoices             Invoice[]
   negotiations         NegotiationRequest[]
   matchRequests        MatchRequest[]
+  priceViolations      PriceViolationReport[]
   alerts               PriceAlert[]
   notifications        Notification[]
-  createdAt            DateTime             @default(now())
+  createdAt            DateTime               @default(now())
 }
 
 model Supplier {
-  id                      String               @id @default(cuid())
-  companyName             String
-  companyNumber           String               @unique // ח.פ.
-  status                  SupplierStatus       @default(PENDING)
-  minOrderAgorot          Int                  @default(0)
-  paymentTermsDays        Int                  @default(30) // שוטף + X
+  id                       String                 @id @default(cuid())
+  companyName              String
+  companyNumber            String                 @unique // ח.פ.
+  status                   SupplierStatus         @default(PENDING)
+  minOrderAgorot           Int                    @default(0)
+  paymentTermsDays         Int                    @default(30) // שוטף + X
   /// תנאי התשלום נקבעים מול כל לקוח: הלקוחות לא רואים את paymentTermsDays אלא "נקבעים מול כל לקוח"
-  paymentTermsPerCustomer Boolean              @default(false)
-  reliability             Float                @default(0.9) // 0 עד 1
-  contactPhone            String?
-  contactEmail            String?
+  paymentTermsPerCustomer  Boolean                @default(false)
+  reliability              Float                  @default(0.9) // 0 עד 1
+  /// השלב שהספק הגיע אליו בדיווחי הפרת מחיר (0 עד 4), לפי הדיווחים הפעילים
+  violationStage           Int                    @default(0)
+  /// האמינות לפני ההורדה בשלב 3, כדי להחזיר אותה כשהשלב יורד
+  reliabilityBeforePenalty Float?
+  priceViolations          PriceViolationReport[]
+  contactPhone             String?
+  contactEmail             String?
   /// תיאור קצר של הספק, מוצג ללקוחות
-  description             String?
+  description              String?
   /// שעות פעילות, טקסט חופשי (למשל "א-ה 06:00-14:00")
-  openingHours            String?
+  openingHours             String?
   /// תנאי אספקה, טקסט חופשי (למשל "הזמנה עד 14:00, אספקה למחרת")
-  deliveryTerms           String?
-  logo                    SupplierLogo?
-  views                   SupplierView[]
-  notifications           Notification[]
+  deliveryTerms            String?
+  logo                     SupplierLogo?
+  views                    SupplierView[]
+  notifications            Notification[]
   /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
-  allCategories           Boolean              @default(false)
+  allCategories            Boolean                @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
-  categoriesSetAt         DateTime?
-  users                   User[]
-  categories              SupplierCategory[]
-  deliveryZones           DeliveryZone[]
+  categoriesSetAt          DateTime?
+  users                    User[]
+  categories               SupplierCategory[]
+  deliveryZones            DeliveryZone[]
   /// אזורי החלוקה שהספק סימן על המפה; כשיש כאלה הם קובעים לאן הוא מגיע (במקום האזורים הכלליים)
-  deliveryAreas           DeliveryArea[]
-  priceTiers              PriceTier[]
-  offers                  SupplierOffer[]
-  reviews                 Review[]
-  customerReviews         CustomerReview[]
-  negotiations            NegotiationRequest[]
-  matchRequests           MatchRequest[]
-  currentBaskets          Basket[]
-  createdAt               DateTime             @default(now())
+  deliveryAreas            DeliveryArea[]
+  priceTiers               PriceTier[]
+  offers                   SupplierOffer[]
+  reviews                  Review[]
+  customerReviews          CustomerReview[]
+  negotiations             NegotiationRequest[]
+  matchRequests            MatchRequest[]
+  currentBaskets           Basket[]
+  createdAt                DateTime               @default(now())
 }
 
 model DeliveryZone {
@@ -636,6 +644,7 @@ enum NotificationKind {
   PRICE_APPROVED
   PRICE_REJECTED
   ACCOUNT_STATUS
+  PRICE_VIOLATION
 }
 
 /// התראה במערכת ללקוח או לספק
@@ -714,4 +723,39 @@ model AbuseReport {
   createdAt      DateTime     @default(now())
 
   @@index([status, createdAt])
+}
+
+enum ViolationStatus {
+  OPEN
+  /// מנהל בדק ואישר שהדיווח נראה מוצדק (נספר)
+  CONFIRMED
+  /// מנהל ביטל: לא נספר
+  DISMISSED
+}
+
+/// דיווח של לקוח שהספק גבה מחיר שונה מהמחיר שהופיע במערכת או שסוכם
+model PriceViolationReport {
+  id                 String          @id @default(cuid())
+  supplierId         String
+  supplier           Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  customerId         String
+  customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId          String?
+  productName        String
+  unit               String
+  /// המחיר ליחידה שהופיע במערכת או שסוכם, ללא מע״מ
+  shownPriceAgorot   Int
+  /// המחיר ליחידה שנגבה בפועל, ללא מע״מ
+  chargedPriceAgorot Int
+  /// תאריך האספקה או החשבונית
+  occurredOn         DateTime
+  text               String?
+  status             ViolationStatus @default(OPEN)
+  adminNote          String?
+  reviewedAt         DateTime?
+  createdAt          DateTime        @default(now())
+
+  @@index([supplierId, createdAt])
+  @@index([status, createdAt])
+  @@index([customerId, supplierId, productId, createdAt])
 }
