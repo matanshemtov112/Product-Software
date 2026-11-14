@@ -15,6 +15,8 @@ import {
 } from "@/lib/supplier/catalog";
 import { supplierStats } from "@/lib/supplier/stats";
 import { DeleteOfferButton } from "./delete-button";
+import { ScrollToSaved } from "./scroll-to-saved";
+import { listQuery } from "@/lib/supplier/list-return";
 import { OfferImage } from "./offer-image";
 
 type View = "list" | "grid";
@@ -55,13 +57,16 @@ function Badges({ offer, pending }: { offer: OfferWithPrices; pending: boolean }
   );
 }
 
-function Actions({ offer }: { offer: OfferWithPrices }) {
+function Actions({ offer, back }: { offer: OfferWithPrices; back: string }) {
   return (
     <div className="flex items-center gap-3 text-sm">
-      <Link href={`/supplier/products/${offer.id}/edit`} className="text-accent hover:underline">
+      <Link
+        href={`/supplier/products/${offer.id}/edit${back ? `?back=${encodeURIComponent(back)}` : ""}`}
+        className="text-accent hover:underline"
+      >
         עריכה
       </Link>
-      <DeleteOfferButton offerId={offer.id} productName={offer.product.name} />
+      <DeleteOfferButton offerId={offer.id} productName={offer.product.name} stay />
       <Link href={`/supplier/products/${offer.id}`} className="hover:underline">
         פרטים נוספים
       </Link>
@@ -142,11 +147,11 @@ function ViewToggle({ view, params }: { view: View; params: URLSearchParams }) {
 export default async function SupplierProducts({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; view?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; view?: string; saved?: string }>;
 }) {
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
-  const { q = "", category, view: rawView } = await searchParams;
+  const { q = "", category, view: rawView, saved } = await searchParams;
   const view: View = rawView === "grid" ? "grid" : "list";
   const offers = await listOffers(supplier.id, { q, categoryId: category });
   const firstTier = supplier.priceTiers[0];
@@ -155,10 +160,13 @@ export default async function SupplierProducts({
   if (category) params.set("category", category);
   const categoryName = category ? offers[0]?.product.category.name : undefined;
   const filtered = Boolean(q || category);
+  // לאן לחזור אחרי עריכה: אותו חיפוש ואותה תצוגה
+  const back = listQuery({ q, category, view: view === "grid" ? "grid" : undefined });
   const stats = filtered ? null : await supplierStats(supplier.id, offers);
 
   return (
     <div className="flex flex-col gap-4">
+      <ScrollToSaved offerId={saved} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{supplier.companyName}</h1>
@@ -225,7 +233,11 @@ export default async function SupplierProducts({
           {offers.map((offer) => {
             const price = basePrice(offer, firstTier?.id);
             return (
-              <li key={offer.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={offer.id}
+                id={`offer-${offer.id}`}
+                className="flex scroll-mt-24 flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="flex min-w-0 items-center gap-3">
                   <OfferImage offerId={offer.id} src={offerImageUrl(offer)} name={offer.product.name} variant="thumb" />
                   <div className="flex min-w-0 flex-col gap-1">
@@ -260,7 +272,7 @@ export default async function SupplierProducts({
                     </span>
                     <Deal offer={offer} />
                   </span>
-                  <Actions offer={offer} />
+                  <Actions offer={offer} back={back} />
                 </div>
               </li>
             );
@@ -271,7 +283,11 @@ export default async function SupplierProducts({
           {offers.map((offer) => {
             const price = basePrice(offer, firstTier?.id);
             return (
-              <li key={offer.id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+              <li
+                key={offer.id}
+                id={`offer-${offer.id}`}
+                className="flex scroll-mt-24 flex-col gap-3 rounded-lg border border-border bg-surface p-4"
+              >
                 <OfferImage offerId={offer.id} src={offerImageUrl(offer)} name={offer.product.name} variant="card" />
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-muted">{offer.product.category.name}</span>
@@ -299,7 +315,7 @@ export default async function SupplierProducts({
                   <Deal offer={offer} />
                 </div>
                 <div className="mt-auto border-t border-border pt-3">
-                  <Actions offer={offer} />
+                  <Actions offer={offer} back={back} />
                 </div>
               </li>
             );

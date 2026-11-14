@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionForm } from "@/components/action-form";
+import { listUrl } from "@/lib/supplier/list-return";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
@@ -83,8 +84,11 @@ export function ProductForm({
   categories,
   catalog,
   tiers,
+  back,
 }: {
   initial: OfferFormValues;
+  /** הרשימה שממנה הגיעו (חיפוש ותצוגה), כדי לחזור לאותו מקום אחרי שמירה */
+  back?: string;
   /** סוגי מוצר לבחירה, מקובצים לפי תחום ראשי */
   categories: { group: string; options: { id: string; name: string }[] }[];
   catalog: CatalogProduct[];
@@ -141,6 +145,7 @@ export function ProductForm({
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
       {editing && <input type="hidden" name="offerId" value={initial.offerId} />}
+      {back && <input type="hidden" name="back" value={back} />}
       {initial.addPack && (
         <>
           <input type="hidden" name="categoryId" value={initial.categoryId} />
@@ -483,7 +488,10 @@ export function ProductForm({
       <FormError message={state.error} />
       <div className="flex items-center gap-4">
         <SubmitButton pending={pending}>{editing ? "שמירת שינויים" : "הוספת המוצר"}</SubmitButton>
-        <Link href="/supplier" className="text-sm text-muted hover:text-foreground">
+        <Link
+          href={editing ? listUrl(back, initial.offerId) : listUrl(back)}
+          className="text-sm text-muted hover:text-foreground"
+        >
           ביטול
         </Link>
       </div>

@@ -2,7 +2,16 @@
 
 import { deleteOffer } from "./actions";
 
-export function DeleteOfferButton({ offerId, productName }: { offerId: string; productName: string }) {
+/** stay: מחיקה מתוך הרשימה נשארת באותו מקום בדף, בלי לחזור לראש הרשימה */
+export function DeleteOfferButton({
+  offerId,
+  productName,
+  stay = false,
+}: {
+  offerId: string;
+  productName: string;
+  stay?: boolean;
+}) {
   return (
     <form
       action={deleteOffer}
@@ -11,6 +20,7 @@ export function DeleteOfferButton({ offerId, productName }: { offerId: string; p
       }}
     >
       <input type="hidden" name="offerId" value={offerId} />
+      {stay && <input type="hidden" name="stay" value="1" />}
       <button className="text-sm text-danger hover:underline">מחיקה</button>
     </form>
   );

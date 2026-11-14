@@ -14,6 +14,7 @@ import { nominalPackSize } from "@/lib/pack";
 import { closePrevious } from "@/lib/supplier/prices";
 import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from "@/lib/supplier/pricing-rules";
 import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
+import { listUrl } from "@/lib/supplier/list-return";
 import { canCancel, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
 import { parsePaymentTerms } from "@/lib/terms";
 import { parseTiers } from "@/lib/supplier/tiers";
@@ -301,7 +302,8 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   }
 
   revalidatePath("/supplier");
-  redirect(held ? `/supplier/products/${offer.id}?held=${held}` : "/supplier");
+  // חזרה לאותו מקום ברשימה (אותו חיפוש ותצוגה), עם גלילה למוצר שנשמר
+  redirect(held ? `/supplier/products/${offer.id}?held=${held}` : listUrl(form.get("back"), offer.id));
 }
 
 async function storeImage(offerId: string, image: { data: Buffer; contentType: string }) {
@@ -370,7 +372,7 @@ export async function deleteOffer(form: FormData) {
   const offerId = String(form.get("offerId") ?? "");
   await db.supplierOffer.deleteMany({ where: { id: offerId, supplierId: supplier.id } });
   revalidatePath("/supplier");
-  redirect("/supplier");
+  if (!form.get("stay")) redirect("/supplier");
 }
 
 const profileSchema = z.object({

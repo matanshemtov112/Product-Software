@@ -6,8 +6,15 @@ import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/su
 import { validUntilInput } from "@/lib/supplier/pricing-rules";
 import { ProductForm } from "../../product-form";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ back?: string }>;
+}) {
   const { id } = await params;
+  const { back } = await searchParams;
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
   const offer = await getOffer(supplier.id, id);
@@ -28,6 +35,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <h1 className="text-2xl font-bold">עריכת {offer.product.name}</h1>
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
+          back={back}
           initial={{
             offerId: offer.id,
             productName: offer.product.name,
