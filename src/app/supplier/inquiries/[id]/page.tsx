@@ -226,6 +226,7 @@ export default async function SupplierInquiry({
       <ReportButton
         targetId={customer.id}
         targetName={customer.businessName}
+        about="CUSTOMER"
         path={`/supplier/inquiries/${inquiry.id}`}
       />
     </div>

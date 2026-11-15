@@ -156,6 +156,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
         <ReportButton
           targetId={supplier.supplierId}
           targetName={supplier.name}
+          about="SUPPLIER"
           path={`/customer/suppliers/${encodeURIComponent(supplier.key)}`}
         />
       )}

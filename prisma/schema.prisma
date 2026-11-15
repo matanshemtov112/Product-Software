@@ -746,7 +746,14 @@ enum ReportTarget {
 
 enum ReportReason {
   WRONG_PRICE
+  /// הספק לא כיבד מחיר שהופיע או שסוכם
+  PRICE_NOT_HONORED
+  /// המוצר שסופק לא תואם לתיאור
+  PRODUCT_MISMATCH
+  FAKE_REVIEW
+  /// ספק או עסק מתחזה
   FAKE_BUSINESS
+  WRONG_INFO
   ABUSIVE
   SPAM
   OTHER

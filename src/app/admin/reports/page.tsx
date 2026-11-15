@@ -67,11 +67,16 @@ export default async function AdminReports({ searchParams }: { searchParams: Pro
                 )}
               </p>
               {r.text && <p className="text-sm whitespace-pre-line">{r.text}</p>}
-              {r.path && (
-                <p className="text-xs text-muted" dir="ltr">
-                  {r.path}
-                </p>
-              )}
+              {r.path &&
+                (r.path.startsWith("/admin/") ? (
+                  <a href={r.path} className="text-xs text-accent hover:underline">
+                    פתיחה לבדיקה
+                  </a>
+                ) : (
+                  <p className="text-xs text-muted" dir="ltr">
+                    {r.path}
+                  </p>
+                ))}
               {r.status === "OPEN" ? (
                 <form action={closeReport} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <input type="hidden" name="reportId" value={r.id} />

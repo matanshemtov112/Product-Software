@@ -1,3 +1,4 @@
+import { ReportButton } from "@/components/report/report-button";
 import { Card } from "@/components/form";
 import { Stars } from "@/components/stars";
 import { requireRole } from "@/lib/auth/current";
@@ -115,6 +116,16 @@ export default async function SupplierReviews() {
                 ) : (
                   <p className="mt-2 text-sm text-muted">ללא הערה</p>
                 )}
+                <div className="mt-2">
+                  <ReportButton
+                    targetId={r.customerId}
+                    targetName={r.customer.businessName}
+                    about="CUSTOMER"
+                    reason="FAKE_REVIEW"
+                    label="דיווח על ביקורת מזויפת"
+                    path={`/admin/reviews?status=PUBLISHED#review-${r.id}`}
+                  />
+                </div>
               </li>
             ))}
           </ul>

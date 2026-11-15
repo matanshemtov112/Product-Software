@@ -3,12 +3,30 @@
 import { useActionState, useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { FormError, SubmitButton } from "@/components/form";
-import { REPORT_REASON_LABEL } from "@/lib/reports";
+import { REPORT_REASONS_FOR } from "@/lib/reports";
 import { createReport } from "@/lib/reports-actions";
 
 /** כפתור "דיווח" קטן שנפתח לטופס: סיבה ופירוט. הדיווח מגיע רק לצוות הפלטפורמה */
-export function ReportButton({ targetId, targetName, path }: { targetId: string; targetName: string; path: string }) {
+export function ReportButton({
+  targetId,
+  targetName,
+  path,
+  about,
+  reason: preset,
+  label,
+}: {
+  targetId: string;
+  targetName: string;
+  path: string;
+  /** על מי מדווחים: ספק (מלקוח) או לקוח (מספק) */
+  about: "SUPPLIER" | "CUSTOMER";
+  /** סיבה שנבחרת מראש, למשל "ביקורת מזויפת" ליד ביקורת */
+  reason?: string;
+  /** טקסט הכפתור, אם שונה מ"דיווח על ..." */
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState(preset ?? "");
   const [state, action, pending] = useActionState(createReport, {});
   if (state.sent) {
     return (
@@ -20,7 +38,7 @@ export function ReportButton({ targetId, targetName, path }: { targetId: string;
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted underline hover:text-danger">
-        דיווח על {targetName}
+        {label ?? `דיווח על ${targetName}`}
       </button>
     );
   }
@@ -32,13 +50,27 @@ export function ReportButton({ targetId, targetName, path }: { targetId: string;
       <input type="hidden" name="path" value={path} />
       <fieldset className="flex flex-col gap-1 text-sm">
         <legend className="mb-1 text-muted">מה הבעיה?</legend>
-        {Object.entries(REPORT_REASON_LABEL).map(([value, label]) => (
+        {REPORT_REASONS_FOR[about].map(([value, text]) => (
           <label key={value} className="flex items-center gap-2">
-            <input type="radio" name="reason" value={value} required className="accent-accent" />
-            {label}
+            <input
+              type="radio"
+              name="reason"
+              value={value}
+              checked={reason === value}
+              onChange={() => setReason(value)}
+              required
+              className="accent-accent"
+            />
+            {text}
           </label>
         ))}
       </fieldset>
+      {reason === "PRICE_NOT_HONORED" && (
+        <p className="rounded-md bg-background px-3 py-2 text-sm">
+          אם הספק גבה מחיר אחר על מוצר מסוים, עדיף לדווח בכפתור &quot;דיווח על הפרת מחיר&quot;, עם המוצר והמחיר. דיווחים
+          כאלה נספרים מול הספק ומשפיעים על הדירוג שלו.
+        </p>
+      )}
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted">פרטים (לא חובה, חוץ מ״אחר״)</span>
         <textarea

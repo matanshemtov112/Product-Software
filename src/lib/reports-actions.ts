@@ -6,7 +6,7 @@ import { audit } from "@/lib/audit";
 import { getSession } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { REPORT_REASON_LABEL } from "@/lib/reports";
+import { REPORT_REASON_LABEL, REPORT_REASONS_FOR } from "@/lib/reports";
 
 export interface ReportFormState {
   error?: string;
@@ -42,12 +42,15 @@ export async function createReport(_: ReportFormState, form: FormData): Promise<
         OR: [
           { negotiations: { some: { supplierId: user.supplierId } } },
           { matchRequests: { some: { supplierId: user.supplierId } } },
+          // לקוח שכתב ביקורת על הספק: הספק יכול לדווח שהיא מזויפת
+          { reviews: { some: { supplierId: user.supplierId } } },
         ],
       },
     });
     if (contacted) target = { type: "CUSTOMER", name: contacted.businessName };
   }
   if (!target) return { error: "לא נמצא מה לדווח עליו" };
+  if (!REPORT_REASONS_FOR[target.type].some(([r]) => r === reason)) return { error: "נא לבחור סיבה" };
   if (!rateLimit.hit(`report:${user.id}`, LIMITS.reports)) return { error: "שלחתם הרבה דיווחים היום. נסו שוב מחר." };
 
   const report = await db.abuseReport.create({

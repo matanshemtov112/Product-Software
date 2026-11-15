@@ -43,7 +43,11 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
       ) : (
         <ul className="flex flex-col gap-3">
           {reviews.map((r) => (
-            <li key={r.id} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+            <li
+              key={r.id}
+              id={`review-${r.id}`}
+              className="flex scroll-mt-4 flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+            >
               <p className="text-sm">
                 <span className="font-medium">{r.customer.businessName}</span> על{" "}
                 <span className="font-medium">{r.supplier.companyName}</span> ·{" "}
