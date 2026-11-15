@@ -51,14 +51,17 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
   });
 
   const gap = row.quote.gapAgorot;
-  const defaultMessage =
+  const baseMessage =
     (gap
       ? `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם. קיבלנו דרך המערכת את ההצעה שלכם לסל החודשי שלנו, ` +
         `אבל יש פער של ${shekels(gap)} בחודש מול ספק מתחרה. נשמח לשמוע אם תוכלו להתאים את המחיר.`
       : `שלום, אנחנו ${customer.businessName} ומעוניינים לעבוד איתכם על הסל החודשי שלנו. נשמח שתיצרו קשר.`) +
     (cheaperHere.length
       ? ` ראינו אצלכם במערכת מחיר טוב יותר ממה שאנחנו משלמים היום על ${cheaperHere.map((l) => l.productName).join(", ")}, ונשמח שתאשרו לנו אותו.`
-      : "") +
+      : "");
+  // המשפט על מוצרים שהלקוח משלם עליהם פחות היום מתאים רק כשהוא בוחר לשתף את המחירים שלו
+  const sharedMessage =
+    baseMessage +
     (cheaperToday.length
       ? ` היום אנחנו משלמים פחות על ${cheaperToday.map((l) => l.productName).join(", ")}; המחירים מופיעים בהצעה.`
       : "");
@@ -74,8 +77,9 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           <VerifiedBadge supplierId={row.supplierId} />
         </h1>
         <p className="text-sm text-muted">
-          הספק יקבל את ההצעה, ההודעה שלכם וכל הפרטים שמסרתם בהרשמה ובסל
-          {paidLines.length ? ", כולל המחירים שאתם משלמים היום" : ""}. שם הספק המתחרה ושם הספק הנוכחי שלכם לא נחשפים.
+          הספק יקבל את ההצעה, ההודעה שלכם והפרטים שמסרתם בהרשמה ובסל
+          {paidLines.length ? ". המחירים שאתם משלמים היום יישלחו רק אם תבחרו בזה למטה" : ""}. שם הספק המתחרה ושם הספק
+          הנוכחי שלכם לא נחשפים.
         </p>
       </div>
 
@@ -138,7 +142,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
 
       <Card title="הפרטים שיישלחו לספק">
         <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-          {profileRows(profile).map(([label, value]) => (
+          {profileRows(profile, "mark").map(([label, value]) => (
             <div key={label} className="flex gap-2">
               <dt className="w-32 shrink-0 text-muted">{label}</dt>
               <dd className="min-w-0 break-words">{value}</dd>
@@ -146,7 +150,8 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           ))}
         </dl>
         <p className="mt-3 text-xs text-muted">
-          הפרטים נלקחים מההרשמה ומהסל. לעדכון פרטי העסק:{" "}
+          פרטי הקשר שלכם נחשפים לספק רק אחרי שתקבלו את ההצעה שלו. עד אז הוא עונה לכם דרך המערכת. הפרטים נלקחים מההרשמה
+          ומהסל. לעדכון פרטי העסק:{" "}
           <Link href="/customer/profile" className="text-accent">
             פרטי העסק
           </Link>
@@ -169,7 +174,9 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           <InquiryForm
             basketId={basket.id}
             supplierId={supplierId}
-            defaultMessage={defaultMessage}
+            defaultMessage={baseMessage}
+            sharedMessage={sharedMessage}
+            paidCount={paidLines.length}
             seen={seenQuote(row.snapshot.lines, row.snapshot.totalAgorot)}
           />
         )}

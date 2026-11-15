@@ -8,7 +8,7 @@ import { isDealSnapshot } from "@/lib/customer/deals";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
-import { isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
+import { CONTACT_HIDDEN_NOTE, isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
 import { canCancel, inquiryStage, offerStageNote } from "@/lib/offer-status";
 import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
 import { withdrawOffer } from "../../actions";
@@ -31,7 +31,14 @@ export default async function SupplierInquiry({
     where: { id, supplierId: supplier.id },
     include: {
       customer: {
-        include: { region: true, users: { select: { name: true, email: true, phone: true }, take: 1 } },
+        include: {
+          region: true,
+          users: {
+            select: { name: true, email: true, phone: true },
+            orderBy: [{ isManager: "desc" }, { createdAt: "asc" }],
+            take: 1,
+          },
+        },
       },
     },
   });
@@ -46,7 +53,15 @@ export default async function SupplierInquiry({
   const myReview = await db.customerReview.findUnique({
     where: { supplierId_customerId: { supplierId: supplier.id, customerId: customer.id } },
   });
-  const contact = customer.users[0];
+  // איש הקשר כפי שנשלח עם הפנייה; לפניות ישנות בלי פרטים שמורים, מנהל העסק
+  const sent = isCustomerProfile(inquiry.customerProfile) ? inquiry.customerProfile : null;
+  // פרטי הקשר נחשפים לספק רק אחרי שהלקוח קיבל את ההצעה
+  const revealed = inquiry.outcome === "ACCEPTED";
+  const contact = !revealed
+    ? null
+    : sent?.email != null
+      ? { name: sent.contactName ?? "", email: sent.email, phone: sent.phone }
+      : customer.users[0];
   const deal = isDealSnapshot(inquiry.deal) ? inquiry.deal : null;
   const gapPct = inquiry.gapAgorot ? (inquiry.gapAgorot / (inquiry.totalAgorot - inquiry.gapAgorot)) * 100 : 0;
 
@@ -125,8 +140,12 @@ export default async function SupplierInquiry({
                 {contact.email}
               </a>
             </>
-          ) : (
+          ) : revealed ? (
             <p>לא צוין</p>
+          ) : (
+            <p className="text-muted">
+              הטלפון והאימייל יוצגו אחרי שהלקוח יקבל את ההצעה שלכם. עד אז עונים לו כאן, דרך המערכת.
+            </p>
           )}
         </div>
       </div>
@@ -134,14 +153,16 @@ export default async function SupplierInquiry({
       {isCustomerProfile(inquiry.customerProfile) && (
         <Card title="פרטי הלקוח">
           <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-            {profileRows(inquiry.customerProfile).map(([label, value]) => (
+            {profileRows(inquiry.customerProfile, revealed ? "show" : "hide").map(([label, value]) => (
               <div key={label} className="flex gap-2">
                 <dt className="w-32 shrink-0 text-muted">{label}</dt>
                 <dd className="min-w-0 break-words">{value}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-muted">כפי שהלקוח מסר בהרשמה ובסל, ביום הפנייה.</p>
+          <p className="mt-3 text-xs text-muted">
+            כפי שהלקוח מסר בהרשמה ובסל, ביום הפנייה.{revealed ? "" : ` ${CONTACT_HIDDEN_NOTE}`}
+          </p>
         </Card>
       )}
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
 import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
@@ -49,13 +50,16 @@ export default async function BasketPage({
   const { checked } = await searchParams;
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
-  const basket = await getBasket(customer.id, id);
-  if (!basket) notFound();
-  const analysis = await analyzeBasket(basket.id);
-  await recordSupplierViews(
-    basket.id,
-    customer.id,
-    analysis.rows.map((r) => r.supplierId),
+  // הסל והניתוח נטענים במקביל; ניתוח של סל שאינו של הלקוח (או שלא קיים) לא מוצג לעולם
+  const [basket, analysis] = await Promise.all([getBasket(customer.id, id), analyzeBasket(id).catch(() => null)]);
+  if (!basket || !analysis) notFound();
+  // סטטיסטיקת צפיות לספקים נרשמת אחרי שהדף נשלח, כדי לא לעכב את הלקוח
+  after(() =>
+    recordSupplierViews(
+      basket.id,
+      customer.id,
+      analysis.rows.map((r) => r.supplierId),
+    ),
   );
   const { result, rows } = analysis;
 
@@ -105,6 +109,23 @@ export default async function BasketPage({
     .map((g) => ({ ...g, suppliers: [...g.suppliers] }))
     .sort((a, b) => b.totalAgorot - a.totalAgorot);
 
+  // השורה התחתונה: ההמלצה, החיסכון, ולמי לשלוח הודעה
+  const plan = result.recommended ?? result.lowestCost;
+  const saving =
+    paid.monthlySavingAgorot > 0
+      ? { agorot: paid.monthlySavingAgorot, against: "מול המחירים שמילאתם" }
+      : current && current.quote.gapAgorot > 0
+        ? { agorot: current.quote.gapAgorot, against: `מול ${current.supplierName}` }
+        : null;
+  const sections = [
+    comparison && lastRun ? { id: "changes", label: "מה השתנה" } : null,
+    { id: "options", label: "שלוש אפשרויות" },
+    paid.lines.length > 0 ? { id: "prices", label: "המחירים שלכם" } : null,
+    ranked.length > 0 ? { id: "suppliers", label: "ספקים מתאימים" } : null,
+    routing.length > 0 ? { id: "routing", label: "ספק לכל סוג מוצר" } : null,
+    { id: "items", label: `המוצרים (${basket.items.length})` },
+  ].filter((x) => x !== null);
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -136,8 +157,73 @@ export default async function BasketPage({
         </p>
       )}
 
+      {plan && (
+        <section aria-labelledby="bottom-line" className="rounded-lg border border-accent bg-surface p-5">
+          <h2 id="bottom-line" className="mb-3 font-semibold">
+            השורה התחתונה
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-sm text-muted">{result.recommended ? "ההמלצה שלנו" : "האפשרות הזולה"}</p>
+              <p className="text-3xl font-bold">{shekels(plan.totalAgorot)}</p>
+              <p className="text-xs text-muted">
+                לחודש, ללא מע״מ, אצל {plan.suppliers.map((s) => s.supplierName).join(" + ")}
+              </p>
+            </div>
+            {current ? (
+              <div>
+                <p className="text-sm text-muted">הספק שלכם היום</p>
+                <p className="text-3xl font-bold">{shekels(current.quote.share.totalAgorot)}</p>
+                <p className="text-xs text-muted">לחודש לפי המחירון של {current.supplierName}</p>
+              </div>
+            ) : (
+              basket.currentSupplierId && (
+                <div>
+                  <p className="text-sm text-muted">הספק שלכם היום</p>
+                  <p className="text-sm text-muted">
+                    לא הצלחנו לתמחר את הסל אצלו (ייתכן שהסל קטן ממינימום ההזמנה שלו).
+                  </p>
+                </div>
+              )
+            )}
+            <div className="rounded-lg bg-accent-soft p-3">
+              <p className="text-sm">חיסכון אפשרי</p>
+              <p className="text-3xl font-bold text-accent">{saving ? shekels(saving.agorot) : "אין"}</p>
+              <p className="text-xs text-muted">
+                {saving
+                  ? `בחודש ${saving.against}, ${shekels(saving.agorot * 12)} בשנה`
+                  : "המחירים שלכם כבר טובים לסל הזה. אפשר עדיין לבקש הצעה."}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {plan.suppliers
+              .filter((s) => s.supplierId !== basket.currentSupplierId)
+              .map((s) => (
+                <SendToSupplierLink
+                  key={s.supplierId}
+                  href={`/customer/baskets/${basket.id}/inquiry/${s.supplierId}`}
+                  label={`הודעה ל${s.supplierName}`}
+                />
+              ))}
+          </div>
+        </section>
+      )}
+
+      <nav aria-label="חלקי הדף" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-sm">
+        {sections.map((x) => (
+          <a
+            key={x.id}
+            href={`#${x.id}`}
+            className="shrink-0 rounded-full border border-border bg-surface px-3 py-1 text-muted hover:border-accent hover:text-accent"
+          >
+            {x.label}
+          </a>
+        ))}
+      </nav>
+
       {comparison && lastRun && (
-        <Card title={`מה השתנה מאז הבדיקה ב-${date(lastRun.createdAt)}`}>
+        <Card id="changes" title={`מה השתנה מאז הבדיקה ב-${date(lastRun.createdAt)}`}>
           <div className="flex flex-col gap-3 text-sm">
             {comparison.lowestDeltaAgorot !== null && (
               <p>
@@ -180,6 +266,28 @@ export default async function BasketPage({
         </Card>
       )}
 
+      {!result.lowestCost && (
+        <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm">
+          אף ספק או שילוב ספקים לא מתאים לסל כרגע. לרוב זה קורה כשההזמנה לכל אספקה קטנה ממינימום ההזמנה של הספקים: נסו
+          פחות אספקות בחודש, כמויות גדולות יותר, או להוסיף מוצרים.{" "}
+          <Link href={`/customer/baskets/${basket.id}/edit`} className="text-accent">
+            עריכת הסל
+          </Link>
+        </p>
+      )}
+
+      <h2 id="options" className="scroll-mt-4 font-semibold">
+        שלוש אפשרויות לסל
+      </h2>
+      <div className="grid gap-4 md:grid-cols-3">
+        <PlanCard title="המלצה" plan={result.recommended} />
+        <PlanCard title="העלות הנמוכה ביותר" plan={result.lowestCost} />
+        <PlanCard title="ספק יחיד" plan={result.singleSupplier} />
+      </div>
+      <p className="-mt-2 text-xs text-muted">
+        כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים.
+      </p>
+
       {!basket.savedAt && (
         <div className="flex flex-col gap-3 rounded-lg border border-accent bg-accent-soft p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -211,7 +319,7 @@ export default async function BasketPage({
       )}
 
       {paid.lines.length > 0 && (
-        <Card title="המחירים שלכם היום מול המערכת">
+        <Card id="prices" title="המחירים שלכם היום מול המערכת">
           <div className="flex flex-col gap-4">
             {paid.monthlySavingAgorot > 0 ? (
               <div className="rounded-lg bg-accent-soft p-4">
@@ -234,11 +342,19 @@ export default async function BasketPage({
               </p>
             )}
 
-            <ProductComparison lines={paid.lines} currentSupplierId={basket.currentSupplierId} />
-            <p className="text-xs text-muted">
-              מחיר קבוע: בלי תאריך סיום. מחיר עם תוקף: הספק התחייב אליו עד התאריך. מבצע: מחיר מוזל עד התאריך, ואחריו
-              חוזר המחיר הרגיל. תאריך עדכון באדום: עבר יותר מחודש, כדאי לוודא מול הספק. כל המחירים ללא מע״מ.
-            </p>
+            <details className="group rounded-lg border border-border p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                <span className="group-open:hidden">הצגת</span>
+                <span className="hidden group-open:inline">הסתרת</span> ההשוואה לכל מוצר ({paid.lines.length} מוצרים)
+              </summary>
+              <div className="mt-3 flex flex-col gap-3">
+                <ProductComparison lines={paid.lines} currentSupplierId={basket.currentSupplierId} />
+                <p className="text-xs text-muted">
+                  מחיר קבוע: בלי תאריך סיום. מחיר עם תוקף: הספק התחייב אליו עד התאריך. מבצע: מחיר מוזל עד התאריך, ואחריו
+                  חוזר המחיר הרגיל. תאריך עדכון באדום: עבר יותר מחודש, כדאי לוודא מול הספק. כל המחירים ללא מע״מ.
+                </p>
+              </div>
+            </details>
 
             {paid.suppliers.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -277,65 +393,8 @@ export default async function BasketPage({
         </Card>
       )}
 
-      {current && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-sm text-muted">הספק שלכם היום</p>
-            <p className="font-medium">
-              {current.supplierName}
-              <VerifiedBadge supplierId={current.supplierId} />
-            </p>
-            <p className="text-2xl font-bold">{shekels(current.quote.share.totalAgorot)}</p>
-            <p className="text-xs text-muted">לחודש לפי המחירון שלו, משלוח חינם</p>
-          </div>
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <p className="text-sm text-muted">החלופה הזולה ביותר לאותם מוצרים</p>
-            <p className="text-2xl font-bold">{shekels(current.quote.bestAlternativeAgorot)}</p>
-            <p className="text-xs text-muted">מספק מתחרה או משילוב ספקים, פירוט למטה</p>
-          </div>
-          <div className="rounded-lg bg-accent-soft p-4">
-            <p className="text-sm">חיסכון אפשרי</p>
-            <p className="text-2xl font-bold text-accent">
-              {current.quote.gapAgorot ? shekels(current.quote.gapAgorot) : "אין"}
-            </p>
-            <p className="text-xs text-muted">
-              {current.quote.gapAgorot
-                ? `בחודש, ${shekels(current.quote.gapAgorot * 12)} בשנה`
-                : "הספק שלכם כבר הזול ביותר לסל הזה"}
-            </p>
-          </div>
-        </div>
-      )}
-      {basket.currentSupplierId && !current && (
-        <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
-          לא הצלחנו לתמחר את הסל אצל הספק הנוכחי שלכם (ייתכן שהסל קטן ממינימום ההזמנה שלו).
-        </p>
-      )}
-
-      {routing.length > 0 && (
-        <Card title="איזה ספק לכל סוג מוצר">
-          <p className="mb-3 text-sm text-muted">
-            לפי ההמלצה: כל קבוצת מוצרים הולכת לספק שמשתלם לה, למשל ירקות אדמה לספק אחד וירוקים לספק שמתמחה בהם.
-          </p>
-          <ul className="divide-y divide-border text-sm">
-            {routing.map((g) => (
-              <li key={g.category} className="flex flex-wrap items-start justify-between gap-2 py-2">
-                <div className="min-w-0">
-                  <p className="font-medium">{g.category}</p>
-                  <p className="text-xs text-muted">{g.products.join(", ")}</p>
-                </div>
-                <div className="text-end">
-                  <p>{g.suppliers.join(" + ")}</p>
-                  <p className="text-xs text-muted">{shekels(g.totalAgorot)} לחודש</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
-
       {ranked.length > 0 && (
-        <Card title="לאיזה ספקים הסל שלכם מכוון">
+        <Card id="suppliers" title="לאיזה ספקים הסל שלכם מכוון">
           <p className="mb-3 text-sm text-muted">
             הספקים שמתאימים לסל שסימנתם, מהמתאים ביותר: לפי כמה מהסל כל ספק מכסה, כמה הוא יקר מהחלופה הזולה לאותם
             מוצרים, ודירוג ואמינות לפי ההעדפה שלכם ({PREFERENCE_LABEL[customer.preference]}).
@@ -393,27 +452,30 @@ export default async function BasketPage({
         </Card>
       )}
 
-      {!result.lowestCost && (
-        <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm">
-          אף ספק או שילוב ספקים לא מתאים לסל כרגע. לרוב זה קורה כשההזמנה לכל אספקה קטנה ממינימום ההזמנה של הספקים: נסו
-          פחות אספקות בחודש, כמויות גדולות יותר, או להוסיף מוצרים.{" "}
-          <Link href={`/customer/baskets/${basket.id}/edit`} className="text-accent">
-            עריכת הסל
-          </Link>
-        </p>
+      {routing.length > 0 && (
+        <details id="routing" className="scroll-mt-4 rounded-lg border border-border bg-surface p-5">
+          <summary className="cursor-pointer font-semibold">איזה ספק לכל סוג מוצר ({routing.length} סוגים)</summary>
+          <p className="my-3 text-sm text-muted">
+            לפי ההמלצה: כל קבוצת מוצרים הולכת לספק שמשתלם לה, למשל ירקות אדמה לספק אחד וירוקים לספק שמתמחה בהם.
+          </p>
+          <ul className="divide-y divide-border text-sm">
+            {routing.map((g) => (
+              <li key={g.category} className="flex flex-wrap items-start justify-between gap-2 py-2">
+                <div className="min-w-0">
+                  <p className="font-medium">{g.category}</p>
+                  <p className="text-xs text-muted">{g.products.join(", ")}</p>
+                </div>
+                <div className="text-end">
+                  <p>{g.suppliers.join(" + ")}</p>
+                  <p className="text-xs text-muted">{shekels(g.totalAgorot)} לחודש</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
-      <h2 className="font-semibold">שלוש אפשרויות לסל</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <PlanCard title="המלצה" plan={result.recommended} />
-        <PlanCard title="העלות הנמוכה ביותר" plan={result.lowestCost} />
-        <PlanCard title="ספק יחיד" plan={result.singleSupplier} />
-      </div>
-      <p className="-mt-2 text-xs text-muted">
-        כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים.
-      </p>
-
-      <details className="rounded-lg border border-border bg-surface p-5">
+      <details id="items" className="scroll-mt-4 rounded-lg border border-border bg-surface p-5">
         <summary className="cursor-pointer font-semibold">המוצרים בסל ({basket.items.length})</summary>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[24rem] text-sm">

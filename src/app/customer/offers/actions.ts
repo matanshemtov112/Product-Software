@@ -34,7 +34,10 @@ export async function decideInquiry(form: FormData) {
         decision === "ACCEPTED"
           ? `${customer.businessName} קיבלו את ההצעה שלכם`
           : `${customer.businessName} דחו את ההצעה שלכם`,
-      body: decision === "ACCEPTED" ? "צרו קשר עם הלקוח כדי לסגור את ההזמנה." : (note ?? undefined),
+      body:
+        decision === "ACCEPTED"
+          ? "פרטי הקשר של הלקוח פתוחים עכשיו בפנייה. צרו קשר כדי לסגור את ההזמנה."
+          : (note ?? undefined),
       href: `/supplier/inquiries/${id}`,
       dedupeKey: `offer-decided:inquiry:${id}`,
     },

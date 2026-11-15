@@ -4,7 +4,7 @@ import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
-import { isCustomerProfile, profileRows } from "@/lib/inquiries";
+import { CONTACT_HIDDEN_NOTE, isCustomerProfile, profileRows } from "@/lib/inquiries";
 import { MATCH_DECISION_LABEL, matchSummary, supplierFacing } from "@/lib/matches";
 import { canCancel, matchStage, offerStageNote } from "@/lib/offer-status";
 import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
@@ -141,13 +141,16 @@ export default async function SupplierMatch({
       {isCustomerProfile(request.customerProfile) && (
         <Card title="פרטי הלקוח">
           <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
-            {profileRows(request.customerProfile).map(([label, value]) => (
-              <div key={label} className="flex gap-2">
-                <dt className="w-32 shrink-0 text-muted">{label}</dt>
-                <dd className="min-w-0 break-words">{value}</dd>
-              </div>
-            ))}
+            {profileRows(request.customerProfile, request.outcome === "ACCEPTED" ? "show" : "hide").map(
+              ([label, value]) => (
+                <div key={label} className="flex gap-2">
+                  <dt className="w-32 shrink-0 text-muted">{label}</dt>
+                  <dd className="min-w-0 break-words">{value}</dd>
+                </div>
+              ),
+            )}
           </dl>
+          {request.outcome !== "ACCEPTED" && <p className="mt-3 text-xs text-muted">{CONTACT_HIDDEN_NOTE}</p>}
         </Card>
       )}
     </div>

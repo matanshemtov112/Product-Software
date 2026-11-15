@@ -11,9 +11,14 @@ export async function customerProfile(
     where: { id: customerId },
     include: {
       region: true,
-      users: { select: { name: true, email: true, phone: true }, orderBy: { createdAt: "asc" }, take: 1 },
+      users: {
+        select: { name: true, email: true, phone: true },
+        orderBy: [{ isManager: "desc" }, { createdAt: "asc" }],
+        take: 1,
+      },
     },
   });
+  // איש הקשר: מנהל העסק (הוותיק ביותר אם יש כמה), לא חבר צוות אקראי
   const contact = customer.users[0];
   return {
     businessName: customer.businessName,

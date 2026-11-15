@@ -206,6 +206,8 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
   const parsed = inquirySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { basketId, supplierId, message } = parsed.data;
+  // המחירים שהלקוח משלם היום נשלחים לספק רק אם הלקוח סימן שהוא רוצה לשתף אותם
+  const sharePaid = form.get("sharePaid") === "on";
 
   const basket = await getBasket(customer.id, basketId);
   if (!basket) return { error: "הסל לא נמצא" };
@@ -240,7 +242,13 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
         supplierId,
         gapAgorot: row.quote.gapAgorot,
         totalAgorot: row.snapshot.totalAgorot,
-        quote: JSON.parse(JSON.stringify(row.snapshot)),
+        quote: JSON.parse(
+          JSON.stringify(
+            sharePaid
+              ? row.snapshot
+              : { ...row.snapshot, lines: row.snapshot.lines.map((l) => ({ ...l, customerPaidAgorot: null })) },
+          ),
+        ),
         customerProfile: profile,
         message,
       },

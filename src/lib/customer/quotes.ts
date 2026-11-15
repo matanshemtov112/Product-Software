@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Unit } from "@prisma/client";
 import { db } from "@/lib/db";
@@ -21,7 +22,8 @@ import { loadEngineInput } from "@/lib/engine/load";
 import type { QuoteSnapshot } from "@/lib/inquiries";
 
 /** הלקוח של המשתמש המחובר, עם האזור שלו */
-export async function customerForUser(userId: string) {
+/** הלקוח של המשתמש; נטען פעם אחת לכל בקשה (גם ה-layout וגם הדף צריכים אותו) */
+export const customerForUser = cache(async (userId: string) => {
   const user = await db.user.findUnique({
     where: { id: userId },
     include: { customer: { include: { region: true } } },
@@ -30,7 +32,7 @@ export async function customerForUser(userId: string) {
   if (!user) redirect("/login");
   if (!user.customer) throw new Error("User is not linked to a customer");
   return user.customer;
-}
+});
 
 /** סל של הלקוח, או null אם הסל לא שלו */
 export async function getBasket(customerId: string, basketId: string) {

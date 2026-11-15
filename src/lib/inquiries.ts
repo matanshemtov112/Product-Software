@@ -81,16 +81,28 @@ export function isCustomerProfile(value: unknown): value is CustomerProfileSnaps
   );
 }
 
-/** השורות שמוצגות לספק ולקוח: מה בדיוק נשלח */
-export function profileRows(p: CustomerProfileSnapshot): [string, string][] {
+/** הודעה לספק במקום פרטי הקשר, כל עוד הלקוח לא קיבל הצעה */
+export const CONTACT_HIDDEN_NOTE = "הכתובת, איש הקשר, הטלפון והאימייל יוצגו אחרי שהלקוח יקבל את ההצעה שלכם.";
+
+/**
+ * השורות שמוצגות לספק ולקוח: מה בדיוק נשלח.
+ * פרטי הקשר (כתובת, איש קשר, טלפון, אימייל) מוצגים לספק רק אחרי שהלקוח קיבל את ההצעה:
+ * "show" מציג אותם, "hide" משמיט אותם (לספק לפני אישור), "mark" מציג ללקוח עם סימון שהם נחשפים רק אחרי אישור.
+ */
+export function profileRows(
+  p: CustomerProfileSnapshot,
+  contact: "show" | "hide" | "mark" = "show",
+): [string, string][] {
+  const later = (v: string | null | undefined) =>
+    contact === "hide" || !v ? null : contact === "mark" ? `${v} (רק אחרי שתקבלו הצעה)` : v;
   const rows: [string, string | null][] = [
     ["שם העסק", p.businessName],
     ["סוג העסק", p.cuisine ? `${p.businessType} · ${p.cuisine}` : p.businessType],
     ["עיר ואזור", `${p.city} · ${p.region}`],
-    ["כתובת", p.address ?? null],
-    ["איש קשר", p.contactName],
-    ["טלפון", p.phone],
-    ["אימייל", p.email],
+    ["כתובת", later(p.address)],
+    ["איש קשר", later(p.contactName)],
+    ["טלפון", later(p.phone)],
+    ["אימייל", later(p.email)],
     ["היקף רכש חודשי", p.monthlyVolume ? `${p.monthlyVolume} (ללא מע״מ)` : "לא צוין"],
     ["היקף רכש כולל", p.totalVolume ? `${p.totalVolume} בחודש, מכל הספקים` : null],
     ["אספקות בחודש", String(p.deliveriesPerMonth)],
