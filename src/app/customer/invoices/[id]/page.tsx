@@ -7,6 +7,9 @@ import { db } from "@/lib/db";
 import type { InvoiceLine } from "@/lib/invoices/read";
 import { suggestProduct } from "@/lib/invoices/suggest";
 import { InvoiceReview, type ReviewLine } from "./invoice-review";
+import { ConfirmForm } from "@/components/confirm-form";
+import { retentionEnd } from "@/lib/invoices/retention";
+import { deleteInvoice } from "../../history/actions";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -64,6 +67,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         initialSupplierName={invoice.supplierName ?? ""}
         supplierNames={supplierNames.map((s) => s.companyName)}
       />
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-muted">
+          הקובץ עצמו לא נשמר. השורות שקראנו יימחקו אוטומטית ב-{retentionEnd(invoice.createdAt)}, או עכשיו אם תרצו.
+        </p>
+        <ConfirmForm
+          action={deleteInvoice}
+          fields={{ id: invoice.id, back: "/customer/invoices/new?deleted=1" }}
+          confirm="למחוק את החשבונית עכשיו? השורות שקראנו יימחקו ואי אפשר לשחזר אותן."
+          className="shrink-0 rounded-md border border-danger px-4 py-2 font-medium text-danger hover:bg-danger/5"
+        >
+          מחיקת החשבונית עכשיו
+        </ConfirmForm>
+      </div>
     </div>
   );
 }

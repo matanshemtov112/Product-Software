@@ -26,7 +26,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
   const candidates = matchCandidates(supplier.lines);
   const requests = supplier.supplierId
     ? await db.matchRequest.findMany({
-        where: { customerId: customer.id, supplierId: supplier.supplierId },
+        where: { customerId: customer.id, supplierId: supplier.supplierId, customerHiddenAt: null },
         orderBy: { createdAt: "desc" },
         take: 5,
       })

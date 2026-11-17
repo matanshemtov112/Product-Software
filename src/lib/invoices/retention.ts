@@ -14,3 +14,8 @@ export async function purgeOldInvoices(now = new Date()) {
     await audit({ action: "invoices.purged", actor: "מערכת", details: { count, before: before.toISOString() } });
   return count;
 }
+
+/** התאריך שבו חשבונית תימחק אוטומטית, לתצוגה */
+export function retentionEnd(createdAt: Date): string {
+  return new Date(createdAt.getTime() + INVOICE_RETENTION_DAYS * 86_400_000).toLocaleDateString("he-IL");
+}

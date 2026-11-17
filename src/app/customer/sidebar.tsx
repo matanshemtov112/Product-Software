@@ -149,6 +149,11 @@ export function CustomerSidebar({
               </Link>
             </li>
             <li>
+              <Link href="/customer/history" className={item(pathname === "/customer/history")}>
+                היסטוריה
+              </Link>
+            </li>
+            <li>
               <Link href="/customer/profile" className={item(pathname === "/customer/profile")}>
                 פרטי העסק
               </Link>

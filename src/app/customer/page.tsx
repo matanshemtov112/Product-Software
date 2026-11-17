@@ -46,11 +46,16 @@ export default async function CustomerHome() {
   const [suppliers, answeredMatches, replies] = await Promise.all([
     mySuppliers(customer.id),
     db.matchRequest.findMany({
-      where: { customerId: customer.id, status: "ANSWERED" },
+      where: { customerId: customer.id, status: "ANSWERED", customerHiddenAt: null },
       include: { supplier: { select: { companyName: true } }, lines: true },
     }),
     db.negotiationRequest.findMany({
-      where: { customerId: customer.id, status: "OFFERED", repliedAt: { gte: new Date(Date.now() - 14 * DAY) } },
+      where: {
+        customerId: customer.id,
+        status: "OFFERED",
+        customerHiddenAt: null,
+        repliedAt: { gte: new Date(Date.now() - 14 * DAY) },
+      },
       include: { supplier: { select: { companyName: true } } },
       orderBy: { repliedAt: "desc" },
     }),

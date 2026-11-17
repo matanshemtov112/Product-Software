@@ -17,6 +17,10 @@ import { analyzeBasket, customerForUser, getBasket, paidComparison } from "@/lib
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { deleteBasket, recordCheck } from "../../actions";
 import { DeleteBasketButton } from "./delete-button";
+import { ConfirmForm } from "@/components/confirm-form";
+import { db } from "@/lib/db";
+import { retentionEnd } from "@/lib/invoices/retention";
+import { deleteInvoice } from "../../history/actions";
 
 const SOURCE_LABEL = {
   MANUAL: "רשימה שבניתם",
@@ -51,7 +55,11 @@ export default async function BasketPage({
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
   // הסל והניתוח נטענים במקביל; ניתוח של סל שאינו של הלקוח (או שלא קיים) לא מוצג לעולם
-  const [basket, analysis] = await Promise.all([getBasket(customer.id, id), analyzeBasket(id).catch(() => null)]);
+  const [basket, analysis, invoice] = await Promise.all([
+    getBasket(customer.id, id),
+    analyzeBasket(id).catch(() => null),
+    db.invoice.findFirst({ where: { basketId: id, customerId: customer.id }, select: { id: true, createdAt: true } }),
+  ]);
   if (!basket || !analysis) notFound();
   // סטטיסטיקת צפיות לספקים נרשמת אחרי שהדף נשלח, כדי לא לעכב את הלקוח
   after(() =>
@@ -149,6 +157,22 @@ export default async function BasketPage({
           <DeleteBasketButton basketId={basket.id} name={basket.name} action={deleteBasket} />
         </div>
       </div>
+
+      {invoice && (
+        <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-muted">
+            הסל נבנה מחשבונית. השורות שקראנו ממנה נשמרות עד {retentionEnd(invoice.createdAt)} ואז נמחקות אוטומטית. הסל
+            עצמו נשאר.
+          </p>
+          <ConfirmForm
+            action={deleteInvoice}
+            fields={{ id: invoice.id, back: `/customer/baskets/${basket.id}` }}
+            confirm="למחוק עכשיו את השורות שנקראו מהחשבונית? הסל לא יימחק."
+          >
+            מחיקת החשבונית עכשיו
+          </ConfirmForm>
+        </div>
+      )}
 
       {checked && (
         <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">

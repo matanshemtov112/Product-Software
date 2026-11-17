@@ -3,7 +3,8 @@ import Link from "next/link";
 import { invoiceReadingEnabled } from "@/lib/invoices/read";
 import { InvoiceUpload } from "./invoice-upload";
 
-export default function NewInvoicePage() {
+export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
+  const { deleted } = await searchParams;
   const enabled =
     invoiceReadingEnabled() || (process.env.NODE_ENV !== "production" && Boolean(process.env.INVOICE_FAKE_RESULT));
   return (
@@ -19,6 +20,11 @@ export default function NewInvoicePage() {
           (הסל שתבנו נשאר).
         </p>
       </div>
+      {deleted && (
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
+          החשבונית נמחקה. לא נשאר ממנה דבר אצלנו.
+        </p>
+      )}
       {enabled ? (
         <InvoiceUpload />
       ) : (

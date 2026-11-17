@@ -300,11 +300,11 @@ model Product {
 }
 
 model SupplierOffer {
-  id                  String        @id @default(cuid())
+  id                  String          @id @default(cuid())
   supplierId          String
-  supplier            Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplier            Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   productId           String
-  product             Product       @relation(fields: [productId], references: [id])
+  product             Product         @relation(fields: [productId], references: [id])
   supplierSku         String?
   /// השם שהספק נותן למוצר (כמו בחשבונית שלו); הלקוחות מוצאים את המוצר גם בשם הזה
   supplierProductName String?
@@ -315,12 +315,12 @@ model SupplierOffer {
   /// במשקל משתנה (למשל קרטון אנטריקוט 15–20 ק״ג): המשקל הגבוה
   packSizeMax         Float?
   /// כמות מינימלית להזמנה ביחידות בסיס
-  minQuantity         Float         @default(0)
+  minQuantity         Float           @default(0)
   /// כמות מינימלית להזמנה באריזות (למשל 2 קרטונים); גובר על minQuantity כשמוגדר
   minPacks            Int?
   /// הספק מזין מחיר לאריזה (למשל לפח 4 ליטר); נשמר תמיד כמחיר ליחידת בסיס
-  pricePerPack        Boolean       @default(false)
-  available           Boolean       @default(true)
+  pricePerPack        Boolean         @default(false)
+  available           Boolean         @default(true)
   /// ברקוד נוכחי; ברקודים קודמים נשמרים ביומן השינויים
   barcode             String?
   /// מותג חדש שהספק אומר שהוא אותו מוצר; ממתין לאישור מנהל
@@ -572,6 +572,8 @@ model NegotiationRequest {
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
   cancelledBy      Role?
   repliedAt        DateTime?
+  /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
+  customerHiddenAt DateTime?
   createdAt        DateTime          @default(now())
 
   @@index([supplierId, createdAt])
@@ -632,6 +634,8 @@ model MatchRequest {
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
   cancelledBy      Role?
   answeredAt       DateTime?
+  /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
+  customerHiddenAt DateTime?
   createdAt        DateTime           @default(now())
   lines            MatchRequestLine[]
 

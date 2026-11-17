@@ -13,13 +13,14 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
   const { sent } = await searchParams;
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
+  // פניות שהלקוח הסתיר בדף ההיסטוריה לא מוצגות כאן
   const inquiries = await db.negotiationRequest.findMany({
-    where: { customerId: customer.id },
+    where: { customerId: customer.id, customerHiddenAt: null },
     include: { supplier: { select: { companyName: true } } },
     orderBy: { createdAt: "desc" },
   });
   const matches = await db.matchRequest.findMany({
-    where: { customerId: customer.id },
+    where: { customerId: customer.id, customerHiddenAt: null },
     include: { supplier: { select: { companyName: true } }, lines: true },
     orderBy: { createdAt: "desc" },
   });

@@ -52,8 +52,10 @@ export default async function CustomerLayout({ children }: { children: React.Rea
       select: { id: true, name: true, runs: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
       orderBy: { savedAt: "asc" },
     }),
-    db.negotiationRequest.count({ where: { customerId: customer.id, status: { in: ["OFFERED", "CLOSED"] } } }),
-    db.matchRequest.count({ where: { customerId: customer.id, status: "ANSWERED" } }),
+    db.negotiationRequest.count({
+      where: { customerId: customer.id, status: { in: ["OFFERED", "CLOSED"] }, customerHiddenAt: null },
+    }),
+    db.matchRequest.count({ where: { customerId: customer.id, status: "ANSWERED", customerHiddenAt: null } }),
     db.customerReview.count({ where: { customerId: customer.id } }),
     db.notification.count({ where: { customerId: customer.id, read: false } }),
   ]);
