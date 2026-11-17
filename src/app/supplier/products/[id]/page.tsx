@@ -1,3 +1,4 @@
+import { ConfirmButton } from "@/components/confirm-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -147,7 +148,9 @@ export default async function ProductDetails({
           {imageSrc && (
             <form action={removeOfferImage} className="mt-2">
               <input type="hidden" name="offerId" value={offer.id} />
-              <button className="text-sm text-danger hover:underline">הסרת התמונה</button>
+              <ConfirmButton className="text-sm text-danger hover:underline" confirm="להסיר את התמונה של המוצר?">
+                הסרת התמונה
+              </ConfirmButton>
             </form>
           )}
         </Card>

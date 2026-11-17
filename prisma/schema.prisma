@@ -539,42 +539,46 @@ model CustomerReview {
 }
 
 model NegotiationRequest {
-  id               String            @id @default(cuid())
-  customerId       String
-  customer         Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId       String
-  supplier         Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  runId            String?
-  run              OptimizationRun?  @relation(fields: [runId], references: [id])
-  gapAgorot        Int // פער מול החלופה הזולה; בלי שם המתחרה
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId             String?
+  run               OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot         Int // פער מול החלופה הזולה; בלי שם המתחרה
   /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
-  quote            Json?
+  quote             Json?
   /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
-  customerProfile  Json?
+  customerProfile   Json?
   /// פנייה בעקבות מבצע (DealInquirySnapshot): המוצר, המבצע והכמות שהלקוח רוצה
-  deal             Json?
+  deal              Json?
   /// סה"כ ההצעה של הספק, כולל משלוח
-  totalAgorot      Int               @default(0)
-  message          String
-  status           NegotiationStatus @default(SENT)
-  reply            String?
+  totalAgorot       Int               @default(0)
+  message           String
+  status            NegotiationStatus @default(SENT)
+  reply             String?
   /// תנאי תשלום שהספק הציע ללקוח הזה בתשובה (שוטף + ימים, 0 = מזומן); null = לא צוין
-  paymentTermsDays Int?
+  paymentTermsDays  Int?
   /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
-  validUntil       DateTime?
+  validUntil        DateTime?
   /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
-  offerSeenAt      DateTime?
+  offerSeenAt       DateTime?
   /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
-  outcome          OfferOutcome?
-  outcomeAt        DateTime?
+  outcome           OfferOutcome?
+  outcomeAt         DateTime?
   /// סיבת דחייה או ביטול, לא חובה
-  outcomeNote      String?
+  outcomeNote       String?
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
-  cancelledBy      Role?
-  repliedAt        DateTime?
+  cancelledBy       Role?
+  repliedAt         DateTime?
   /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
-  customerHiddenAt DateTime?
-  createdAt        DateTime          @default(now())
+  customerHiddenAt  DateTime?
+  /// הלקוח מחק את הפנייה מהרשימה שלו לצמיתות (אי אפשר להחזיר); אצל הספק היא נשארת
+  customerDeletedAt DateTime?
+  /// הסל שממנו נשלחה הפנייה, לפנייה חדשה לאותו ספק
+  basketId          String?
+  createdAt         DateTime          @default(now())
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])
@@ -606,38 +610,40 @@ model Subscription {
 /// "בקש מהספק שלי להשוות": הלקוח מבקש מהספק הנוכחי שלו להשוות מחירים למחיר הזול במערכת.
 /// שם הספק המתחרה לא נשמר ולא מוצג לספק.
 model MatchRequest {
-  id               String             @id @default(cuid())
-  customerId       String
-  customer         Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId       String
-  supplier         Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id                String             @id @default(cuid())
+  customerId        String
+  customer          Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
   /// הסל שממנו נלקחו הכמויות והמחירים; אישור מחיר מעדכן בו את "המחיר היום"
-  basketId         String?
-  message          String?
+  basketId          String?
+  message           String?
   /// פרטי הלקוח ברגע הבקשה (CustomerProfileSnapshot)
-  customerProfile  Json?
-  status           MatchStatus        @default(SENT)
+  customerProfile   Json?
+  status            MatchStatus        @default(SENT)
   /// מה הספק רואה: המחיר שנמצא, או רק סף שצריך לרדת ממנו
-  reveal           MatchReveal        @default(EXACT)
-  supplierNote     String?
+  reveal            MatchReveal        @default(EXACT)
+  supplierNote      String?
   /// תנאי תשלום שהספק הציע ללקוח הזה (שוטף + ימים, 0 = מזומן); null = לא צוין
-  paymentTermsDays Int?
+  paymentTermsDays  Int?
   /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
-  validUntil       DateTime?
+  validUntil        DateTime?
   /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
-  offerSeenAt      DateTime?
+  offerSeenAt       DateTime?
   /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
-  outcome          OfferOutcome?
-  outcomeAt        DateTime?
+  outcome           OfferOutcome?
+  outcomeAt         DateTime?
   /// סיבת דחייה או ביטול, לא חובה
-  outcomeNote      String?
+  outcomeNote       String?
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
-  cancelledBy      Role?
-  answeredAt       DateTime?
+  cancelledBy       Role?
+  answeredAt        DateTime?
   /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
-  customerHiddenAt DateTime?
-  createdAt        DateTime           @default(now())
-  lines            MatchRequestLine[]
+  customerHiddenAt  DateTime?
+  /// הלקוח מחק את הבקשה מהרשימה שלו לצמיתות; אצל הספק היא נשארת
+  customerDeletedAt DateTime?
+  createdAt         DateTime           @default(now())
+  lines             MatchRequestLine[]
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])

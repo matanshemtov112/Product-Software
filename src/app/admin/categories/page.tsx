@@ -1,3 +1,4 @@
+import { ConfirmButton } from "@/components/confirm-button";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
@@ -29,9 +30,13 @@ function Row({ id, name, count, sub }: { id: string; name: string; count: number
       <span className="shrink-0 text-xs text-muted">{count} מוצרים</span>
       <form action={deleteCategory}>
         <input type="hidden" name="categoryId" value={id} />
-        <button className="text-sm text-muted hover:text-danger" aria-label={`מחיקת ${name}`}>
+        <ConfirmButton
+          className="text-sm text-muted hover:text-danger"
+          label={`מחיקת ${name}`}
+          confirm={`למחוק את הקטגוריה "${name}"?`}
+        >
           מחיקה
-        </button>
+        </ConfirmButton>
       </form>
     </li>
   );

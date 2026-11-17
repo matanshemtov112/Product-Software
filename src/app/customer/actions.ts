@@ -251,6 +251,7 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
         ),
         customerProfile: profile,
         message,
+        basketId: basket.id,
       },
     });
   });
@@ -302,6 +303,7 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
     regularAgorot: deal.regularAgorot,
     quantityPerOrder: typeof quantity === "number" ? quantity : null,
     deliveriesPerMonth: deliveries,
+    offerId,
   };
   const profile = JSON.parse(
     JSON.stringify(

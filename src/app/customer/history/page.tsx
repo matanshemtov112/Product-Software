@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ConfirmForm } from "@/components/confirm-form";
 import { Card } from "@/components/form";
+import { EndedOfferActions } from "@/components/ended-offer-actions";
 import { OfferBadge } from "@/components/offer-badge";
+import { newInquiryHref } from "@/lib/customer/offer-links";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
@@ -14,7 +16,6 @@ import {
   deleteBasketChecks,
   deleteCheck,
   deleteInvoice,
-  hideOffer,
   unhideOffers,
 } from "./actions";
 
@@ -40,18 +41,19 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
     }),
     db.invoice.findMany({ where: { customerId: customer.id }, orderBy: { createdAt: "desc" } }),
     db.negotiationRequest.findMany({
-      where: { customerId: customer.id },
+      where: { customerId: customer.id, customerDeletedAt: null },
       include: { supplier: { select: { companyName: true } } },
       orderBy: { createdAt: "desc" },
     }),
     db.matchRequest.findMany({
-      where: { customerId: customer.id },
+      where: { customerId: customer.id, customerDeletedAt: null },
       include: { supplier: { select: { companyName: true } } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
 
   const checks = baskets.reduce((n, b) => n + b.runs.length, 0);
+  const basketIds = new Set(baskets.map((b) => b.id));
   const offers = [
     ...inquiries.map((i) => ({
       id: i.id,
@@ -62,6 +64,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       hidden: i.customerHiddenAt !== null,
       createdAt: i.createdAt,
       href: `/customer/inquiries/${i.id}`,
+      newHref: newInquiryHref({ kind: "inquiry", ...i }, basketIds),
     })),
     ...matches.map((m) => ({
       id: m.id,
@@ -72,6 +75,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
       hidden: m.customerHiddenAt !== null,
       createdAt: m.createdAt,
       href: `/customer/matches/${m.id}`,
+      newHref: newInquiryHref({ kind: "match", supplierName: m.supplier.companyName }, basketIds),
     })),
   ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const ended = offers.filter((o) => !o.hidden && ENDED.includes(o.stage));
@@ -269,8 +273,8 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
       <Card id="offers" title="פניות שהסתיימו">
         <p className="mb-3 text-sm text-muted">
-          פניות ובקשות השוואה שהתקבלו, נדחו, בוטלו או שהתוקף שלהן עבר. הסתרה מורידה אותן מהרשימות שלכם. אצל הספק הן
-          נשארות, כי גם הוא צד להן. פנייה פתוחה אפשר לבטל בדף הפנייה.
+          פניות ובקשות השוואה שהתקבלו, נדחו, בוטלו או שהתוקף שלהן עבר. ליד כל אחת: פנייה חדשה לאותו ספק עם המחירים של
+          היום, הסתרה מהרשימה (אפשר להחזיר), או מחיקה מהרשימה (לצמיתות). אצל הספק הפנייה נשארת, כי גם הוא צד לה.
         </p>
         {ended.length === 0 ? (
           <p className="text-sm text-muted">אין פניות שהסתיימו.</p>
@@ -285,14 +289,13 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                     {o.what} · {date(o.createdAt)}
                   </span>
                 </Link>
-                <ConfirmForm
-                  action={hideOffer}
-                  fields={{ id: o.id, kind: o.kind, back: `${BACK}?deleted=1` }}
-                  confirm={`להסתיר את ה${o.what} ל${o.supplier} מהרשימה שלכם?`}
-                  className="text-sm text-muted hover:text-danger hover:underline"
-                >
-                  הסתרה
-                </ConfirmForm>
+                <EndedOfferActions
+                  id={o.id}
+                  kind={o.kind}
+                  supplierName={o.supplier}
+                  newHref={o.newHref}
+                  back={`${BACK}?deleted=1`}
+                />
               </li>
             ))}
           </ul>

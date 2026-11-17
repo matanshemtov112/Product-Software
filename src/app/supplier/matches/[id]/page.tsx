@@ -1,3 +1,4 @@
+import { QuoteValidity } from "@/components/quote-validity";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -89,6 +90,9 @@ export default async function SupplierMatch({
           אפשר להשוות, להציע מחיר אחר או לסרב לכל מוצר. המחיר שתציעו חל על הלקוח הזה בלבד ולא משנה את המחירון שלכם.
           המחירים ללא מע״מ.
         </p>
+        <div className="mt-2">
+          <QuoteValidity sentAt={request.createdAt} audience="SUPPLIER" />
+        </div>
       </div>
 
       {request.message && (

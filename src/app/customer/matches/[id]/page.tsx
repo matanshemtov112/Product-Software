@@ -1,3 +1,6 @@
+import { EndedOfferActions } from "@/components/ended-offer-actions";
+import { QuoteValidity } from "@/components/quote-validity";
+import { newInquiryHref } from "@/lib/customer/offer-links";
 import { paymentTermsLabel } from "@/lib/terms";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -34,7 +37,7 @@ export default async function CustomerMatch({
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
   const request = await db.matchRequest.findFirst({
-    where: { id, customerId: customer.id },
+    where: { id, customerId: customer.id, customerDeletedAt: null },
     include: { supplier: { select: { companyName: true } }, lines: { orderBy: { productName: "asc" } } },
   });
   if (!request) notFound();
@@ -91,6 +94,19 @@ export default async function CustomerMatch({
         )}
       </OfferStatus>
 
+      {["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"].includes(stage) && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted">הבקשה הסתיימה. אפשר לשלוח לספק בקשה חדשה עם המחירים של היום.</p>
+          <EndedOfferActions
+            id={request.id}
+            kind="match"
+            supplierName={request.supplier.companyName}
+            newHref={newInquiryHref({ kind: "match", supplierName: request.supplier.companyName }, new Set())}
+            back="/customer/inquiries"
+          />
+        </div>
+      )}
+
       {sent && (
         <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
           הבקשה נשלחה ל{request.supplier.companyName}. כשהספק יענה, התשובה תופיע כאן ובפניות לספקים.
@@ -131,6 +147,13 @@ export default async function CustomerMatch({
       )}
 
       <Card title="המוצרים">
+        <div className="mb-3">
+          <QuoteValidity
+            sentAt={request.createdAt}
+            audience="CUSTOMER"
+            recheckHref={`/customer/suppliers/${encodeURIComponent(request.supplier.companyName)}`}
+          />
+        </div>
         {validText && (
           <p className={`mb-3 text-sm ${valid ? "text-muted" : "text-danger"}`}>
             {valid

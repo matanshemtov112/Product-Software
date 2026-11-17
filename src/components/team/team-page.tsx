@@ -1,3 +1,4 @@
+import { ConfirmButton } from "@/components/confirm-button";
 import { Card } from "@/components/form";
 import { currentMember, teamMembers } from "@/lib/auth/team";
 import { updateMember } from "@/lib/auth/team-actions";
@@ -47,9 +48,14 @@ export async function TeamPage({ orgName }: { orgName: string }) {
                   >
                     {m.isManager ? "הפיכה למשתמש רגיל" : "הפיכה למנהל"}
                   </button>
-                  <button name="action" value="remove" className="text-danger hover:underline">
+                  <ConfirmButton
+                    name="action"
+                    value="remove"
+                    className="text-danger hover:underline"
+                    confirm={`להסיר את ${m.name} מהצוות? הכניסה למערכת עם המשתמש הזה תיחסם.`}
+                  >
                     הסרה
-                  </button>
+                  </ConfirmButton>
                 </form>
               )}
             </li>

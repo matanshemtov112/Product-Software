@@ -1,3 +1,4 @@
+import { QuoteValidity } from "@/components/quote-validity";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -172,6 +173,9 @@ export default async function SupplierInquiry({
 
       {isQuoteSnapshot(inquiry.quote) && (
         <Card title="ההצעה שהלקוח קיבל מהמערכת">
+          <div className="mb-3">
+            <QuoteValidity sentAt={inquiry.createdAt} audience="SUPPLIER" />
+          </div>
           <QuoteTable quote={inquiry.quote} />
         </Card>
       )}

@@ -1,3 +1,6 @@
+import { EndedOfferActions } from "@/components/ended-offer-actions";
+import { QuoteValidity } from "@/components/quote-validity";
+import { newInquiryHref, recheckHref } from "@/lib/customer/offer-links";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,7 +25,7 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
   const inquiry = await db.negotiationRequest.findFirst({
-    where: { id, customerId: customer.id },
+    where: { id, customerId: customer.id, customerDeletedAt: null },
     include: { supplier: { select: { companyName: true, contactPhone: true, contactEmail: true } } },
   });
   if (!inquiry) notFound();
@@ -44,6 +47,10 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
   const deal = isDealSnapshot(inquiry.deal) ? inquiry.deal : null;
   const fields = { id: inquiry.id };
   const reportable = stage === "ACCEPTED" ? await violationProducts(inquiry.supplierId) : [];
+  const basketIds = new Set(
+    (await db.basket.findMany({ where: { customerId: customer.id }, select: { id: true } })).map((b) => b.id),
+  );
+  const ended = ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"].includes(stage);
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,6 +88,19 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
           />
         )}
       </OfferStatus>
+
+      {ended && (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted">הפנייה הסתיימה. אפשר לשלוח לספק פנייה חדשה עם המחירים של היום.</p>
+          <EndedOfferActions
+            id={inquiry.id}
+            kind="inquiry"
+            supplierName={inquiry.supplier.companyName}
+            newHref={newInquiryHref({ kind: "inquiry", ...inquiry }, basketIds)}
+            back="/customer/inquiries"
+          />
+        </div>
+      )}
 
       {inquiry.reply && (
         <Card title="התשובה של הספק">
@@ -129,10 +149,24 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
           <p className="text-sm">
             <strong>{deal.productName}</strong> · {deal.dealText}
           </p>
+          <div className="mt-3">
+            <QuoteValidity
+              sentAt={inquiry.createdAt}
+              audience="CUSTOMER"
+              recheckHref={recheckHref(inquiry, basketIds)}
+            />
+          </div>
         </Card>
       ) : (
         isQuoteSnapshot(inquiry.quote) && (
           <Card title={`ההצעה שקיבלתם מהמערכת: ${shekels(inquiry.totalAgorot)} לחודש`}>
+            <div className="mb-3">
+              <QuoteValidity
+                sentAt={inquiry.createdAt}
+                audience="CUSTOMER"
+                recheckHref={recheckHref(inquiry, basketIds)}
+              />
+            </div>
             <QuoteTable quote={inquiry.quote} />
           </Card>
         )

@@ -113,6 +113,8 @@ export interface DealInquirySnapshot {
   /** הכמות שהלקוח רוצה בכל הזמנה, ביחידות בסיס */
   quantityPerOrder: number | null;
   deliveriesPerMonth: number | null;
+  /** ההצעה של הספק שהמבצע עליה, לפנייה חדשה על אותו מבצע (חסר בפניות ישנות) */
+  offerId?: string;
 }
 
 export function isDealSnapshot(value: unknown): value is DealInquirySnapshot {

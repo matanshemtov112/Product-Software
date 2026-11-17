@@ -1,3 +1,4 @@
+import { quoteExpired } from "@/lib/quote-validity";
 import { isDealSnapshot } from "@/lib/customer/deals";
 import { Card } from "@/components/form";
 import { requireRole } from "@/lib/auth/current";
@@ -91,6 +92,7 @@ export default async function CustomerInquiries({ searchParams }: { searchParams
                       {isDealSnapshot(i.deal)
                         ? `בעקבות מבצע: ${i.deal.productName}, ${i.deal.dealText}`
                         : `הצעה של ${shekels(i.totalAgorot)} לחודש${i.gapAgorot ? `, פער של ${shekels(i.gapAgorot)}` : ""}`}
+                      {quoteExpired(i.createdAt) ? " · ההצעה מהמערכת פגה (בתוקף 12 שעות)" : ""}
                     </p>
                     {i.reply && (
                       <p className="truncate rounded-md bg-background px-3 py-2">

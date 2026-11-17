@@ -66,7 +66,10 @@ export function TiersForm({ initial }: { initial: { id: string; name: string; mi
             ) : (
               <button
                 type="button"
-                onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}
+                onClick={() => {
+                  if (window.confirm("להסיר את המדרגה? המחירים שלה יימחקו כשתשמרו."))
+                    setRows((rs) => rs.filter((x) => x.key !== r.key));
+                }}
                 className="w-14 text-sm text-danger hover:underline"
               >
                 הסרה

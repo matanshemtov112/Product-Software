@@ -225,12 +225,13 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
             {canEdit && (
               <button
                 type="button"
-                onClick={() =>
-                  update(
-                    areas.filter((_, i) => i !== selected),
-                    null,
-                  )
-                }
+                onClick={() => {
+                  if (window.confirm("למחוק את האזור? השינוי יישמר כשתלחצו על שמירה."))
+                    update(
+                      areas.filter((_, i) => i !== selected),
+                      null,
+                    );
+                }}
                 className="rounded-md px-3 py-2 text-sm text-danger hover:bg-accent-soft"
               >
                 מחיקת האזור

@@ -54,28 +54,44 @@ export async function deleteBasketChecks(form: FormData) {
   done(form);
 }
 
-/** הסתרת פנייה או בקשת השוואה שהסתיימה מהרשימה של הלקוח */
-export async function hideOffer(form: FormData) {
+/**
+ * הסתרה או מחיקה של פנייה/בקשת השוואה שהסתיימה, מהרשימה של הלקוח.
+ * הסתרה אפשר להחזיר; מחיקה היא לצמיתות. אצל הספק הפנייה נשארת בכל מקרה.
+ */
+async function setOfferGone(form: FormData, deleted: boolean) {
   const id = await customerId();
   const offerId = field(form, "id");
   const now = new Date();
+  const data = deleted ? { customerHiddenAt: now, customerDeletedAt: now } : { customerHiddenAt: now };
   if (field(form, "kind") === "match") {
     const m = await db.matchRequest.findFirst({ where: { id: offerId, customerId: id } });
-    if (m && ENDED.includes(matchStage(m, now)))
-      await db.matchRequest.update({ where: { id: m.id }, data: { customerHiddenAt: now } });
+    if (m && ENDED.includes(matchStage(m, now))) await db.matchRequest.update({ where: { id: m.id }, data });
   } else {
     const i = await db.negotiationRequest.findFirst({ where: { id: offerId, customerId: id } });
-    if (i && ENDED.includes(inquiryStage(i, now)))
-      await db.negotiationRequest.update({ where: { id: i.id }, data: { customerHiddenAt: now } });
+    if (i && ENDED.includes(inquiryStage(i, now))) await db.negotiationRequest.update({ where: { id: i.id }, data });
   }
   done(form);
 }
 
-/** החזרת כל הפניות שהוסתרו לרשימה */
+export async function hideOffer(form: FormData) {
+  await setOfferGone(form, false);
+}
+
+export async function deleteOffer(form: FormData) {
+  await setOfferGone(form, true);
+}
+
+/** החזרת כל הפניות שהוסתרו (לא אלה שנמחקו) לרשימה */
 export async function unhideOffers(form: FormData) {
   const id = await customerId();
-  await db.negotiationRequest.updateMany({ where: { customerId: id }, data: { customerHiddenAt: null } });
-  await db.matchRequest.updateMany({ where: { customerId: id }, data: { customerHiddenAt: null } });
+  await db.negotiationRequest.updateMany({
+    where: { customerId: id, customerDeletedAt: null },
+    data: { customerHiddenAt: null },
+  });
+  await db.matchRequest.updateMany({
+    where: { customerId: id, customerDeletedAt: null },
+    data: { customerHiddenAt: null },
+  });
   done(form);
 }
 
