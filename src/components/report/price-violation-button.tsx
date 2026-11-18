@@ -54,6 +54,7 @@ export function PriceViolationButton({
     return (
       <button
         type="button"
+        data-needs="report"
         onClick={() => setOpen(true)}
         className="self-start rounded-md border border-border bg-surface px-4 py-2 text-sm hover:border-danger hover:text-danger"
       >

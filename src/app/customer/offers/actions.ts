@@ -1,8 +1,10 @@
 "use server";
 
+import { audit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { offeredPrice } from "@/lib/matches";
@@ -11,6 +13,7 @@ import { canCancel, canDecide, inquiryStage, matchStage, parseOutcomeNote } from
 
 async function currentCustomer() {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   return customerForUser(session.userId);
 }
 
@@ -42,6 +45,11 @@ export async function decideInquiry(form: FormData) {
       dedupeKey: `offer-decided:inquiry:${id}`,
     },
   ]);
+  await audit({
+    action: decision === "ACCEPTED" ? "offer.accepted" : "offer.rejected",
+    targetType: "inquiry",
+    targetId: id,
+  });
   revalidatePath("/customer", "layout");
   redirect(`/customer/inquiries/${id}`);
 }
@@ -67,6 +75,7 @@ export async function cancelInquiry(form: FormData) {
       dedupeKey: `offer-cancelled:inquiry:${id}`,
     },
   ]);
+  await audit({ action: "offer.cancelled", targetType: "inquiry", targetId: id });
   revalidatePath("/customer", "layout");
   redirect(`/customer/inquiries/${id}`);
 }
@@ -102,6 +111,7 @@ export async function rejectMatch(form: FormData) {
       dedupeKey: `match-decided:${id}`,
     },
   ]);
+  await audit({ action: "offer.rejected", targetType: "match", targetId: id });
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${id}`);
 }
@@ -130,6 +140,7 @@ export async function cancelMatch(form: FormData) {
       dedupeKey: `offer-cancelled:match:${id}`,
     },
   ]);
+  await audit({ action: "offer.cancelled", targetType: "match", targetId: id });
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${id}`);
 }

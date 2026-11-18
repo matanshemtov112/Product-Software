@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
@@ -21,6 +22,7 @@ export interface InvoiceFormState {
 
 async function currentCustomer() {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   return customerForUser(session.userId);
 }
 

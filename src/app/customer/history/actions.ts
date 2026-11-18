@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { ENDED_STAGES, inquiryStage, matchStage } from "@/lib/offer-status";
@@ -13,6 +14,7 @@ const ENDED = ENDED_STAGES;
 
 async function customerId() {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   return (await customerForUser(session.userId)).id;
 }
 

@@ -74,14 +74,14 @@ export default async function ProductDetails({
           )}
         </div>
         {archived ? (
-          <form action={restoreOffer}>
+          <form action={restoreOffer} data-needs="prices">
             <input type="hidden" name="offerId" value={offer.id} />
             <button className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft">
               החזרה מהארכיון
             </button>
           </form>
         ) : (
-          <div className="flex flex-wrap items-center gap-3">
+          <div data-needs="prices" className="flex flex-wrap items-center gap-3">
             <Link
               href={`/supplier/products/${offer.id}/edit`}
               className="rounded-md bg-accent px-4 py-2 text-sm text-white"
@@ -146,7 +146,7 @@ export default async function ProductDetails({
         <Card title="תמונה">
           <OfferImage offerId={offer.id} src={imageSrc} name={offer.product.name} variant="card" />
           {imageSrc && (
-            <form action={removeOfferImage} className="mt-2">
+            <form action={removeOfferImage} data-needs="prices" className="mt-2">
               <input type="hidden" name="offerId" value={offer.id} />
               <ConfirmButton className="text-sm text-danger hover:underline" confirm="להסיר את התמונה של המוצר?">
                 הסרת התמונה
@@ -221,7 +221,7 @@ export default async function ProductDetails({
             </tbody>
           </table>
           {[...byTier.values()].some((p) => p.promo != null) && (
-            <form action={endPromotion} className="mt-3">
+            <form action={endPromotion} data-needs="prices" className="mt-3">
               <input type="hidden" name="offerId" value={offer.id} />
               <button className="text-sm text-danger hover:underline">סיום המבצע עכשיו</button>
               <span className="ms-2 text-xs text-muted">המחיר הרגיל יחזור מיד.</span>

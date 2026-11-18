@@ -68,8 +68,14 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
       <OfferStatus stage={stage} note={offerStageNote(stage, "CUSTOMER", inquiry)}>
         {canDecide(stage) && (
           <>
-            <OfferButton action={decideInquiry} fields={{ ...fields, decision: "ACCEPTED" }} label="קבלת ההצעה" />
+            <OfferButton
+              needs="buy"
+              action={decideInquiry}
+              fields={{ ...fields, decision: "ACCEPTED" }}
+              label="קבלת ההצעה"
+            />
             <OfferReasonAction
+              needs="buy"
               action={decideInquiry}
               fields={{ ...fields, decision: "REJECTED" }}
               label="דחיית ההצעה"
@@ -80,6 +86,7 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
         )}
         {canCancel(stage, "CUSTOMER") && (
           <OfferReasonAction
+            needs="buy"
             action={cancelInquiry}
             fields={fields}
             label="ביטול הפנייה"

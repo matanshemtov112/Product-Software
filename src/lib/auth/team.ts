@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getSession } from "./current";
+import { teamRoleOf } from "./permission-check";
 
 /** הארגון של המשתמש המחובר (עסק או ספק) וכל מה שצריך לניהול הצוות */
 export async function currentMember() {
@@ -19,13 +20,12 @@ export async function currentMember() {
 export async function teamMembers(org: { customerId: string } | { supplierId: string }) {
   return db.user.findMany({
     where: org,
-    select: { id: true, name: true, email: true, phone: true, isManager: true, createdAt: true },
+    select: { id: true, name: true, email: true, phone: true, isManager: true, teamRole: true, createdAt: true },
     orderBy: [{ isManager: "desc" }, { createdAt: "asc" }],
   });
 }
 
 /** האם המשתמש המחובר הוא מנהל העסק או הספק */
 export async function isManager(userId: string) {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { isManager: true } });
-  return Boolean(user?.isManager);
+  return (await teamRoleOf(userId)) === "MANAGER";
 }

@@ -2,6 +2,8 @@ import { closeUnanswered, remindUnanswered } from "@/lib/inquiry-deadlines";
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
+import { teamRoleOf } from "@/lib/auth/permission-check";
+import { lacking, ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/auth/permissions";
 import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
 import { categoryCounts, supplierForUser } from "@/lib/supplier/catalog";
@@ -62,8 +64,10 @@ export default async function SupplierLayout({ children }: { children: React.Rea
   const total = categories.reduce((s, c) => s + c.count, 0);
   const note = STATUS_NOTE[supplier.status];
 
+  const teamRole = await teamRoleOf(session.userId);
+
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-start">
+    <div data-lacks={lacking(teamRole)} className="flex flex-col gap-6 md:flex-row md:items-start">
       <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:w-56 md:shrink-0">
         <Suspense>
           <SupplierSidebar
@@ -76,6 +80,12 @@ export default async function SupplierLayout({ children }: { children: React.Rea
         </Suspense>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">
+        {teamRole && teamRole !== "MANAGER" && (
+          <p data-role-note className="rounded-md border border-border bg-surface px-4 py-2 text-sm text-muted">
+            אתם מחוברים בתפקיד <span className="font-medium text-foreground">{ROLE_LABEL[teamRole]}</span>:{" "}
+            {ROLE_DESCRIPTION.SUPPLIER[teamRole]}.
+          </p>
+        )}
         {note && <p className="rounded-md border border-border bg-accent-soft px-4 py-3 text-sm">{note}</p>}
         <ViolationNotice supplierId={supplier.id} stage={supplier.violationStage} />
         {areaCount === 0 && (

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { violationProducts } from "@/lib/customer/violation-products";
 import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -20,6 +21,7 @@ export interface ViolationFormState {
 /** לקוח מדווח שספק גבה ממנו מחיר גבוה מהמחיר שהופיע במערכת או שסוכם */
 export async function reportPriceViolation(_: ViolationFormState, form: FormData): Promise<ViolationFormState> {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("report", session.userId);
   const customer = await customerForUser(session.userId);
   const supplierId = String(form.get("supplierId") ?? "");
 

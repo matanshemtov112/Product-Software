@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
@@ -9,6 +10,7 @@ import { BasketBuilder, type BuilderRow } from "../../basket-builder";
 export default async function EditBasket({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const basket = await getBasket(customer.id, id);
   if (!basket) notFound();

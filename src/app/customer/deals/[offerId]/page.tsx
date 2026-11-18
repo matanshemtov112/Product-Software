@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -15,6 +16,7 @@ import { DealInquiryForm } from "./deal-form";
 export default async function DealPage({ params }: { params: Promise<{ offerId: string }> }) {
   const { offerId } = await params;
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const deal = (await customerDeals(customer.id)).find((d) => d.offerId === offerId);
   if (!deal) notFound();

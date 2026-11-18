@@ -42,6 +42,18 @@ export const AUDIT_LABEL: Record<string, string> = {
   "report.closed": "טיפול בדיווח",
   "invoice.deleted": "מחיקת חשבונית",
   "invoices.purged": "מחיקת חשבוניות ישנות לפי מדיניות",
+  "invoices.deleted": "מחיקת כל החשבוניות",
+  "basket.deleted": "מחיקת סל",
+  "inquiry.sent": "פנייה נשלחה לספק",
+  "match.sent": "בקשת השוואה נשלחה לספק",
+  "offer.accepted": "הצעה התקבלה",
+  "offer.rejected": "הצעה נדחתה",
+  "offer.cancelled": "פנייה בוטלה",
+  "inquiry.replied": "תשובה לפנייה נשלחה",
+  "match.answered": "תשובה לבקשת השוואה נשלחה",
+  "offer.withdrawn": "הצעה של ספק בוטלה",
+  "offer.archived": "מוצר הועבר לארכיון",
+  "offer.restored": "מוצר הוחזר מהארכיון",
 };
 
 export interface AuditEntry {

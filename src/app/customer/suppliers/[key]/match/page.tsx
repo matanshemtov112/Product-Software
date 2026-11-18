@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -11,6 +12,7 @@ import { MatchForm, MatchMessage } from "./match-form";
 export default async function MatchRequestPage({ params }: { params: Promise<{ key: string }> }) {
   const key = decodeURIComponent((await params).key);
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const supplier = (await mySuppliers(customer.id)).find((s) => s.key === key);
   if (!supplier) notFound();

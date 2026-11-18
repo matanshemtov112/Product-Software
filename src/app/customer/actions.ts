@@ -9,6 +9,7 @@ import { z } from "zod";
 import { withLock } from "@/lib/locks";
 import { quoteChanges, seenQuote } from "@/lib/quote-changes";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { checkSnapshot } from "@/lib/customer/checks";
 import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
@@ -31,12 +32,14 @@ export interface FormState {
 
 async function currentCustomer() {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   return customerForUser(session.userId);
 }
 
 /** הגדרה ראשונה: סוג המסעדה */
 export async function saveCuisine(_: FormState, form: FormData): Promise<FormState> {
   const customer = await currentCustomer();
+  await requirePermission("manage");
   const cuisine = String(form.get("cuisine") ?? "");
   if (!(CUISINES as readonly string[]).includes(cuisine)) return { error: "נא לבחור את סוג המסעדה" };
   await db.customer.update({ where: { id: customer.id }, data: { cuisine } });
@@ -183,6 +186,7 @@ export async function recordCheck(form: FormData) {
 export async function deleteBasket(form: FormData) {
   const customer = await currentCustomer();
   await db.basket.deleteMany({ where: { id: String(form.get("basketId") ?? ""), customerId: customer.id } });
+  await audit({ action: "basket.deleted", targetType: "basket", targetId: String(form.get("basketId") ?? "") });
   revalidatePath("/customer", "layout");
   redirect("/customer");
 }
@@ -277,6 +281,7 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
       href: `/supplier/inquiries/${inquiry.id}`,
     },
   ]);
+  await audit({ action: "inquiry.sent", targetType: "inquiry", targetId: inquiry.id, details: { supplierId } });
   revalidatePath("/customer", "layout");
   redirect("/customer/inquiries?sent=1");
 }
@@ -355,6 +360,12 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
       href: `/supplier/inquiries/${inquiry.id}`,
     },
   ]);
+  await audit({
+    action: "inquiry.sent",
+    targetType: "inquiry",
+    targetId: inquiry.id,
+    details: { supplierId: deal.supplierId, deal: true },
+  });
   revalidatePath("/customer", "layout");
   redirect("/customer/inquiries?sent=1");
 }

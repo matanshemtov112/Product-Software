@@ -1,5 +1,6 @@
 "use server";
 
+import { deniedMessage } from "@/lib/auth/permission-check";
 import type { ReportReason } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { audit } from "@/lib/audit";
@@ -20,6 +21,8 @@ export interface ReportFormState {
 export async function createReport(_: ReportFormState, form: FormData): Promise<ReportFormState> {
   const session = await getSession();
   if (!session || session.role === "ADMIN") return { error: "אין הרשאה" };
+  const denied = await deniedMessage("report", session.userId);
+  if (denied) return { error: denied };
   const reason = String(form.get("reason") ?? "") as ReportReason;
   if (!(reason in REPORT_REASON_LABEL)) return { error: "נא לבחור סיבה" };
   const text =

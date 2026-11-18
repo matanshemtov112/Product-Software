@@ -1,9 +1,11 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { INVOICE_RETENTION_DAYS } from "@/lib/invoices/retention";
 import Link from "next/link";
 import { invoiceReadingEnabled } from "@/lib/invoices/read";
 import { InvoiceUpload } from "./invoice-upload";
 
 export default async function NewInvoicePage({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
+  await requirePermission("buy");
   const { deleted } = await searchParams;
   const enabled =
     invoiceReadingEnabled() || (process.env.NODE_ENV !== "production" && Boolean(process.env.INVOICE_FAKE_RESULT));

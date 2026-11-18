@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { Permission } from "@/lib/auth/permissions";
 import { OfferBadge } from "@/components/offer-badge";
 import type { OfferStage } from "@/lib/offer-status";
 
@@ -26,13 +27,15 @@ export function OfferButton({
   action,
   fields,
   label,
+  needs,
 }: {
   action: ServerAction;
   fields: Record<string, string>;
   label: string;
+  needs?: Permission;
 }) {
   return (
-    <form action={action}>
+    <form action={action} data-needs={needs}>
       {hiddenInputs(fields)}
       <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">{label}</button>
     </form>
@@ -46,15 +49,17 @@ export function OfferReasonAction({
   label,
   confirm,
   placeholder,
+  needs,
 }: {
   action: ServerAction;
   fields: Record<string, string>;
   label: string;
   confirm: string;
   placeholder: string;
+  needs?: Permission;
 }) {
   return (
-    <details className="group text-sm">
+    <details className="group text-sm" data-needs={needs}>
       <summary className="cursor-pointer list-none rounded-md border border-border bg-surface px-4 py-2 group-open:border-danger">
         {label}
       </summary>

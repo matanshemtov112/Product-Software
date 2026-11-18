@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
@@ -14,6 +15,7 @@ import { deleteInvoice } from "../../history/actions";
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const invoice = await db.invoice.findFirst({ where: { id, customerId: customer.id } });
   if (!invoice) notFound();
@@ -72,6 +74,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           הקובץ עצמו לא נשמר. השורות שקראנו יימחקו אוטומטית ב-{retentionEnd(invoice.createdAt)}, או עכשיו אם תרצו.
         </p>
         <ConfirmForm
+          needs="buy"
           action={deleteInvoice}
           fields={{ id: invoice.id, back: "/customer/invoices/new?deleted=1" }}
           confirm="למחוק את החשבונית עכשיו? השורות שקראנו יימחקו ואי אפשר לשחזר אותן."

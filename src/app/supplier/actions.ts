@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { UNIT_LABEL } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -53,8 +54,10 @@ const offerSchema = z.object({
   priceType: z.enum(["FIXED", "UNTIL", "PROMOTION"]).default("FIXED"),
 });
 
-async function currentSupplier() {
+/** הספק של המשתמש המחובר, אחרי בדיקה שהתפקיד שלו מרשה את הפעולה (מחירון או מענה ללקוחות) */
+async function currentSupplier(permission: "prices" | "reply") {
   const session = await requireRole("SUPPLIER");
+  await requirePermission(permission, session.userId);
   return supplierForUser(session.userId);
 }
 
@@ -68,7 +71,7 @@ async function managedSupplier() {
 }
 
 export async function saveOffer(_: FormState, form: FormData): Promise<FormState> {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const parsed = offerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const data = parsed.data;
@@ -451,7 +454,7 @@ async function storeImage(offerId: string, image: { data: Buffer; contentType: s
 
 /** סיום מבצע לפני הזמן: המחיר הרגיל חוזר מיד */
 export async function endPromotion(form: FormData) {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const offerId = String(form.get("offerId") ?? "");
   const offer = await db.supplierOffer.findFirst({
     where: { id: offerId, supplierId: supplier.id },
@@ -482,7 +485,7 @@ export async function endPromotion(form: FormData) {
 
 /** העלאה או החלפה של תמונה ישירות מרשימת המוצרים או מעמוד הפרטים */
 export async function uploadOfferImage(form: FormData): Promise<FormState> {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const offerId = String(form.get("offerId") ?? "");
   const offer = await db.supplierOffer.findFirst({ where: { id: offerId, supplierId: supplier.id } });
   if (!offer) return { error: "המוצר לא נמצא" };
@@ -495,7 +498,7 @@ export async function uploadOfferImage(form: FormData): Promise<FormState> {
 }
 
 export async function removeOfferImage(form: FormData) {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const offerId = String(form.get("offerId") ?? "");
   await db.offerImage.deleteMany({ where: { offerId, offer: { supplierId: supplier.id } } });
   revalidatePath("/supplier", "layout");
@@ -503,7 +506,7 @@ export async function removeOfferImage(form: FormData) {
 
 /** "מחיקה" מעבירה לארכיון: המוצר יוצא מההשוואות, וההיסטוריה שלו (מחירים, ברקודים, שינויים) נשמרת */
 export async function deleteOffer(form: FormData) {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const offerId = String(form.get("offerId") ?? "");
   const offer = await db.supplierOffer.findFirst({ where: { id: offerId, supplierId: supplier.id, archivedAt: null } });
   if (offer) {
@@ -512,13 +515,14 @@ export async function deleteOffer(form: FormData) {
       data: { archivedAt: new Date(), available: false, changes: { create: { kind: "ARCHIVED" } } },
     });
   }
+  if (offer) await audit({ action: "offer.archived", targetType: "offer", targetId: offer.id });
   revalidatePath("/supplier", "layout");
   if (!form.get("stay")) redirect("/supplier");
 }
 
 /** החזרה מהארכיון: המוצר חוזר לרשימה (לא זמין עד שהספק מסמן אותו), עם כל ההיסטוריה */
 export async function restoreOffer(form: FormData) {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("prices");
   const offerId = String(form.get("offerId") ?? "");
   const offer = await db.supplierOffer.findFirst({
     where: { id: offerId, supplierId: supplier.id, archivedAt: { not: null } },
@@ -538,6 +542,7 @@ export async function restoreOffer(form: FormData) {
     where: { id: offer.id },
     data: { archivedAt: null, changes: { create: { kind: "RESTORED" } } },
   });
+  await audit({ action: "offer.restored", targetType: "offer", targetId: offer.id });
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/products/${offer.id}`);
 }
@@ -632,7 +637,7 @@ function parseValidDays(value: FormDataEntryValue | null): Date | null | undefin
 
 /** תשובת הספק לפנייה של לקוח; הלקוח רואה אותה ברשימת הפניות שלו */
 export async function replyInquiry(_: FormState, form: FormData): Promise<FormState> {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("reply");
   const parsed = replySchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const { inquiryId, reply, status } = parsed.data;
@@ -673,6 +678,7 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
       href: `/customer/inquiries/${inquiryId}`,
     },
   ]);
+  await audit({ action: "inquiry.replied", targetType: "inquiry", targetId: inquiryId });
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/inquiries/${inquiryId}`);
 }
@@ -689,7 +695,7 @@ const customerReviewSchema = z.object({
 
 /** ביקורת של הספק על לקוח שפנה אליו; ביקורת אחת לכל לקוח, ושליחה חוזרת מעדכנת אותה */
 export async function saveCustomerReview(_: FormState, form: FormData): Promise<FormState> {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("reply");
   const parsed = customerReviewSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "נא לדרג את כל שלושת הנושאים" };
   const { customerId, inquiryId, text, ...scores } = parsed.data;
@@ -713,7 +719,7 @@ export async function saveCustomerReview(_: FormState, form: FormData): Promise<
  * הצעה נגדית חייבת להיות נמוכה מהמחיר שהלקוח משלם היום. המחירים חלים על הלקוח הזה בלבד.
  */
 export async function respondMatch(_: FormState, form: FormData): Promise<FormState> {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("reply");
   const requestId = String(form.get("requestId") ?? "");
   const request = await db.matchRequest.findFirst({
     where: { id: requestId, supplierId: supplier.id },
@@ -793,6 +799,7 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
       href: `/customer/matches/${request.id}`,
     },
   ]);
+  await audit({ action: "match.answered", targetType: "match", targetId: request.id });
   revalidatePath("/supplier", "layout");
   redirect(`/supplier/matches/${request.id}?answered=1`);
 }
@@ -833,7 +840,7 @@ export async function saveTiers(_: FormState, form: FormData): Promise<FormState
 
 /** הספק מושך הצעה שהלקוח עוד לא קיבל או דחה (פנייה או בקשת השוואה) */
 export async function withdrawOffer(form: FormData) {
-  const supplier = await currentSupplier();
+  const supplier = await currentSupplier("reply");
   const id = String(form.get("id") ?? "");
   const isMatch = form.get("kind") === "match";
   const note = parseOutcomeNote(form.get("note"));
@@ -873,6 +880,7 @@ export async function withdrawOffer(form: FormData) {
       },
     ]);
   }
+  await audit({ action: "offer.withdrawn", targetType: isMatch ? "match" : "inquiry", targetId: id });
   revalidatePath("/supplier", "layout");
   redirect(isMatch ? `/supplier/matches/${id}` : `/supplier/inquiries/${id}`);
 }

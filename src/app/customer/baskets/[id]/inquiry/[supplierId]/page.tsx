@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { responseStats, responseText } from "@/lib/inquiry-deadlines";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import { seenQuote } from "@/lib/quote-changes";
 export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
   const { id, supplierId } = await params;
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const basket = await getBasket(customer.id, id);
   if (!basket) notFound();

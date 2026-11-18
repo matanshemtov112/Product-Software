@@ -15,7 +15,7 @@ function Envelope() {
 
 export function SendToSupplierLink({ href, label = "שליחת הודעה לספק" }: { href: string; label?: string }) {
   return (
-    <Link href={href} className={SEND_TO_SUPPLIER_CLASS}>
+    <Link href={href} data-needs="buy" className={SEND_TO_SUPPLIER_CLASS}>
       <Envelope />
       {label}
     </Link>

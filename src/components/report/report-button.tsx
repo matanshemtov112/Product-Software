@@ -37,7 +37,12 @@ export function ReportButton({
   }
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="text-sm text-muted underline hover:text-danger">
+      <button
+        type="button"
+        data-needs="report"
+        onClick={() => setOpen(true)}
+        className="text-sm text-muted underline hover:text-danger"
+      >
         {label ?? `דיווח על ${targetName}`}
       </button>
     );

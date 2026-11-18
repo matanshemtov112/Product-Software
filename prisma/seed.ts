@@ -943,7 +943,23 @@ async function main() {
   }
 
   // משתמשי הדמו הם מנהלי העסק או הספק שלהם
-  await db.user.updateMany({ where: { role: { in: ["CUSTOMER", "SUPPLIER"] } }, data: { isManager: true } });
+  await db.user.updateMany({
+    where: { role: { in: ["CUSTOMER", "SUPPLIER"] } },
+    data: { isManager: true, teamRole: "MANAGER" },
+  });
+
+  // עובדים לדוגמה בכל תפקיד: קניין וצופה במסעדה, מנהל מחירון ואיש מכירות ב״בשרים הגליל״
+  const demoCustomer = await db.customer.findFirstOrThrow({
+    where: { users: { some: { email: "customer@demo.local" } } },
+  });
+  const galil = await db.supplier.findFirstOrThrow({ where: { users: { some: { email: "supplier1@demo.local" } } } });
+  const staff = [
+    { email: "buyer@demo.local", name: "קניין דמו", role: "CUSTOMER", teamRole: "BUYER", customerId: demoCustomer.id },
+    { email: "viewer@demo.local", name: "צופה דמו", role: "CUSTOMER", teamRole: "VIEWER", customerId: demoCustomer.id },
+    { email: "pricing@demo.local", name: "מחירון הגליל", role: "SUPPLIER", teamRole: "PRICING", supplierId: galil.id },
+    { email: "sales@demo.local", name: "מכירות הגליל", role: "SUPPLIER", teamRole: "SALES", supplierId: galil.id },
+  ] as const;
+  for (const u of staff) await db.user.create({ data: { ...u, passwordHash } });
 
   console.log(
     `Seeded ${REGIONS.length} regions, ${CATEGORIES.length} categories, ${PRODUCTS.length} products, ${SUPPLIERS.length} suppliers. Demo password: ${DEMO_PASSWORD}`,

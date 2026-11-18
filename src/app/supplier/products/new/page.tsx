@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { requireRole } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { categoryTree, selectableCategories } from "@/lib/categories";
@@ -6,6 +7,7 @@ import { ProductForm } from "../product-form";
 
 export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ addPack?: string }> }) {
   const session = await requireRole("SUPPLIER");
+  await requirePermission("prices", session.userId);
   const supplier = await supplierForUser(session.userId);
   // אריזה נוספת למוצר שכבר ברשימה: מתחילים מפרטי המוצר, בלי אריזה ומחירים
   const { addPack } = await searchParams;

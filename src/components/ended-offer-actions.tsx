@@ -24,6 +24,7 @@ export function EndedOfferActions({
         פנייה חדשה
       </Link>
       <ConfirmForm
+        needs="buy"
         action={hideOffer}
         fields={{ id, kind, back }}
         confirm={`להסתיר את ${what} ל${supplierName} מהרשימה שלכם? אפשר להחזיר אותה מדף ההיסטוריה.`}
@@ -32,6 +33,7 @@ export function EndedOfferActions({
         הסתרה
       </ConfirmForm>
       <ConfirmForm
+        needs="buy"
         action={deleteOffer}
         fields={{ id, kind, back }}
         confirm={`למחוק את ${what} ל${supplierName} מהרשימה שלכם? אי אפשר להחזיר אותה. אצל הספק היא נשארת.`}

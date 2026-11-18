@@ -155,7 +155,7 @@ export default async function BasketPage({
               : "מדרגות המחיר חושבו לפי הסל בלבד. אם אתם קונים יותר בחודש, עדכנו את היקף הרכש בעריכת הסל."}
           </p>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div data-needs="buy" className="flex items-center gap-4 text-sm">
           <Link href={`/customer/baskets/${basket.id}/edit`} className="text-accent hover:underline">
             עריכת הסל
           </Link>
@@ -170,6 +170,7 @@ export default async function BasketPage({
             עצמו נשאר.
           </p>
           <ConfirmForm
+            needs="buy"
             action={deleteInvoice}
             fields={{ id: invoice.id, back: `/customer/baskets/${basket.id}` }}
             confirm="למחוק עכשיו את השורות שנקראו מהחשבונית? הסל לא יימחק."
@@ -285,7 +286,7 @@ export default async function BasketPage({
                 ))}
               </ul>
             )}
-            <form action={recordCheck}>
+            <form action={recordCheck} data-needs="buy">
               <input type="hidden" name="basketId" value={basket.id} />
               <button className="text-sm text-accent hover:underline">
                 סימון כנבדק: ההשוואה הבאה תהיה מול המחירים של היום
@@ -318,7 +319,10 @@ export default async function BasketPage({
       </p>
 
       {!basket.savedAt && (
-        <div className="flex flex-col gap-3 rounded-lg border border-accent bg-accent-soft p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          data-needs="buy"
+          className="flex flex-col gap-3 rounded-lg border border-accent bg-accent-soft p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
           <div>
             <p className="font-medium">שמירת הסל לבדיקה חודשית</p>
             <p className="text-sm text-muted">
@@ -326,7 +330,7 @@ export default async function BasketPage({
               יותר.
             </p>
           </div>
-          <form action={recordCheck}>
+          <form action={recordCheck} data-needs="buy">
             <input type="hidden" name="basketId" value={basket.id} />
             <button className="whitespace-nowrap rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
               שמירת הסל

@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { lockedInquiriesWith } from "@/lib/inquiry-deadlines";
 import { dateTime } from "@/lib/quote-validity";
 import { db } from "@/lib/db";
@@ -20,6 +21,7 @@ export default async function EditProductPage({
   const { id } = await params;
   const { back } = await searchParams;
   const session = await requireRole("SUPPLIER");
+  await requirePermission("prices", session.userId);
   const supplier = await supplierForUser(session.userId);
   const offer = await getOffer(supplier.id, id);
   if (!offer) notFound();

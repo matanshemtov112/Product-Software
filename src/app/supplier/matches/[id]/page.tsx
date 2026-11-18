@@ -1,4 +1,5 @@
 import { QuoteValidity } from "@/components/quote-validity";
+import { Needs } from "@/components/needs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -57,6 +58,7 @@ export default async function SupplierMatch({
       <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", request)}>
         {canCancel(stage, "SUPPLIER") && (
           <OfferReasonAction
+            needs="reply"
             action={withdrawOffer}
             fields={{ id: request.id, kind: "match" }}
             label="ביטול ההצעה"
@@ -108,25 +110,27 @@ export default async function SupplierMatch({
 
       {request.outcome ? null : (
         <Card title={stage === "EXPIRED" ? "התוקף עבר: אפשר לשלוח הצעה מעודכנת" : "התשובה שלכם"}>
-          <RespondForm
-            requestId={request.id}
-            reveal={request.reveal}
-            validUntil={request.validUntil ? request.validUntil.toISOString() : null}
-            paymentTermsDays={request.paymentTermsDays}
-            note={request.supplierNote}
-            answered={request.status === "ANSWERED" || request.status === "CLOSED"}
-            lines={lines.map((l) => ({
-              id: l.id,
-              productName: l.productName,
-              unitLabel: unitLabel(l.unit),
-              monthlyQuantity: l.monthlyQuantity,
-              currentPriceAgorot: l.currentPriceAgorot,
-              targetPriceAgorot: l.targetPriceAgorot,
-              response: l.response,
-              counterPriceAgorot: l.counterPriceAgorot,
-              locked: l.decision !== "PENDING",
-            }))}
-          />
+          <Needs p="reply" note>
+            <RespondForm
+              requestId={request.id}
+              reveal={request.reveal}
+              validUntil={request.validUntil ? request.validUntil.toISOString() : null}
+              paymentTermsDays={request.paymentTermsDays}
+              note={request.supplierNote}
+              answered={request.status === "ANSWERED" || request.status === "CLOSED"}
+              lines={lines.map((l) => ({
+                id: l.id,
+                productName: l.productName,
+                unitLabel: unitLabel(l.unit),
+                monthlyQuantity: l.monthlyQuantity,
+                currentPriceAgorot: l.currentPriceAgorot,
+                targetPriceAgorot: l.targetPriceAgorot,
+                response: l.response,
+                counterPriceAgorot: l.counterPriceAgorot,
+                locked: l.decision !== "PENDING",
+              }))}
+            />
+          </Needs>
         </Card>
       )}
 

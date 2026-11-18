@@ -76,6 +76,7 @@ export default async function CustomerMatch({
       <OfferStatus stage={stage} note={offerStageNote(stage, "CUSTOMER", request)}>
         {open && summary.awaitingDecision > 0 && (
           <OfferReasonAction
+            needs="buy"
             action={rejectMatch}
             fields={{ id: request.id }}
             label={anyAccepted ? "דחיית שאר המחירים" : "דחיית כל ההצעה"}
@@ -85,6 +86,7 @@ export default async function CustomerMatch({
         )}
         {canCancel(stage, "CUSTOMER") && !anyAccepted && (
           <OfferReasonAction
+            needs="buy"
             action={cancelMatch}
             fields={{ id: request.id }}
             label="ביטול הבקשה"
@@ -203,7 +205,7 @@ export default async function CustomerMatch({
                   (l.decision === "PENDING" && !open ? (
                     <span className="shrink-0 text-sm text-muted">{valid ? "לא נענה" : "פג תוקף"}</span>
                   ) : l.decision === "PENDING" ? (
-                    <form action={decideMatchLine} className="flex shrink-0 gap-2">
+                    <form action={decideMatchLine} data-needs="buy" className="flex shrink-0 gap-2">
                       <input type="hidden" name="lineId" value={l.id} />
                       <button
                         name="decision"

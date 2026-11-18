@@ -61,7 +61,7 @@ function Badges({ offer, pending }: { offer: OfferWithPrices; pending: boolean }
 
 function Actions({ offer, back }: { offer: OfferWithPrices; back: string }) {
   return (
-    <div className="flex items-center gap-3 text-sm">
+    <div data-needs="prices" className="flex items-center gap-3 text-sm">
       <Link
         href={`/supplier/products/${offer.id}/edit${back ? `?back=${encodeURIComponent(back)}` : ""}`}
         className="text-accent hover:underline"
@@ -189,6 +189,7 @@ export default async function SupplierProducts({
         </div>
         <Link
           href="/supplier/products/new"
+          data-needs="prices"
           className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
         >
           + מוצר חדש

@@ -52,7 +52,7 @@ export default async function OfferArchive({ searchParams }: { searchParams: Pro
                   {o.replacedBy && ` · הוחלף ב${o.replacedBy.brand ? `-${o.replacedBy.brand}` : "מוצר חלופי"}`}
                 </span>
               </div>
-              <form action={restoreOffer}>
+              <form action={restoreOffer} data-needs="prices">
                 <input type="hidden" name="offerId" value={o.id} />
                 <button className="text-sm text-accent hover:underline">החזרה לרשימה</button>
               </form>

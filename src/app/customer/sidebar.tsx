@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BellLink } from "@/components/notifications/bell-link";
+import { Needs } from "@/components/needs";
 
 /** כמה זמן עבר מהבדיקה האחרונה, בניסוח קצר */
 function since(iso: string | null) {
@@ -56,18 +57,20 @@ export function CustomerSidebar({
       </div>
       <div id="customer-menu" className={`${open ? "flex" : "hidden"} flex-col gap-4 md:flex`}>
         <BellLink href="/customer/notifications" unread={unread} />
-        <Link
-          href="/customer/baskets/new"
-          className="mx-1 rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-white"
-        >
-          + בדיקת מחירים חדשה
-        </Link>
-        <Link
-          href="/customer/invoices/new"
-          className={`mx-1 -mt-2 rounded-md border px-3 py-2 text-center text-sm font-medium ${pathname.startsWith("/customer/invoices") ? "border-accent bg-accent-soft text-accent" : "border-accent text-accent hover:bg-accent-soft"}`}
-        >
-          העלאת חשבונית
-        </Link>
+        <Needs p="buy">
+          <Link
+            href="/customer/baskets/new"
+            className="mx-1 rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-white"
+          >
+            + בדיקת מחירים חדשה
+          </Link>
+          <Link
+            href="/customer/invoices/new"
+            className={`mx-1 -mt-2 rounded-md border px-3 py-2 text-center text-sm font-medium ${pathname.startsWith("/customer/invoices") ? "border-accent bg-accent-soft text-accent" : "border-accent text-accent hover:bg-accent-soft"}`}
+          >
+            העלאת חשבונית
+          </Link>
+        </Needs>
         <div>
           <p className="px-3 pb-1 text-xs font-medium text-muted">הסלים השמורים שלי</p>
           {saved.length === 0 ? (
@@ -113,11 +116,13 @@ export function CustomerSidebar({
                 מתחרים לספק שלי
               </Link>
             </li>
-            <li>
-              <Link href="/customer/photo-search" className={item(pathname === "/customer/photo-search")}>
-                חיפוש מוצר בצילום
-              </Link>
-            </li>
+            <Needs p="buy">
+              <li>
+                <Link href="/customer/photo-search" className={item(pathname === "/customer/photo-search")}>
+                  חיפוש מוצר בצילום
+                </Link>
+              </li>
+            </Needs>
           </ul>
         </div>
         <div>

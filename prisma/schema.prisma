@@ -15,6 +15,15 @@ enum Role {
   ADMIN
 }
 
+/// תפקיד העובד בתוך העסק או הספק. מסעדה: MANAGER / BUYER / VIEWER; ספק: MANAGER / PRICING / SALES / VIEWER
+enum TeamRole {
+  MANAGER
+  BUYER
+  PRICING
+  SALES
+  VIEWER
+}
+
 enum PricePreference {
   PRICE
   BALANCED
@@ -134,6 +143,8 @@ model User {
   role         Role
   /// מנהל העסק או הספק: עורך את פרטי העסק, המדרגות והצוות
   isManager    Boolean   @default(false)
+  /// התפקיד בצוות; isManager נשמר תואם (true רק כשהתפקיד MANAGER)
+  teamRole     TeamRole  @default(VIEWER)
   customerId   String?
   customer     Customer? @relation(fields: [customerId], references: [id])
   supplierId   String?

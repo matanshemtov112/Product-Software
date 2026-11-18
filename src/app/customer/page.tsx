@@ -1,3 +1,4 @@
+import { can } from "@/lib/auth/permission-check";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
@@ -41,7 +42,7 @@ export default async function CustomerHome() {
     orderBy: [{ savedAt: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }],
   });
   // לקוח חדש מתחיל ישר בבניית סל
-  if (baskets.length === 0) redirect("/customer/baskets/new");
+  if (baskets.length === 0 && (await can("buy"))) redirect("/customer/baskets/new");
 
   const [suppliers, answeredMatches, replies] = await Promise.all([
     mySuppliers(customer.id),
@@ -156,11 +157,16 @@ export default async function CustomerHome() {
           <h2 className="mb-1 font-semibold">פעולות מהירות</h2>
           <Link
             href="/customer/invoices/new"
+            data-needs="buy"
             className="rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-white"
           >
             העלאת חשבונית
           </Link>
-          <Link href="/customer/baskets/new" className="rounded-md border border-border px-4 py-2 text-center text-sm">
+          <Link
+            href="/customer/baskets/new"
+            data-needs="buy"
+            className="rounded-md border border-border px-4 py-2 text-center text-sm"
+          >
             בדיקת מחירים חדשה
           </Link>
           <Link href="/customer/suppliers" className="rounded-md border border-border px-4 py-2 text-center text-sm">

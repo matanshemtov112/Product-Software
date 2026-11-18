@@ -122,6 +122,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           </p>
           {!nothing && (
             <ConfirmForm
+              needs="buy"
               action={clearHistory}
               fields={{ back: `${BACK}?deleted=1` }}
               confirm="לנקות את כל ההיסטוריה? החשבוניות ובדיקות המחירים יימחקו ואי אפשר לשחזר אותן."
@@ -151,6 +152,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                       {b.name}
                     </Link>
                     <ConfirmForm
+                      needs="buy"
                       action={deleteBasketChecks}
                       fields={{ basketId: b.id, back: `${BACK}?deleted=1` }}
                       confirm={`למחוק את כל ${b.runs.length} הבדיקות של "${b.name}"? הסל עצמו נשאר.`}
@@ -178,6 +180,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                               )}
                             </span>
                             <ConfirmForm
+                              needs="buy"
                               action={deleteCheck}
                               fields={{ id: r.id, back: `${BACK}?deleted=1` }}
                               confirm={`למחוק את הבדיקה מ-${date(r.createdAt)}?`}
@@ -246,6 +249,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                       </p>
                     </div>
                     <ConfirmForm
+                      needs="buy"
                       action={deleteInvoice}
                       fields={{ id: inv.id, back: `${BACK}?deleted=1` }}
                       confirm="למחוק את החשבונית עכשיו? אי אפשר לשחזר אותה."
@@ -259,6 +263,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             {invoices.length > 1 && (
               <div className="mt-3">
                 <ConfirmForm
+                  needs="buy"
                   action={deleteAllInvoices}
                   fields={{ back: `${BACK}?deleted=1` }}
                   confirm={`למחוק את כל ${invoices.length} החשבוניות עכשיו?`}
@@ -304,6 +309,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
             <span>{hiddenCount} פניות מוסתרות.</span>
             <ConfirmForm
+              needs="buy"
               action={unhideOffers}
               fields={{ back: BACK }}
               confirm="להחזיר את כל הפניות המוסתרות לרשימה?"

@@ -1,14 +1,18 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import { photoSearchEnabled } from "@/lib/photo-search/identify";
 import { PhotoSearch } from "./photo-search";
 
-export default function PhotoSearchPage() {
-  const enabled = photoSearchEnabled() || (process.env.NODE_ENV !== "production" && Boolean(process.env.PHOTO_SEARCH_FAKE_RESULT));
+export default async function PhotoSearchPage() {
+  await requirePermission("buy");
+  const enabled =
+    photoSearchEnabled() || (process.env.NODE_ENV !== "production" && Boolean(process.env.PHOTO_SEARCH_FAKE_RESULT));
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold">חיפוש מוצר בצילום</h1>
         <p className="text-sm text-muted">
-          לא יודעים מי מוכר מוצר מסוים? צלמו אותו או בחרו תמונה, ונראה לכם אילו ספקים באזור שלכם מוכרים אותו או מוצר דומה.
+          לא יודעים מי מוכר מוצר מסוים? צלמו אותו או בחרו תמונה, ונראה לכם אילו ספקים באזור שלכם מוכרים אותו או מוצר
+          דומה.
         </p>
       </div>
       {enabled ? (

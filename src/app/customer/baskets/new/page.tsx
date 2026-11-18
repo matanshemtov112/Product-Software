@@ -1,3 +1,4 @@
+import { requirePermission } from "@/lib/auth/permission-check";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
@@ -10,7 +11,17 @@ type Mode = "manual" | "supplier" | "template";
 
 const today = () => new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
 
-function ModeCard({ href, title, text, extra }: { href: string; title: string; text: string; extra?: React.ReactNode }) {
+function ModeCard({
+  href,
+  title,
+  text,
+  extra,
+}: {
+  href: string;
+  title: string;
+  text: string;
+  extra?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
       <h2 className="text-lg font-semibold">{title}</h2>
@@ -31,6 +42,7 @@ export default async function NewBasket({
 }) {
   const { mode: rawMode, supplier: supplierId } = await searchParams;
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   const mode = (["manual", "supplier", "template"] as const).find((m) => m === rawMode) as Mode | undefined;
 
@@ -66,7 +78,10 @@ export default async function NewBasket({
                 <Link href="?mode=template" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
                   רשימה סטנדרטית
                 </Link>
-                <Link href="?mode=manual" className="rounded-md border border-border px-4 py-2 text-sm hover:bg-background">
+                <Link
+                  href="?mode=manual"
+                  className="rounded-md border border-border px-4 py-2 text-sm hover:bg-background"
+                >
                   אבחר בעצמי
                 </Link>
               </div>
@@ -163,14 +178,21 @@ export default async function NewBasket({
     const byName = new Map(catalog.map((p) => [p.name, p]));
     rows = (TEMPLATES[customer.cuisine ?? ""] ?? TEMPLATES["אחר"])
       .filter(([name]) => byName.has(name))
-      .map(([name, quantity]) => ({ productId: byName.get(name)!.id, quantity: String(quantity), price: "", included: true }));
+      .map(([name, quantity]) => ({
+        productId: byName.get(name)!.id,
+        quantity: String(quantity),
+        price: "",
+        included: true,
+      }));
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         {back}
-        <h1 className="text-2xl font-bold">{mode === "template" ? `רשימה סטנדרטית ל${customer.cuisine}` : "רשימת המוצרים שלכם"}</h1>
+        <h1 className="text-2xl font-bold">
+          {mode === "template" ? `רשימה סטנדרטית ל${customer.cuisine}` : "רשימת המוצרים שלכם"}
+        </h1>
         {mode === "template" && (
           <p className="text-sm text-muted">
             הכמויות מתאימות למסעדה קטנה-בינונית. עדכנו אותן לפי ההיקף שלכם, הורידו מה שלא צריך והוסיפו מוצרים.

@@ -1,4 +1,5 @@
 import { QuoteValidity } from "@/components/quote-validity";
+import { Needs } from "@/components/needs";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
@@ -82,6 +83,7 @@ export default async function SupplierInquiry({
       <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", inquiry)}>
         {canCancel(stage, "SUPPLIER") && (
           <OfferReasonAction
+            needs="reply"
             action={withdrawOffer}
             fields={{ id: inquiry.id, kind: "inquiry" }}
             label="ביטול ההצעה"
@@ -198,12 +200,14 @@ export default async function SupplierInquiry({
         {inquiry.outcome ? (
           <p className="text-sm text-muted">הפנייה הסתיימה, ואי אפשר לשלוח עליה הצעה חדשה.</p>
         ) : (
-          <ReplyForm
-            inquiryId={inquiry.id}
-            hasReply={Boolean(inquiry.reply)}
-            paymentTermsDays={inquiry.paymentTermsDays}
-            hasValidity={Boolean(inquiry.validUntil)}
-          />
+          <Needs p="reply" note>
+            <ReplyForm
+              inquiryId={inquiry.id}
+              hasReply={Boolean(inquiry.reply)}
+              paymentTermsDays={inquiry.paymentTermsDays}
+              hasValidity={Boolean(inquiry.validUntil)}
+            />
+          </Needs>
         )}
         <p className="mt-3 text-xs text-muted">
           ההזמנה עצמה נעשית ישירות מולכם. אפשר גם לעדכן מחירים ברשימת המוצרים, כך שההשוואות הבאות יציגו אותם.
@@ -219,18 +223,20 @@ export default async function SupplierInquiry({
             הביקורת נשמרה ומופיעה ללקוח.
           </p>
         )}
-        <CustomerReviewForm
-          inquiryId={inquiry.id}
-          customerId={customer.id}
-          existing={
-            myReview && {
-              overall: myReview.overall,
-              payment: myReview.payment,
-              communication: myReview.communication,
-              text: myReview.text,
+        <Needs p="reply" note>
+          <CustomerReviewForm
+            inquiryId={inquiry.id}
+            customerId={customer.id}
+            existing={
+              myReview && {
+                overall: myReview.overall,
+                payment: myReview.payment,
+                communication: myReview.communication,
+                text: myReview.text,
+              }
             }
-          }
-        />
+          />
+        </Needs>
       </Card>
       <ReportButton
         targetId={customer.id}

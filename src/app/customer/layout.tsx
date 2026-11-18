@@ -1,5 +1,7 @@
 import { closeUnanswered } from "@/lib/inquiry-deadlines";
 import { requireRole } from "@/lib/auth/current";
+import { teamRoleOf } from "@/lib/auth/permission-check";
+import { lacking, ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/auth/permissions";
 import { customerForUser } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
 import { lastFullMonth } from "@/lib/customer/monthly-report";
@@ -63,8 +65,10 @@ export default async function CustomerLayout({ children }: { children: React.Rea
     db.notification.count({ where: { customerId: customer.id, read: false } }),
   ]);
 
+  const teamRole = await teamRoleOf(session.userId);
+
   return (
-    <div className="flex flex-col gap-6 md:flex-row md:items-start">
+    <div data-lacks={lacking(teamRole)} className="flex flex-col gap-6 md:flex-row md:items-start">
       <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:w-60 md:shrink-0">
         <CustomerSidebar
           businessName={customer.businessName}
@@ -75,7 +79,15 @@ export default async function CustomerLayout({ children }: { children: React.Rea
           unread={unread}
         />
       </aside>
-      <div className="flex min-w-0 flex-1 flex-col gap-4">{children}</div>
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        {teamRole && teamRole !== "MANAGER" && (
+          <p data-role-note className="rounded-md border border-border bg-surface px-4 py-2 text-sm text-muted">
+            אתם מחוברים בתפקיד <span className="font-medium text-foreground">{ROLE_LABEL[teamRole]}</span>:{" "}
+            {ROLE_DESCRIPTION.CUSTOMER[teamRole]}.
+          </p>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

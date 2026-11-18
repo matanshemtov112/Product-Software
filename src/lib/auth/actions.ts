@@ -123,6 +123,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
         ...account,
         role: "CUSTOMER",
         isManager: true,
+        teamRole: "MANAGER",
         customer: {
           create: {
             businessName: data.businessName,
@@ -155,6 +156,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
       ...account,
       role: "SUPPLIER",
       isManager: true,
+      teamRole: "MANAGER",
       supplier: {
         create: {
           companyName: data.companyName,

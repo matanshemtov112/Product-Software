@@ -5,7 +5,13 @@ import { ActionForm } from "@/components/action-form";
 import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { addMember } from "@/lib/auth/team-actions";
 
-export function AddMemberForm() {
+interface RoleOption {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export function AddMemberForm({ options }: { options: RoleOption[] }) {
   const [state, action, pending] = useActionState(addMember, {});
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
@@ -23,10 +29,25 @@ export function AddMemberForm() {
           <Input name="password" type="text" dir="ltr" minLength={8} autoComplete="off" required />
         </Field>
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isManager" className="accent-accent" />
-        מנהל: יכול לערוך את פרטי העסק ולנהל את הצוות
-      </label>
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium">תפקיד</legend>
+        {options.map((o, i) => (
+          <label key={o.value} className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="teamRole"
+              value={o.value}
+              defaultChecked={i === 1}
+              required
+              className="mt-1 accent-accent"
+            />
+            <span>
+              <span className="font-medium">{o.label}</span>
+              <span className="text-muted">: {o.description}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
       <FormError message={state.error} />
       {state.added && !state.error && (
         <p role="status" className="text-sm text-accent">

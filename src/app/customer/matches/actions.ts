@@ -1,4 +1,5 @@
 "use server";
+import { audit } from "@/lib/audit";
 import { pageStale, SEND_WINDOW_HOURS } from "@/lib/quote-validity";
 
 import { closeUnanswered } from "@/lib/inquiry-deadlines";
@@ -6,6 +7,7 @@ import { closeUnanswered } from "@/lib/inquiry-deadlines";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { mySuppliers } from "@/lib/customer/my-suppliers";
 import { customerProfile } from "@/lib/customer/profile";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -29,6 +31,7 @@ export interface MatchFormState {
 
 async function currentCustomer() {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   return customerForUser(session.userId);
 }
 
@@ -122,6 +125,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       href: `/supplier/matches/${request.id}`,
     },
   ]);
+  await audit({ action: "match.sent", targetType: "match", targetId: request.id, details: { supplierId } });
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${request.id}?sent=1`);
 }
@@ -173,6 +177,12 @@ export async function decideMatchLine(form: FormData) {
       },
     ]);
   }
+  await audit({
+    action: decision === "ACCEPTED" ? "offer.accepted" : "offer.rejected",
+    targetType: "match",
+    targetId: line.requestId,
+    details: { product: line.productName },
+  });
   revalidatePath("/customer", "layout");
   redirect(`/customer/matches/${line.requestId}`);
 }

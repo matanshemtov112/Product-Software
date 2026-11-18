@@ -1,6 +1,7 @@
 "use server";
 
 import { requireRole } from "@/lib/auth/current";
+import { requirePermission } from "@/lib/auth/permission-check";
 import { servingSupplierIds } from "@/lib/coverage";
 import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -33,6 +34,7 @@ function fakeIdentification(catalogNames: string[]): Identification | null {
 
 export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promise<PhotoSearchState> {
   const session = await requireRole("CUSTOMER");
+  await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
   if (!rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests)) {
     return { error: "הגעתם למספר החיפושים המרבי לשעה. נסו שוב בעוד קצת." };
