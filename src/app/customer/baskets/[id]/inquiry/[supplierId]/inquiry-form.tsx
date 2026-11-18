@@ -13,6 +13,7 @@ export function InquiryForm({
   sharedMessage,
   paidCount,
   seen,
+  loadedAt,
 }: {
   basketId: string;
   supplierId: string;
@@ -23,6 +24,8 @@ export function InquiryForm({
   paidCount: number;
   /** ההצעה כפי שהוצגה בדף, לזיהוי שינוי מחיר עד השליחה */
   seen: string;
+  /** מתי הדף חושב בשרת, לבדיקת 12 השעות לפני שליחה */
+  loadedAt: number;
 }) {
   const [state, action, pending] = useActionState(sendInquiry, {});
   const [share, setShare] = useState(false);
@@ -38,6 +41,7 @@ export function InquiryForm({
       <input type="hidden" name="basketId" value={basketId} />
       <input type="hidden" name="supplierId" value={supplierId} />
       <input type="hidden" name="seen" value={state.seen ?? seen} />
+      <input type="hidden" name="loadedAt" value={state.loadedAt ?? loadedAt} />
       <textarea
         name="message"
         value={message}

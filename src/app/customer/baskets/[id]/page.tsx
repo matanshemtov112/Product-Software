@@ -1,3 +1,4 @@
+import { responseStats, responseText } from "@/lib/inquiry-deadlines";
 import Link from "next/link";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { notFound } from "next/navigation";
@@ -77,8 +78,12 @@ export default async function BasketPage({
       ? compareChecks(lastRun.result, checkSnapshot(analysis))
       : null;
   const current = basket.currentSupplierId ? rows.find((r) => r.supplierId === basket.currentSupplierId) : undefined;
+  const responses = await responseStats(rows.map((r) => r.supplierId));
   const ranked = rankSuppliers(
     rows.map((r) => ({
+      response: responses.has(r.supplierId)
+        ? { ...responses.get(r.supplierId)!, text: responseText(responses.get(r.supplierId)) }
+        : undefined,
       supplierId: r.supplierId,
       supplierName: r.supplierName,
       supplier: r.supplier,

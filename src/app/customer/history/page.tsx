@@ -9,7 +9,7 @@ import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { INVOICE_RETENTION_DAYS } from "@/lib/invoices/retention";
-import { inquiryStage, matchStage, type OfferStage } from "@/lib/offer-status";
+import { ENDED_STAGES, inquiryStage, matchStage } from "@/lib/offer-status";
 import {
   clearHistory,
   deleteAllInvoices,
@@ -20,7 +20,7 @@ import {
 } from "./actions";
 
 const DAY = 86_400_000;
-const ENDED: OfferStage[] = ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"];
+const ENDED = ENDED_STAGES;
 const date = (d: Date) => d.toLocaleDateString("he-IL");
 const BACK = "/customer/history";
 

@@ -174,10 +174,13 @@ export function MatchForm({
   supplierKey,
   supplierName,
   candidates,
+  loadedAt,
 }: {
   supplierKey: string;
   supplierName: string;
   candidates: MatchCandidate[];
+  /** מתי הדף חושב בשרת, לבדיקת 12 השעות לפני שליחה */
+  loadedAt: number;
 }) {
   const [state, action, pending] = useActionState(sendMatchRequest, {});
   const { chosen, toggle, saving } = useChosen(candidates);
@@ -185,6 +188,7 @@ export function MatchForm({
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="key" value={supplierKey} />
+      <input type="hidden" name="loadedAt" value={state.loadedAt ?? loadedAt} />
       {/* המחירים כפי שהוצגו, לזיהוי שינוי עד השליחה */}
       <input
         type="hidden"

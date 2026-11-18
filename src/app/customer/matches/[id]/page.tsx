@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { MATCH_DECISION_LABEL, MATCH_RESPONSE_LABEL, matchSummary, offeredPrice } from "@/lib/matches";
 import { notify } from "@/lib/notifications";
-import { canCancel, canDecide, matchStage, offerStageNote } from "@/lib/offer-status";
+import { canCancel, canDecide, matchStage, offerStageNote, ENDED_STAGES } from "@/lib/offer-status";
 import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
 import { cancelMatch, rejectMatch } from "../../offers/actions";
 import { decideMatchLine } from "../actions";
@@ -94,7 +94,7 @@ export default async function CustomerMatch({
         )}
       </OfferStatus>
 
-      {["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"].includes(stage) && (
+      {ENDED_STAGES.includes(stage) && (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-muted">הבקשה הסתיימה. אפשר לשלוח לספק בקשה חדשה עם המחירים של היום.</p>
           <EndedOfferActions
@@ -151,6 +151,8 @@ export default async function CustomerMatch({
           <QuoteValidity
             sentAt={request.createdAt}
             audience="CUSTOMER"
+            answered={Boolean(request.answeredAt)}
+            accepted={stage === "ACCEPTED"}
             recheckHref={`/customer/suppliers/${encodeURIComponent(request.supplier.companyName)}`}
           />
         </div>

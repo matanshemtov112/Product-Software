@@ -6,10 +6,10 @@ import { audit } from "@/lib/audit";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
-import { inquiryStage, matchStage, type OfferStage } from "@/lib/offer-status";
+import { ENDED_STAGES, inquiryStage, matchStage } from "@/lib/offer-status";
 
 /** פניות שהסתיימו אפשר להסתיר מהרשימה; פנייה פתוחה מבטלים קודם */
-const ENDED: OfferStage[] = ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"];
+const ENDED = ENDED_STAGES;
 
 async function customerId() {
   const session = await requireRole("CUSTOMER");

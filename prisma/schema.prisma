@@ -102,6 +102,8 @@ enum OfferOutcome {
   ACCEPTED
   REJECTED
   CANCELLED
+  /// הספק לא ענה תוך 3 ימים, והפנייה נסגרה אוטומטית
+  NO_REPLY
 }
 
 enum NegotiationStatus {
@@ -708,6 +710,10 @@ enum NotificationKind {
   ACCOUNT_STATUS
   PRICE_VIOLATION
   VERIFICATION
+  /// תזכורת לספק: פנייה מחכה לתשובה
+  REPLY_REMINDER
+  /// הפנייה נסגרה כי הספק לא ענה בזמן
+  NO_REPLY
 }
 
 /// התראה במערכת ללקוח או לספק

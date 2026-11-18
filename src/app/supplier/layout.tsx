@@ -1,3 +1,4 @@
+import { closeUnanswered, remindUnanswered } from "@/lib/inquiry-deadlines";
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
@@ -22,6 +23,9 @@ const STATUS_NOTE = {
 export default async function SupplierLayout({ children }: { children: React.ReactNode }) {
   const session = await requireRole("SUPPLIER");
   const supplier = await supplierForUser(session.userId);
+  // פניות שלא נענו: תזכורת אחרי 24 שעות, סגירה אחרי 3 ימים
+  await closeUnanswered({ supplierId: supplier.id });
+  await remindUnanswered(supplier.id);
 
   // הגדרה ראשונה: לפני שהספק בחר תחומים הוא רואה רק את מסך הבחירה, בכל עמוד באזור הספק
   if (!supplier.categoriesSetAt) {

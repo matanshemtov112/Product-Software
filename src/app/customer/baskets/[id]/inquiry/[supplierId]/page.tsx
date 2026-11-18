@@ -1,3 +1,4 @@
+import { responseStats, responseText } from "@/lib/inquiry-deadlines";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -102,6 +103,10 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
                   ["תנאי אספקה", deliveryTerms],
                   ["מינימום הזמנה", about.minOrderAgorot ? shekels(about.minOrderAgorot) : "אין"],
                   ["תנאי תשלום", publicPaymentTerms(about)],
+                  [
+                    "זמן תגובה",
+                    responseText((await responseStats([supplierId])).get(supplierId)) ?? "עוד אין מספיק פניות",
+                  ],
                 ] as const
               )
                 .filter(([, v]) => v)
@@ -178,6 +183,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
             sharedMessage={sharedMessage}
             paidCount={paidLines.length}
             seen={seenQuote(row.snapshot.lines, row.snapshot.totalAgorot)}
+            loadedAt={Date.now()}
           />
         )}
       </Card>

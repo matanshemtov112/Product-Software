@@ -1,3 +1,4 @@
+import { closeUnanswered } from "@/lib/inquiry-deadlines";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
@@ -12,6 +13,8 @@ export const dynamic = "force-dynamic";
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
+  // פניות שהספק לא ענה עליהן תוך 3 ימים נסגרות, והלקוח רואה את זה
+  await closeUnanswered({ customerId: customer.id });
 
   // הגדרה ראשונה: לפני שנבחר סוג המסעדה רואים רק את מסך הבחירה
   if (!customer.cuisine) {

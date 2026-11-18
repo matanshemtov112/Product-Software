@@ -91,7 +91,12 @@ export default async function SupplierMatch({
           המחירים ללא מע״מ.
         </p>
         <div className="mt-2">
-          <QuoteValidity sentAt={request.createdAt} audience="SUPPLIER" />
+          <QuoteValidity
+            sentAt={request.createdAt}
+            audience="SUPPLIER"
+            answered={Boolean(request.answeredAt)}
+            accepted={request.outcome === "ACCEPTED"}
+          />
         </div>
       </div>
 

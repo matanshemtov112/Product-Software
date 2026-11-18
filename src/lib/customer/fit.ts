@@ -17,6 +17,8 @@ export interface FitInput {
   bestAlternativeAgorot: number;
   gapAgorot: number;
   tierName: string;
+  /** כמה מהפניות הספק עונה תוך 3 ימים, ותוך כמה זמן (נספר רק מ-3 פניות) */
+  response?: { total: number; rate: number; text: string | null };
 }
 
 export interface SupplierFit extends FitInput {
@@ -36,7 +38,9 @@ export function rankSuppliers(rows: FitInput[], lineCount: number, preference: P
     const coverage = lineCount ? r.covered / lineCount : 0;
     const price = r.totalAgorot ? r.bestAlternativeAgorot / r.totalAgorot : 0;
     const rating = (r.supplier.rating ?? 4) / 5;
-    const rest = w.price * price + w.service * rating + w.reliability * r.supplier.reliability;
+    // ספק שלא עונה לפניות מאבד חלק מהאמינות: עד 30% כשהוא לא עונה בכלל
+    const responds = r.response && r.response.total >= 3 ? 0.7 + 0.3 * r.response.rate : 1;
+    const rest = w.price * price + w.service * rating + w.reliability * r.supplier.reliability * responds;
     const score = Math.round(100 * (COVERAGE_WEIGHT * coverage + (1 - COVERAGE_WEIGHT) * rest));
 
     const reasons = [
@@ -48,6 +52,7 @@ export function rankSuppliers(rows: FitInput[], lineCount: number, preference: P
         : "הכי זול לאותם מוצרים",
       r.supplier.rating !== null ? `דירוג ${r.supplier.rating.toFixed(1)} מתוך 5` : "עוד אין מספיק דירוגים",
       `אמינות ${Math.round(r.supplier.reliability * 100)}%`,
+      ...(r.response?.text ? [r.response.text] : []),
       r.deliveryAgorot ? `משלוחים ${shekels(r.deliveryAgorot)} בחודש` : "משלוח חינם",
       `מדרגת מחיר: ${r.tierName}`,
     ];

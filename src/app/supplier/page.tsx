@@ -1,3 +1,4 @@
+import { responseStats, responseText } from "@/lib/inquiry-deadlines";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { DealBadge, PriceStatusBadge } from "@/components/price-badge";
@@ -164,6 +165,7 @@ export default async function SupplierProducts({
   // לאן לחזור אחרי עריכה: אותו חיפוש ואותה תצוגה
   const back = listQuery({ q, category, view: view === "grid" ? "grid" : undefined });
   const stats = filtered ? null : await supplierStats(supplier.id, offers);
+  const response = stats ? responseText((await responseStats([supplier.id])).get(supplier.id)) : null;
   const archivedCount = await db.supplierOffer.count({ where: { supplierId: supplier.id, archivedAt: { not: null } } });
 
   return (
@@ -197,7 +199,12 @@ export default async function SupplierProducts({
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="הופעות בהשוואות" value={stats.views} note={`${stats.customers} לקוחות שונים · 30 יום אחרונים`} />
           <Link href="/supplier/inquiries" className="contents">
-            <Stat label="פניות מלקוחות" value={stats.leads} note="פניות ובקשות השוואה · 30 יום" link />
+            <Stat
+              label="פניות מלקוחות"
+              value={stats.leads}
+              note={response ? `30 יום · ${response}` : "פניות ובקשות השוואה · 30 יום"}
+              link
+            />
           </Link>
           <Stat
             label="מוצרים ללא מחיר"

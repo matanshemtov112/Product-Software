@@ -219,4 +219,6 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   OFFER_CANCELLED: "✖️",
   PRICE_VIOLATION: "⚠️",
   VERIFICATION: "✅",
+  REPLY_REMINDER: "⏰",
+  NO_REPLY: "⌛",
 };

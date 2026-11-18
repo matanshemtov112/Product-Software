@@ -56,7 +56,12 @@ export default async function MatchRequestPage({ params }: { params: Promise<{ k
               {supplier.name} רשום במערכת. הבקשה תגיע אליו, והוא יוכל להשוות, להציע מחיר אחר או לסרב על כל מוצר. התשובה
               תופיע אצלכם בפניות לספקים.
             </p>
-            <MatchForm supplierKey={supplier.key} supplierName={supplier.name} candidates={candidates} />
+            <MatchForm
+              supplierKey={supplier.key}
+              supplierName={supplier.name}
+              candidates={candidates}
+              loadedAt={Date.now()}
+            />
           </>
         ) : (
           <>

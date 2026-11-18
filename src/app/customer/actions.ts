@@ -1,4 +1,7 @@
 "use server";
+import { pageStale, SEND_WINDOW_HOURS } from "@/lib/quote-validity";
+
+import { closeUnanswered } from "@/lib/inquiry-deadlines";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -199,6 +202,8 @@ export interface InquiryFormState extends FormState {
   changes?: string[];
   /** ההצעה העדכנית, להשוואה בשליחה הבאה */
   seen?: string;
+  /** מתי המחירים נבדקו לאחרונה (אלפיות שנייה), לבדיקת 12 השעות */
+  loadedAt?: number;
 }
 
 export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<InquiryFormState> {
@@ -217,11 +222,16 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
   // הספק שינה מחיר מאז שהלקוח פתח את הדף: לא שולחים בשקט מחיר שהלקוח לא ראה
   const current = { lines: row.snapshot.lines, total: row.snapshot.totalAgorot };
   const changes = quoteChanges(form.get("seen")?.toString(), current);
-  if (changes.length) {
+  // דף שנפתח לפני יותר מ-12 שעות: מחשבים מחדש ומבקשים אישור, גם אם המחירים לא השתנו
+  const stale = form.has("loadedAt") && pageStale(Number(form.get("loadedAt")));
+  if (changes.length || stale) {
     return {
-      error: "המחירים של הספק השתנו מאז שפתחתם את הדף. בדקו את השינויים ואת ההודעה, ושלחו שוב כדי לאשר.",
-      changes,
+      error: stale
+        ? `עברו יותר מ-${SEND_WINDOW_HOURS} שעות מאז שפתחתם את הדף, אז בדקנו את המחירים מחדש. ${changes.length ? "אלה השינויים:" : "המחירים לא השתנו."} שלחו שוב כדי לאשר.`
+        : "המחירים של הספק השתנו מאז שפתחתם את הדף. בדקו את השינויים ואת ההודעה, ושלחו שוב כדי לאשר.",
+      changes: changes.length ? changes : undefined,
       seen: seenQuote(current.lines, current.total),
+      loadedAt: Date.now(),
     };
   }
 
@@ -231,6 +241,8 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
   }
   const profile = JSON.parse(JSON.stringify(await customerProfile(customer.id, basket)));
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
+  // פנייה קודמת שהספק לא ענה עליה תוך 3 ימים נסגרת, כדי שאפשר יהיה לשלוח חדשה
+  await closeUnanswered({ customerId: customer.id, supplierId });
   const inquiry = await withLock(`inquiry:${customer.id}:${supplierId}`, async (tx) => {
     const open = await tx.negotiationRequest.findFirst({
       where: { customerId: customer.id, supplierId, status: { in: OPEN_INQUIRY } },
@@ -316,6 +328,7 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
     ),
   );
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
+  await closeUnanswered({ customerId: customer.id, supplierId: deal.supplierId });
   const inquiry = await withLock(`inquiry:${customer.id}:${deal.supplierId}`, async (tx) => {
     const open = await tx.negotiationRequest.findFirst({
       where: { customerId: customer.id, supplierId: deal.supplierId, status: { in: OPEN_INQUIRY } },

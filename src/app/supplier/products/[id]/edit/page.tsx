@@ -1,3 +1,5 @@
+import { lockedInquiriesWith } from "@/lib/inquiry-deadlines";
+import { dateTime } from "@/lib/quote-validity";
 import { db } from "@/lib/db";
 import { priceVersion } from "@/lib/supplier/prices";
 import { nominalPackSize } from "@/lib/pack";
@@ -23,7 +25,10 @@ export default async function EditProductPage({
   if (!offer) notFound();
   // מוצר בארכיון לא נערך; מחזירים אותו מהארכיון קודם
   if (offer.archivedAt) redirect(`/supplier/products/${offer.id}`);
-  const categories = selectableCategories(await categoryTree(), null);
+  const [categories, locked] = await Promise.all([
+    categoryTree().then((t) => selectableCategories(t, null)),
+    lockedInquiriesWith(supplier.id, offer.product.name),
+  ]);
   const byTier = pricesByTier(offer);
   // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
   const shown = (agorot: number | null | undefined) =>
@@ -37,6 +42,12 @@ export default async function EditProductPage({
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-bold">עריכת {offer.product.name}</h1>
+      {locked.count > 0 && locked.until && (
+        <p role="note" className="rounded-md border border-[#e0b400] bg-[#fff8db] px-4 py-3 text-sm text-black">
+          {locked.count === 1 ? "יש פנייה פתוחה אחת" : `יש ${locked.count} פניות פתוחות`} עם המוצר הזה. המחיר שהלקוחות
+          קיבלו בהן נעול עד {dateTime(locked.until)}, ושינוי המחיר כאן לא יחול עליהן. הוא יחול על השוואות חדשות.
+        </p>
+      )}
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
           back={back}

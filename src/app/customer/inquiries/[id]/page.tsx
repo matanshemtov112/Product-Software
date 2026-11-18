@@ -16,7 +16,7 @@ import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
 import { isQuoteSnapshot } from "@/lib/inquiries";
 import { notify } from "@/lib/notifications";
-import { canCancel, canDecide, inquiryStage, offerStageNote } from "@/lib/offer-status";
+import { canCancel, canDecide, inquiryStage, offerStageNote, ENDED_STAGES } from "@/lib/offer-status";
 import { paymentTermsLabel } from "@/lib/terms";
 import { cancelInquiry, decideInquiry } from "../../offers/actions";
 
@@ -50,7 +50,7 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
   const basketIds = new Set(
     (await db.basket.findMany({ where: { customerId: customer.id }, select: { id: true } })).map((b) => b.id),
   );
-  const ended = ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED"].includes(stage);
+  const ended = ENDED_STAGES.includes(stage);
 
   return (
     <div className="flex flex-col gap-4">
@@ -153,6 +153,8 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
             <QuoteValidity
               sentAt={inquiry.createdAt}
               audience="CUSTOMER"
+              answered={Boolean(inquiry.repliedAt)}
+              accepted={stage === "ACCEPTED"}
               recheckHref={recheckHref(inquiry, basketIds)}
             />
           </div>
@@ -164,6 +166,8 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
               <QuoteValidity
                 sentAt={inquiry.createdAt}
                 audience="CUSTOMER"
+                answered={Boolean(inquiry.repliedAt)}
+                accepted={stage === "ACCEPTED"}
                 recheckHref={recheckHref(inquiry, basketIds)}
               />
             </div>

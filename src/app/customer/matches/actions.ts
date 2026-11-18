@@ -1,4 +1,7 @@
 "use server";
+import { pageStale, SEND_WINDOW_HOURS } from "@/lib/quote-validity";
+
+import { closeUnanswered } from "@/lib/inquiry-deadlines";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -20,6 +23,8 @@ export interface MatchFormState {
   /** מה השתנה מאז שהלקוח פתח את הדף */
   changes?: string[];
   seen?: string;
+  /** מתי המחירים נבדקו לאחרונה (אלפיות שנייה), לבדיקת 12 השעות */
+  loadedAt?: number;
 }
 
 async function currentCustomer() {
@@ -55,11 +60,15 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
   };
   const seen = form.get("seen")?.toString();
   const changes = quoteChanges(seen ? onlyChosen(seen, current.lines) : null, current);
-  if (changes.length) {
+  const stale = form.has("loadedAt") && pageStale(Number(form.get("loadedAt")));
+  if (changes.length || stale) {
     return {
-      error: "המחירים שמצאנו השתנו מאז שפתחתם את הדף. בדקו את השינויים, ושלחו שוב כדי לאשר.",
-      changes,
+      error: stale
+        ? `עברו יותר מ-${SEND_WINDOW_HOURS} שעות מאז שפתחתם את הדף, אז בדקנו את המחירים מחדש. ${changes.length ? "אלה השינויים:" : "המחירים לא השתנו."} שלחו שוב כדי לאשר.`
+        : "המחירים שמצאנו השתנו מאז שפתחתם את הדף. בדקו את השינויים, ושלחו שוב כדי לאשר.",
+      changes: changes.length ? changes : undefined,
       seen: seenQuote(current.lines, current.total),
+      loadedAt: Date.now(),
     };
   }
   if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
@@ -75,6 +84,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
   const supplierId = supplier.supplierId;
   const profile = basket ? JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))) : undefined;
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי בקשות פתוחות
+  await closeUnanswered({ customerId: customer.id, supplierId });
   const request = await withLock(`match:${customer.id}:${supplierId}`, async (tx) => {
     const open = await tx.matchRequest.findFirst({
       where: { customerId: customer.id, supplierId, status: { in: OPEN_MATCH } },

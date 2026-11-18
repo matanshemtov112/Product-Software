@@ -2,7 +2,10 @@ import type { OfferOutcome, Role } from "@prisma/client";
 
 // סטטוס אחד להצעת מחיר של ספק, גם בתשובה לפנייה וגם בתשובה לבקשת השוואה
 
-export type OfferStage = "NEW" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED";
+export type OfferStage = "NEW" | "SENT" | "VIEWED" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED" | "NO_REPLY";
+
+/** פנייה שהסתיימה: אפשר להסתיר, למחוק או לשלוח פנייה חדשה */
+export const ENDED_STAGES: OfferStage[] = ["ACCEPTED", "REJECTED", "EXPIRED", "CANCELLED", "NO_REPLY"];
 
 export const OFFER_STAGE_LABEL: Record<OfferStage, string> = {
   NEW: "חדשה",
@@ -12,6 +15,7 @@ export const OFFER_STAGE_LABEL: Record<OfferStage, string> = {
   REJECTED: "נדחתה",
   EXPIRED: "פג תוקף",
   CANCELLED: "בוטלה",
+  NO_REPLY: "הספק לא ענה",
 };
 
 export const OFFER_STAGE_STYLE: Record<OfferStage, string> = {
@@ -22,6 +26,7 @@ export const OFFER_STAGE_STYLE: Record<OfferStage, string> = {
   REJECTED: "bg-[#fde2e1] text-danger",
   EXPIRED: "bg-background text-muted",
   CANCELLED: "bg-background text-muted",
+  NO_REPLY: "bg-background text-muted",
 };
 
 export interface OfferLike {
@@ -70,6 +75,10 @@ export function offerStageNote(
       return (mine ? "דחיתם את ההצעה." : "הלקוח דחה את ההצעה.") + why;
     case "EXPIRED":
       return mine ? "תוקף ההצעה עבר. אפשר לשלוח לספק בקשה חדשה." : "תוקף ההצעה עבר לפני שהלקוח החליט.";
+    case "NO_REPLY":
+      return mine
+        ? "הספק לא ענה תוך 3 ימים, והפנייה נסגרה. אפשר לשלוח פנייה חדשה עם המחירים של היום, או לפנות לספק אחר."
+        : "לא עניתם תוך 3 ימים, והפנייה נסגרה. זמן התגובה שלכם מוצג ללקוחות ונספר בדירוג.";
     case "CANCELLED": {
       const byCustomer = o.cancelledBy === "CUSTOMER";
       const who = byCustomer
