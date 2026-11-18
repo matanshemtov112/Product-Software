@@ -2,12 +2,14 @@ import { NotificationList } from "@/components/notifications/notification-list";
 import { requireRole } from "@/lib/auth/current";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
+import Link from "next/link";
+import { visibleFilter } from "@/lib/notify/prefs";
 
 export default async function CustomerNotifications() {
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
   const items = await db.notification.findMany({
-    where: { customerId: customer.id },
+    where: { customerId: customer.id, ...(await visibleFilter(session.userId)) },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -16,9 +18,14 @@ export default async function CustomerNotifications() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">התראות</h1>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h1 className="text-2xl font-bold">התראות</h1>
+          <Link href="/customer/notifications/settings" className="text-sm text-accent hover:underline">
+            הגדרות התראות
+          </Link>
+        </div>
         <p className="text-sm text-muted">
-          מחיר שעלה או ירד אצל הספקים שלכם, ספק אחר שמוכר זול ממה שאתם משלמים, ותשובות מספקים.
+          תשובות מספקים, הזדמנויות לחיסכון ועדכוני מחירים. בהגדרות אפשר לבחור מה לקבל ואיך.
         </p>
       </div>
       <NotificationList

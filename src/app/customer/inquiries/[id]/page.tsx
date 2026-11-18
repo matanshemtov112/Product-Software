@@ -1,3 +1,4 @@
+import { SupplierBlockControl } from "@/components/supplier-block-control";
 import { EndedOfferActions } from "@/components/ended-offer-actions";
 import { QuoteValidity } from "@/components/quote-validity";
 import { newInquiryHref, recheckHref } from "@/lib/customer/offer-links";
@@ -194,6 +195,12 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
           products={reportable}
         />
       )}
+      <SupplierBlockControl
+        customerId={customer.id}
+        supplierId={inquiry.supplierId}
+        supplierName={inquiry.supplier.companyName}
+        back={`/customer/inquiries/${inquiry.id}`}
+      />
     </div>
   );
 }

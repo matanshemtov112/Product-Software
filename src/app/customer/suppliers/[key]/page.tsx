@@ -1,3 +1,4 @@
+import { SupplierBlockControl } from "@/components/supplier-block-control";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
 import { ReportButton } from "@/components/report/report-button";
@@ -151,6 +152,14 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
       </Card>
       {supplier.supplierId && (
         <PriceViolationButton supplierId={supplier.supplierId} supplierName={supplier.name} products={reportable} />
+      )}
+      {supplier.supplierId && (
+        <SupplierBlockControl
+          customerId={customer.id}
+          supplierId={supplier.supplierId}
+          supplierName={supplier.name}
+          back={`/customer/suppliers/${encodeURIComponent(supplier.key)}`}
+        />
       )}
       {supplier.supplierId && (
         <ReportButton

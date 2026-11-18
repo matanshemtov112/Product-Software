@@ -19,6 +19,7 @@ import { notify } from "@/lib/notifications";
 import { shekels } from "@/lib/format";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
+import { BLOCKED_MESSAGE, blockOf } from "@/lib/supplier-blocks";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { isManager } from "@/lib/auth/team";
 import { OPEN_INQUIRY } from "@/lib/inquiries";
@@ -246,6 +247,7 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
   const profile = JSON.parse(JSON.stringify(await customerProfile(customer.id, basket)));
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
   // פנייה קודמת שהספק לא ענה עליה תוך 3 ימים נסגרת, כדי שאפשר יהיה לשלוח חדשה
+  if ((await blockOf(customer.id, supplierId)) === "BLOCK") return { error: BLOCKED_MESSAGE };
   await closeUnanswered({ customerId: customer.id, supplierId });
   const inquiry = await withLock(`inquiry:${customer.id}:${supplierId}`, async (tx) => {
     const open = await tx.negotiationRequest.findFirst({
@@ -333,6 +335,7 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
     ),
   );
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי פניות פתוחות
+  if ((await blockOf(customer.id, deal.supplierId)) === "BLOCK") return { error: BLOCKED_MESSAGE };
   await closeUnanswered({ customerId: customer.id, supplierId: deal.supplierId });
   const inquiry = await withLock(`inquiry:${customer.id}:${deal.supplierId}`, async (tx) => {
     const open = await tx.negotiationRequest.findFirst({

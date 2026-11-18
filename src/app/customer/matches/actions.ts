@@ -1,5 +1,6 @@
 "use server";
 import { audit } from "@/lib/audit";
+import { BLOCKED_MESSAGE, blockOf } from "@/lib/supplier-blocks";
 import { pageStale, SEND_WINDOW_HOURS } from "@/lib/quote-validity";
 
 import { closeUnanswered } from "@/lib/inquiry-deadlines";
@@ -85,6 +86,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       .trim()
       .slice(0, 1000) || null;
   const supplierId = supplier.supplierId;
+  if ((await blockOf(customer.id, supplierId)) === "BLOCK") return { error: BLOCKED_MESSAGE };
   const profile = basket ? JSON.parse(JSON.stringify(await customerProfile(customer.id, basket))) : undefined;
   // נעילה לפי לקוח וספק: שתי שליחות באותו רגע לא יוצרות שתי בקשות פתוחות
   await closeUnanswered({ customerId: customer.id, supplierId });

@@ -9,6 +9,8 @@ import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { db } from "@/lib/db";
+import { after } from "next/server";
+import { notifyInvoiceSavings } from "@/lib/notify/invoice-savings";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { basketItemsFromInvoice, type ConfirmedLine } from "@/lib/invoices/basket";
 import { checkInvoiceFiles } from "@/lib/invoices/files";
@@ -129,6 +131,8 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
     },
   });
   await db.invoice.update({ where: { id: invoice.id }, data: { basketId: basket.id, supplierName: typedName } });
+  // התראה אחת על כל ההזדמנויות בחשבונית, ולא אחת לכל מוצר (אחרי שהלקוח כבר עבר לדף הסל)
+  after(() => notifyInvoiceSavings(customer.id, basket.id, invoice.id, typedName));
   revalidatePath("/customer", "layout");
   redirect(`/customer/baskets/${basket.id}`);
 }

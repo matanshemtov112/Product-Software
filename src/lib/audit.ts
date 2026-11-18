@@ -54,6 +54,10 @@ export const AUDIT_LABEL: Record<string, string> = {
   "offer.withdrawn": "הצעה של ספק בוטלה",
   "offer.archived": "מוצר הועבר לארכיון",
   "offer.restored": "מוצר הוחזר מהארכיון",
+  "supplier.blocked": "חסימת ספק",
+  "supplier.muted": "השתקת ספק",
+  "supplier.unblocked": "ביטול חסימה או השתקה של ספק",
+  "notifications.updated": "עדכון הגדרות התראות",
 };
 
 export interface AuditEntry {

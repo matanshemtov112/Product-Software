@@ -1,3 +1,4 @@
+import { RepliesLeft } from "@/components/replies-left";
 import { QuoteValidity } from "@/components/quote-validity";
 import { Needs } from "@/components/needs";
 import Link from "next/link";
@@ -111,6 +112,7 @@ export default async function SupplierMatch({
       {request.outcome ? null : (
         <Card title={stage === "EXPIRED" ? "התוקף עבר: אפשר לשלוח הצעה מעודכנת" : "התשובה שלכם"}>
           <Needs p="reply" note>
+            <RepliesLeft used={request.answerCount} />
             <RespondForm
               requestId={request.id}
               reveal={request.reveal}

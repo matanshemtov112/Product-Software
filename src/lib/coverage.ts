@@ -31,7 +31,8 @@ export async function servingSupplierIds(customer: CoverageCustomer): Promise<st
   const [point, suppliers] = await Promise.all([
     customerPoint(customer),
     db.supplier.findMany({
-      where: { status: "APPROVED" },
+      // ספק שהעסק חסם לא מופיע לו בשום השוואה
+      where: { status: "APPROVED", blockedBy: { none: { customerId: customer.id, mode: "BLOCK" } } },
       select: {
         id: true,
         deliveryAreas: { select: { lat: true, lng: true, radiusKm: true } },

@@ -2,10 +2,12 @@ import { closeUnanswered, remindUnanswered } from "@/lib/inquiry-deadlines";
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/current";
+import { kickNotificationJobs } from "@/lib/notify/jobs";
 import { teamRoleOf } from "@/lib/auth/permission-check";
 import { lacking, ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/auth/permissions";
 import { categoryTree } from "@/lib/categories";
 import { db } from "@/lib/db";
+import { visibleFilter } from "@/lib/notify/prefs";
 import { categoryCounts, supplierForUser } from "@/lib/supplier/catalog";
 import { DomainPicker } from "./domain-picker";
 import { SupplierSidebar } from "./sidebar";
@@ -24,6 +26,7 @@ const STATUS_NOTE = {
 
 export default async function SupplierLayout({ children }: { children: React.ReactNode }) {
   const session = await requireRole("SUPPLIER");
+  kickNotificationJobs();
   const supplier = await supplierForUser(session.userId);
   // פניות שלא נענו: תזכורת אחרי 24 שעות, סגירה אחרי 3 ימים
   await closeUnanswered({ supplierId: supplier.id });
@@ -52,7 +55,9 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     categoryCounts(supplier.id),
     db.negotiationRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
     db.matchRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
-    db.notification.count({ where: { supplierId: supplier.id, read: false } }),
+    db.notification.count({
+      where: { supplierId: supplier.id, read: false, ...(await visibleFilter(session.userId)) },
+    }),
     db.review.aggregate({
       where: { supplierId: supplier.id, status: "PUBLISHED" },
       _avg: { overall: true },

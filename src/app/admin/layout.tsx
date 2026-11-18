@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/current";
+import { kickNotificationJobs } from "@/lib/notify/jobs";
 import { db } from "@/lib/db";
 import { AdminSidebar } from "./sidebar";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireRole("ADMIN");
+  kickNotificationJobs();
   const [suppliers, prices, products, reviews, reports, violations, documents] = await Promise.all([
     db.supplier.count({ where: { status: "PENDING" } }),
     Promise.all([

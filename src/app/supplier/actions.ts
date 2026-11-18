@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole } from "@/lib/auth/current";
 import { requirePermission } from "@/lib/auth/permission-check";
+import { MAX_REPLIES, REPLY_LIMIT_MESSAGE } from "@/lib/notify/limits";
+import { notifyNewDeal } from "@/lib/notify/deals";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { UNIT_LABEL } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -437,6 +439,8 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   if (image?.ok) await storeImage(offer.id, image);
   for (const entry of audits) await audit(entry);
   for (const alert of alerts) await notifyPriceChange(alert);
+  if (audits.some((a) => a.action === "deal.saved"))
+    await notifyNewDeal(supplier.id, offer.productId, data.productName);
 
   revalidatePath("/supplier");
   // חזרה לאותו מקום ברשימה (אותו חיפוש ותצוגה), עם גלילה למוצר שנשמר
@@ -648,6 +652,7 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
   const inquiry = await db.negotiationRequest.findFirst({ where: { id: inquiryId, supplierId: supplier.id } });
   if (!inquiry) return { error: "הפנייה לא נמצאה" };
   if (inquiry.outcome) return { error: "הפנייה כבר הסתיימה, ואי אפשר לשלוח עליה הצעה" };
+  if (inquiry.replyCount >= MAX_REPLIES) return { error: REPLY_LIMIT_MESSAGE };
   const now = new Date();
   await db.negotiationRequest.update({
     where: { id: inquiryId },
@@ -657,6 +662,7 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
       paymentTermsDays,
       validUntil: status === "OFFERED" ? validUntil : null,
       repliedAt: now,
+      replyCount: { increment: 1 },
       // הצעה מעודכנת עוד לא נצפתה; "לא נוכל להתאים" סוגר את הפנייה
       offerSeenAt: null,
       ...(status === "CLOSED"
@@ -672,8 +678,11 @@ export async function replyInquiry(_: FormState, form: FormData): Promise<FormSt
   await notify([
     {
       customerId: inquiry.customerId,
+      aboutSupplierId: supplier.id,
       kind: "SUPPLIER_REPLIED",
-      title: `${supplier.companyName} השיב לפנייה שלכם`,
+      title: inquiry.replyCount
+        ? `${supplier.companyName} עדכן את התשובה לפנייה שלכם`
+        : `${supplier.companyName} השיב לפנייה שלכם`,
       body: reply.length > 140 ? `${reply.slice(0, 140)}…` : reply,
       href: `/customer/inquiries/${inquiryId}`,
     },
@@ -727,6 +736,7 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
   });
   if (!request) return { error: "הבקשה לא נמצאה" };
   if (request.status === "CLOSED" || request.outcome) return { error: "הבקשה כבר הסתיימה" };
+  if (request.answerCount >= MAX_REPLIES) return { error: REPLY_LIMIT_MESSAGE };
   const updates = [];
   for (const line of request.lines) {
     if (line.decision !== "PENDING") continue;
@@ -778,6 +788,7 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
         validUntil,
         paymentTermsDays,
         answeredAt: now,
+        answerCount: { increment: 1 },
         offerSeenAt: null,
         ...(offersAny
           ? {}
@@ -793,8 +804,11 @@ export async function respondMatch(_: FormState, form: FormData): Promise<FormSt
   await notify([
     {
       customerId: request.customerId,
+      aboutSupplierId: supplier.id,
       kind: "MATCH_ANSWERED",
-      title: `${supplier.companyName} השיב לבקשת ההשוואה שלכם`,
+      title: request.answerCount
+        ? `${supplier.companyName} עדכן את התשובה לבקשת ההשוואה שלכם`
+        : `${supplier.companyName} השיב לבקשת ההשוואה שלכם`,
       body: "אשרו או דחו את המחירים שהספק הציע.",
       href: `/customer/matches/${request.id}`,
     },
@@ -858,6 +872,7 @@ export async function withdrawOffer(form: FormData) {
     await notify([
       {
         customerId: request.customerId,
+        aboutSupplierId: supplier.id,
         kind: "OFFER_CANCELLED",
         title: `${supplier.companyName} ביטלו את ההצעה שלהם לבקשת ההשוואה`,
         body: note ?? undefined,
@@ -872,6 +887,7 @@ export async function withdrawOffer(form: FormData) {
     await notify([
       {
         customerId: inquiry.customerId,
+        aboutSupplierId: supplier.id,
         kind: "OFFER_CANCELLED",
         title: `${supplier.companyName} ביטלו את ההצעה שלהם`,
         body: note ?? undefined,

@@ -73,10 +73,23 @@ export default async function BasketPage({
   const { result, rows } = analysis;
 
   const lastRun = basket.runs[0];
-  const comparison =
+  // ספק שהלקוח חסם מאז הבדיקה לא מופיע ב"מה השתנה"
+  const blocked = new Set(
+    (
+      await db.supplierBlock.findMany({
+        where: { customerId: customer.id, mode: "BLOCK" },
+        select: { supplierId: true },
+      })
+    ).map((b) => b.supplierId),
+  );
+  const compared =
     lastRun && isCheckSnapshot(lastRun.result) && !checked
       ? compareChecks(lastRun.result, checkSnapshot(analysis))
       : null;
+  const comparison = compared && {
+    ...compared,
+    changes: compared.changes.filter((c) => !blocked.has(c.supplierId)),
+  };
   const current = basket.currentSupplierId ? rows.find((r) => r.supplierId === basket.currentSupplierId) : undefined;
   const responses = await responseStats(rows.map((r) => r.supplierId));
   const ranked = rankSuppliers(

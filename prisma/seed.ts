@@ -361,6 +361,8 @@ async function main() {
     throw new Error("Refusing to wipe and seed a production database. Set ALLOW_DEMO_SEED=1 to override.");
   }
   await db.$transaction([
+    db.notificationEvent.deleteMany(),
+    db.emailMessage.deleteMany(),
     db.user.deleteMany(),
     db.abuseReport.deleteMany(),
     db.auditLog.deleteMany(),

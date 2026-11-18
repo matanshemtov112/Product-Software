@@ -1,3 +1,4 @@
+import { SupplierBlockControl } from "@/components/supplier-block-control";
 import { EndedOfferActions } from "@/components/ended-offer-actions";
 import { QuoteValidity } from "@/components/quote-validity";
 import { newInquiryHref } from "@/lib/customer/offer-links";
@@ -243,6 +244,12 @@ export default async function CustomerMatch({
           <p className="whitespace-pre-line text-sm">{request.message}</p>
         </Card>
       )}
+      <SupplierBlockControl
+        customerId={customer.id}
+        supplierId={request.supplierId}
+        supplierName={request.supplier.companyName}
+        back={`/customer/matches/${request.id}`}
+      />
     </div>
   );
 }

@@ -1,11 +1,13 @@
 import { closeUnanswered } from "@/lib/inquiry-deadlines";
 import { requireRole } from "@/lib/auth/current";
+import { kickNotificationJobs } from "@/lib/notify/jobs";
 import { teamRoleOf } from "@/lib/auth/permission-check";
 import { lacking, ROLE_DESCRIPTION, ROLE_LABEL } from "@/lib/auth/permissions";
 import { customerForUser } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
 import { lastFullMonth } from "@/lib/customer/monthly-report";
 import { db } from "@/lib/db";
+import { visibleFilter } from "@/lib/notify/prefs";
 import { notify } from "@/lib/notifications";
 import { CuisinePicker } from "./cuisine-picker";
 import { CustomerSidebar } from "./sidebar";
@@ -14,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
   const session = await requireRole("CUSTOMER");
+  kickNotificationJobs();
   const customer = await customerForUser(session.userId);
   // פניות שהספק לא ענה עליהן תוך 3 ימים נסגרות, והלקוח רואה את זה
   await closeUnanswered({ customerId: customer.id });
@@ -62,7 +65,9 @@ export default async function CustomerLayout({ children }: { children: React.Rea
     }),
     db.matchRequest.count({ where: { customerId: customer.id, status: "ANSWERED", customerHiddenAt: null } }),
     db.customerReview.count({ where: { customerId: customer.id } }),
-    db.notification.count({ where: { customerId: customer.id, read: false } }),
+    db.notification.count({
+      where: { customerId: customer.id, read: false, ...(await visibleFilter(session.userId)) },
+    }),
   ]);
 
   const teamRole = await teamRoleOf(session.userId);

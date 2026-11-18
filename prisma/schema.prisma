@@ -135,21 +135,22 @@ enum ReviewStatus {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  phone        String?
-  passwordHash String
-  role         Role
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String
+  phone                   String?
+  passwordHash            String
+  role                    Role
   /// מנהל העסק או הספק: עורך את פרטי העסק, המדרגות והצוות
-  isManager    Boolean   @default(false)
+  isManager               Boolean                  @default(false)
   /// התפקיד בצוות; isManager נשמר תואם (true רק כשהתפקיד MANAGER)
-  teamRole     TeamRole  @default(VIEWER)
-  customerId   String?
-  customer     Customer? @relation(fields: [customerId], references: [id])
-  supplierId   String?
-  supplier     Supplier? @relation(fields: [supplierId], references: [id])
-  createdAt    DateTime  @default(now())
+  teamRole                TeamRole                 @default(VIEWER)
+  customerId              String?
+  customer                Customer?                @relation(fields: [customerId], references: [id])
+  supplierId              String?
+  supplier                Supplier?                @relation(fields: [supplierId], references: [id])
+  createdAt               DateTime                 @default(now())
+  notificationPreferences NotificationPreference[]
 }
 
 model Region {
@@ -188,6 +189,7 @@ model Customer {
   priceViolations      PriceViolationReport[]
   alerts               PriceAlert[]
   notifications        Notification[]
+  supplierBlocks       SupplierBlock[]
   createdAt            DateTime               @default(now())
 }
 
@@ -224,6 +226,9 @@ model Supplier {
   logo                     SupplierLogo?
   views                    SupplierView[]
   notifications            Notification[]
+  blockedBy                SupplierBlock[]
+  /// מתי האדמין קיבל דיווח שהספק נחסם ע״י כמה עסקים (פעם אחת לכל גל)
+  blockFlaggedAt           DateTime?
   /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
   allCategories            Boolean                @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
@@ -585,6 +590,8 @@ model NegotiationRequest {
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
   cancelledBy       Role?
   repliedAt         DateTime?
+  /// כמה פעמים הספק שלח או עדכן תשובה (מוגבל, כדי שלא יציף את הלקוח)
+  replyCount        Int               @default(0)
   /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
   customerHiddenAt  DateTime?
   /// הלקוח מחק את הפנייה מהרשימה שלו לצמיתות (אי אפשר להחזיר); אצל הספק היא נשארת
@@ -651,6 +658,7 @@ model MatchRequest {
   /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
   cancelledBy       Role?
   answeredAt        DateTime?
+  answerCount       Int                @default(0)
   /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
   customerHiddenAt  DateTime?
   /// הלקוח מחק את הבקשה מהרשימה שלו לצמיתות; אצל הספק היא נשארת
@@ -725,24 +733,128 @@ enum NotificationKind {
   REPLY_REMINDER
   /// הפנייה נסגרה כי הספק לא ענה בזמן
   NO_REPLY
+  /// מסעדה: נמצאו הזדמנויות לחיסכון בחשבונית שהועלתה
+  INVOICE_SAVINGS
+  /// מסעדה: ספק שלה לא עדכן מחירים הרבה זמן
+  STALE_SUPPLIER_PRICES
+  /// מסעדה: הצעה של ספק עומדת לפוג
+  OFFER_EXPIRING
+  /// ספק: ההצעה שלו פגה בלי שהלקוח החליט
+  OFFER_EXPIRED
+  /// ספק: עסקים חדשים ראו אותו בהשוואות
+  NEW_INTEREST
+  /// ספק: מוצרים שלו יקרים ביחס לשוק
+  EXPENSIVE_PRODUCTS
+  /// ספק: צריך לעדכן מחירים או אזורי חלוקה
+  UPDATE_NEEDED
+  /// מסעדה (שיווקי, רק למי שבחר): מבצע חדש על מוצר שהיא קונה
+  NEW_DEAL
+}
+
+/// קבוצת התראות: כל משתמש בוחר מה לקבל ואיך
+enum NotificationCategory {
+  CRITICAL
+  SAVINGS
+  OFFERS
+  PRICES
+  MARKETING
+}
+
+/// איך לקבל התראות באימייל
+enum NotificationFrequency {
+  OFF
+  INSTANT
+  DAILY
+  WEEKLY
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+  /// לא הוגדר שירות אימייל, ההודעה רק נרשמה
+  SKIPPED
+}
+
+/// MUTE: בלי התראות מהספק. BLOCK: הספק לא מופיע בהשוואות ולא יכול לפנות
+enum BlockMode {
+  MUTE
+  BLOCK
+}
+
+/// בחירות ההתראות של משתמש לכל קבוצה (בלי שורה: ברירת המחדל של הקבוצה)
+model NotificationPreference {
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     NotificationCategory
+  inApp        Boolean               @default(true)
+  email        NotificationFrequency @default(OFF)
+  /// מתי נשלח הסיכום האחרון באימייל
+  lastDigestAt DateTime?
+  updatedAt    DateTime              @updatedAt
+
+  @@id([userId, category])
+}
+
+/// אירוע שכבר נספר בהתראה מרוכזת, כדי לא לספור אותו פעמיים
+model NotificationEvent {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
+
+/// כל אימייל שהמערכת שלחה (או ניסתה לשלוח)
+model EmailMessage {
+  id        String      @id @default(cuid())
+  userId    String?
+  to        String
+  subject   String
+  text      String
+  status    EmailStatus @default(QUEUED)
+  error     String?
+  /// INSTANT / DAILY / WEEKLY
+  kind      String
+  createdAt DateTime    @default(now())
+  sentAt    DateTime?
+
+  @@index([createdAt])
+}
+
+/// עסק שחסם או השתיק ספק
+model SupplierBlock {
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  mode       BlockMode
+  createdAt  DateTime  @default(now())
+
+  @@id([customerId, supplierId])
+  @@index([supplierId, createdAt])
 }
 
 /// התראה במערכת ללקוח או לספק
 model Notification {
-  id            String           @id @default(cuid())
-  customerId    String?
-  customer      Customer?        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  supplierId    String?
-  supplier      Supplier?        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  kind          NotificationKind
-  title         String
-  body          String?
-  href          String
-  savingsAgorot Int?
-  read          Boolean          @default(false)
+  id              String               @id @default(cuid())
+  customerId      String?
+  customer        Customer?            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String?
+  supplier        Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  kind            NotificationKind
+  title           String
+  body            String?
+  href            String
+  savingsAgorot   Int?
+  category        NotificationCategory @default(CRITICAL)
+  /// הספק שההתראה עליו, כדי לסנן ספק שהעסק השתיק או חסם
+  aboutSupplierId String?
+  /// התראה מרוכזת (למשל כל ההזדמנויות לחיסכון של היום): אירועים חדשים מתווספים אליה
+  groupKey        String?              @unique
+  groupCount      Int                  @default(1)
+  emailedAt       DateTime?
+  read            Boolean              @default(false)
   /// מונע התראה כפולה על אותו אירוע
-  dedupeKey     String?          @unique
-  createdAt     DateTime         @default(now())
+  dedupeKey       String?              @unique
+  createdAt       DateTime             @default(now())
 
   @@index([customerId, read, createdAt])
   @@index([supplierId, read, createdAt])

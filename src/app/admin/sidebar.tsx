@@ -24,6 +24,7 @@ const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
   { href: "/admin/violations", label: "הפרות מחיר", pending: "violations" },
   { href: "/admin/reports", label: "דיווחים", pending: "reports" },
   { href: "/admin/users", label: "משתמשים" },
+  { href: "/admin/emails", label: "אימיילים שנשלחו" },
   { href: "/admin/audit", label: "יומן פעולות" },
 ];
 

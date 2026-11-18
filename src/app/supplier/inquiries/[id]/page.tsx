@@ -1,3 +1,4 @@
+import { RepliesLeft } from "@/components/replies-left";
 import { QuoteValidity } from "@/components/quote-validity";
 import { Needs } from "@/components/needs";
 import Link from "next/link";
@@ -201,6 +202,7 @@ export default async function SupplierInquiry({
           <p className="text-sm text-muted">הפנייה הסתיימה, ואי אפשר לשלוח עליה הצעה חדשה.</p>
         ) : (
           <Needs p="reply" note>
+            <RepliesLeft used={inquiry.replyCount} />
             <ReplyForm
               inquiryId={inquiry.id}
               hasReply={Boolean(inquiry.reply)}
