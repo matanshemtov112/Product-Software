@@ -15,7 +15,7 @@ export async function VerifiedBadge({
   const verified = (await verifiedSupplierIds()).has(supplierId);
   return verified ? (
     <span
-      className="ms-1 inline-flex items-center gap-0.5 rounded bg-accent-soft px-1.5 py-0.5 align-middle text-xs font-medium text-accent"
+      className="ms-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded bg-accent-soft px-1.5 py-0.5 align-middle text-xs font-medium text-accent"
       title="המסמכים של הספק נבדקו ואושרו על ידי צוות הפלטפורמה"
     >
       ✓{compact ? "" : " ספק מאומת"}

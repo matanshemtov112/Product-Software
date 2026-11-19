@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { QuoteTable } from "@/components/quote-table";
+import { supplierFacts, validityText } from "@/lib/customer/offer-facts";
 import { requireRole } from "@/lib/auth/current";
 import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
@@ -104,6 +105,8 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
                   ["שעות פעילות", about.openingHours],
                   ["תנאי אספקה", deliveryTerms],
                   ["מינימום הזמנה", about.minOrderAgorot ? shekels(about.minOrderAgorot) : "אין"],
+                  ["תוקף ההצעה", validityText(row.quote.share.lines)],
+                  ["אזור עבודה", (await supplierFacts(supplierId))?.areaText],
                   ["תנאי תשלום", publicPaymentTerms(about)],
                   [
                     "זמן תגובה",
@@ -127,7 +130,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         <div className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-muted">ההצעה של הספק</p>
           <p className="text-2xl font-bold">{shekels(row.quote.share.totalAgorot)}</p>
-          <p className="text-xs text-muted">לחודש, משלוח חינם</p>
+          <p className="text-xs text-muted">מחיר כולל לחודש, ללא מע״מ, משלוח חינם</p>
         </div>
         <div className="rounded-lg border border-border bg-surface p-4">
           <p className="text-sm text-muted">החלופה הזולה לאותם מוצרים</p>

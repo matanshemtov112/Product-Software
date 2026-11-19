@@ -6,6 +6,8 @@ import { after } from "next/server";
 import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
+import { OfferFacts } from "@/components/offer-facts";
+import { LOCK_DAYS } from "@/lib/quote-validity";
 import { BrandChoices } from "@/components/brand-choices";
 import { ProductComparison } from "@/components/product-comparison";
 import { SendToSupplierLink } from "@/components/send-to-supplier";
@@ -328,7 +330,8 @@ export default async function BasketPage({
         <PlanCard title="ספק יחיד" plan={result.singleSupplier} />
       </div>
       <p className="-mt-2 text-xs text-muted">
-        כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים.
+        כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים. אחרי ששולחים פנייה לספק, המחירים שבהצעה
+        נשמרים לכם {LOCK_DAYS} ימים.
       </p>
 
       {!basket.savedAt && (
@@ -423,6 +426,15 @@ export default async function BasketPage({
                           חיסכון של {shekels(s.monthlySavingAgorot)} בחודש על {s.products.join(", ")}
                         </p>
                         <CostBreakdown cost={s.cost} />
+                        <div className="mt-2">
+                          <OfferFacts
+                            supplierId={s.supplierId}
+                            totalAgorot={s.cost.totalAgorot}
+                            lines={paid.lines
+                              .filter((l) => s.productIds.includes(l.productId))
+                              .flatMap((l) => l.offers.filter((o) => o.supplierId === s.supplierId))}
+                          />
+                        </div>
                       </div>
                       <SendToSupplierLink href={`/customer/baskets/${basket.id}/inquiry/${s.supplierId}`} />
                     </li>
@@ -489,6 +501,13 @@ export default async function BasketPage({
                     <li key={reason}>· {reason}</li>
                   ))}
                 </ul>
+                <div className="mt-3">
+                  <OfferFacts
+                    supplierId={r.supplierId}
+                    totalAgorot={r.totalAgorot}
+                    lines={rows.find((row) => row.supplierId === r.supplierId)?.quote.share.lines ?? []}
+                  />
+                </div>
                 <div className="mt-3">
                   <SendToSupplierLink href={`/customer/baskets/${basket.id}/inquiry/${r.supplierId}`} />
                 </div>
