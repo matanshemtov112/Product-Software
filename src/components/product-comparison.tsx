@@ -13,6 +13,19 @@ export function gapInsight(gapPct: number | null) {
 }
 
 /**
+ * כשרק ספק אחד במערכת מוכר את המוצר אין באמת השוואה, ולכן אומרים את זה במפורש
+ * במקום להציג את המחיר שלו כ"הזול ביותר".
+ */
+export function singleSupplierNote(gapPct: number | null, isCurrentSupplier: boolean) {
+  const later = "נעדכן אתכם כשיופיע במערכת מחיר זול יותר.";
+  if (isCurrentSupplier) return `כרגע רק הספק שלכם מוכר את המוצר הזה במערכת, אז אין עדיין למה להשוות. ${later}`;
+  if (gapPct !== null && gapPct > 0)
+    return `רק ספק אחד במערכת מוכר כרגע את המוצר הזה. המחיר שלו נמוך בכ-${gapPct.toLocaleString("he-IL")}% ממה שאתם משלמים, ואנחנו מקווים שהצלחנו להוזיל לכם את העלות.`;
+  const yours = gapPct === 0 ? "זהה למחיר שלו" : "טוב ממנו";
+  return `רק ספק אחד במערכת מוכר כרגע את המוצר הזה, והמחיר שאתם משלמים היום ${yours}. ${later}`;
+}
+
+/**
  * השוואה לפי מוצר: המחיר שהלקוח משלם, ההצעות במערכת מהזולה ליקרה עם סטטוס המחיר, ותובנה.
  * כל מוצר נפתח לרשימת הספקים המלאה.
  */
@@ -27,6 +40,7 @@ export function ProductComparison({
     <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
       {lines.map((l) => {
         const unit = UNIT_LABEL[l.unit as keyof typeof UNIT_LABEL];
+        const single = l.offers.length === 1 && l.best !== null;
         return (
           <li key={l.productId}>
             <details className="group">
@@ -46,7 +60,7 @@ export function ProductComparison({
                   </span>
                 </span>
                 <span>
-                  <span className="block text-xs text-muted">הכי זול במערכת</span>
+                  <span className="block text-xs text-muted">{single ? "ספק יחיד במערכת" : "הכי זול במערכת"}</span>
                   {l.best ? (
                     <>
                       <WasPrice nowAgorot={l.best.unitPriceAgorot} regularAgorot={l.best.regularUnitAgorot} />
@@ -90,7 +104,11 @@ export function ProductComparison({
                 </span>
               </summary>
               <div className="flex flex-col gap-2 bg-background px-3 pt-2 pb-3 text-sm">
-                <p>{gapInsight(l.gapPct)}</p>
+                <p>
+                  {single
+                    ? singleSupplierNote(l.gapPct, l.best?.supplierId === currentSupplierId)
+                    : gapInsight(l.gapPct)}
+                </p>
                 {l.offers.length > 0 && (
                   <table className="w-full">
                     <thead className="text-xs text-muted">
