@@ -6,6 +6,7 @@ import { audit } from "@/lib/audit";
 import { getSession } from "@/lib/auth/current";
 import { db } from "@/lib/db";
 import { CATEGORIES, EMAIL_OPTIONS } from "./categories";
+import { setMarketingConsent } from "./consent";
 
 export interface PrefsState {
   saved?: boolean;
@@ -26,6 +27,8 @@ export async function savePrefs(_: PrefsState, form: FormData): Promise<PrefsSta
       create: { userId: session.userId, category, inApp, email },
       update: { inApp, email },
     });
+    // בחירה באימיילים שיווקיים בהגדרות היא הסכמה מפורשת; ביטול הבחירה מבטל אותה
+    if (category === "MARKETING") await setMarketingConsent(session.userId, email !== "OFF", "settings");
   }
   await audit({ action: "notifications.updated", targetType: "user", targetId: session.userId });
   revalidatePath(session.role === "CUSTOMER" ? "/customer" : "/supplier", "layout");

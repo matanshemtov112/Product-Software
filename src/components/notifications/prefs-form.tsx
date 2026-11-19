@@ -10,6 +10,7 @@ export interface PrefRow {
   title: string;
   description: string;
   locked: boolean;
+  note?: string;
   inApp: boolean;
   email: string;
   options: { value: string; label: string }[];
@@ -25,6 +26,7 @@ export function PrefsForm({ rows }: { rows: PrefRow[] }) {
             <div className="min-w-0 sm:max-w-md">
               <p className="font-medium">{r.title}</p>
               <p className="text-sm text-muted">{r.description}</p>
+              {r.note && <p className="mt-1 text-xs text-muted">{r.note}</p>}
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-4 text-sm">
               <label className="flex items-center gap-2">

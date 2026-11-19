@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Card } from "@/components/form";
+import { db } from "@/lib/db";
 import { emailConfigured } from "@/lib/email";
+import { dateTime } from "@/lib/quote-validity";
 import { CATEGORIES, CATEGORY_LABEL, EMAIL_OPTIONS, FREQUENCY_LABEL, effectivePref } from "@/lib/notify/categories";
 import { savedPrefs } from "@/lib/notify/prefs";
 import { PrefsForm } from "./prefs-form";
@@ -17,7 +19,14 @@ export async function NotificationSettings({
   org: "CUSTOMER" | "SUPPLIER";
   children?: React.ReactNode;
 }) {
-  const saved = await savedPrefs(userId);
+  const [saved, user] = await Promise.all([
+    savedPrefs(userId),
+    db.user.findUnique({ where: { id: userId }, select: { marketingConsentAt: true } }),
+  ]);
+  const consentAt = user?.marketingConsentAt;
+  const marketingNote = consentAt
+    ? `נתתם הסכמה לקבל פרסומות באימייל ב-${dateTime(consentAt)}. אפשר לבטל בכל רגע כאן או בקישור שבכל אימייל.`
+    : "פרסומות באימייל נשלחות רק אם תבחרו בזה כאן. הבחירה נחשבת להסכמה, ואפשר לבטל אותה בכל רגע.";
   const area = org === "CUSTOMER" ? "/customer" : "/supplier";
   const rows = CATEGORIES.map((c) => {
     const pref = effectivePref(
@@ -28,6 +37,7 @@ export async function NotificationSettings({
       category: c,
       ...CATEGORY_LABEL[org][c],
       locked: c === "CRITICAL",
+      note: c === "MARKETING" ? marketingNote : undefined,
       inApp: pref.inApp,
       email: pref.email,
       options: EMAIL_OPTIONS[c].map((o) => ({ value: o, label: FREQUENCY_LABEL[o] })),

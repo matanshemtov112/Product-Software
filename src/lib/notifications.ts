@@ -6,7 +6,8 @@ import { priceAt } from "@/lib/customer/monthly-report";
 import { appUrl, deliverQueued, queueEmails, type OutgoingEmail } from "@/lib/email";
 import { shekels } from "@/lib/format";
 import { servesCustomer } from "@/lib/geo";
-import { CATEGORY_LABEL, CATEGORY_OF, effectivePref } from "@/lib/notify/categories";
+import { CATEGORY_OF, effectivePref } from "@/lib/notify/categories";
+import { emailFooter, emailSubject, unsubscribeUrl } from "@/lib/notify/unsubscribe";
 
 export interface NewNotification {
   customerId?: string;
@@ -111,7 +112,14 @@ async function queueInstantEmails(created: Notification[]) {
   const supplierIds = [...new Set(created.flatMap((n) => (n.supplierId ? [n.supplierId] : [])))];
   const users = await db.user.findMany({
     where: { OR: [{ customerId: { in: customerIds } }, { supplierId: { in: supplierIds } }] },
-    select: { id: true, email: true, customerId: true, supplierId: true, notificationPreferences: true },
+    select: {
+      id: true,
+      email: true,
+      customerId: true,
+      supplierId: true,
+      marketingConsentAt: true,
+      notificationPreferences: true,
+    },
   });
   const emails: OutgoingEmail[] = [];
   for (const n of created) {
@@ -124,19 +132,27 @@ async function queueInstantEmails(created: Notification[]) {
         u.notificationPreferences.find((p) => p.category === n.category),
       );
       if (pref.email !== "INSTANT") continue;
+      // חוק הספאם: דבר פרסומת נשלח רק למי שנתן הסכמה מפורשת
+      if (n.category === "MARKETING" && !u.marketingConsentAt) continue;
+      const unsubscribe = n.category === "CRITICAL" ? undefined : unsubscribeUrl(u.id, n.category);
       emails.push({
         userId: u.id,
         to: u.email,
-        subject: n.title,
+        subject: emailSubject(n.category, n.title),
         kind: "INSTANT",
+        unsubscribeUrl: unsubscribe,
         text: [
           n.title,
           n.body,
           n.savingsAgorot ? `חיסכון של עד ${shekels(n.savingsAgorot)} בחודש` : null,
           `לפרטים: ${appUrl(n.href)}`,
           "",
-          `קיבלתם את ההודעה כי בחרתם לקבל "${CATEGORY_LABEL[org][n.category].title}" באימייל.`,
-          `לשינוי: ${appUrl(`${area}/notifications/settings`)}`,
+          ...emailFooter({
+            org,
+            category: n.category,
+            settingsUrl: appUrl(`${area}/notifications/settings`),
+            unsubscribeUrl: unsubscribe,
+          }),
         ]
           .filter((l) => l !== null && l !== undefined)
           .join("\n"),

@@ -58,6 +58,9 @@ export const AUDIT_LABEL: Record<string, string> = {
   "supplier.muted": "השתקת ספק",
   "supplier.unblocked": "ביטול חסימה או השתקה של ספק",
   "notifications.updated": "עדכון הגדרות התראות",
+  "notifications.unsubscribed": "הסרה מאימיילים דרך קישור",
+  "marketing.consent_given": "הסכמה לקבל פרסומות באימייל",
+  "marketing.consent_withdrawn": "ביטול הסכמה לפרסומות באימייל",
 };
 
 export interface AuditEntry {

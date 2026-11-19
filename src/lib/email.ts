@@ -22,6 +22,8 @@ export interface OutgoingEmail {
   text: string;
   /** INSTANT / DAILY / WEEKLY */
   kind: string;
+  /** קישור הסרה בלחיצה אחת (נשלח גם בכותרות List-Unsubscribe) */
+  unsubscribeUrl?: string;
 }
 
 export async function queueEmails(emails: OutgoingEmail[]) {
@@ -29,11 +31,18 @@ export async function queueEmails(emails: OutgoingEmail[]) {
   await db.emailMessage.createMany({ data: emails });
 }
 
-async function sendOne(to: string, subject: string, text: string) {
+async function sendOne(to: string, subject: string, text: string, unsubscribeUrl: string | null) {
+  // כותרות שמאפשרות לתוכנת הדואר להציג כפתור "הסרה" שעובד בלחיצה אחת (RFC 8058)
+  const headers = unsubscribeUrl
+    ? {
+        "List-Unsubscribe": `<${unsubscribeUrl.replace("/unsubscribe?", "/api/unsubscribe?")}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }
+    : undefined;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text }),
+    body: JSON.stringify({ from: process.env.EMAIL_FROM, to, subject, text, headers }),
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 200)}`);
@@ -56,7 +65,7 @@ export async function deliverQueued(limit = 50) {
   }
   for (const m of queued) {
     try {
-      await sendOne(m.to, m.subject, m.text);
+      await sendOne(m.to, m.subject, m.text, m.unsubscribeUrl);
       await db.emailMessage.update({ where: { id: m.id }, data: { status: "SENT", sentAt: new Date() } });
     } catch (e) {
       await db.emailMessage.update({

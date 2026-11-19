@@ -8,6 +8,7 @@ import { israelDay, notify, type NewNotification } from "@/lib/notifications";
 import { supplierMarket } from "@/lib/supplier/market-load";
 import { CATEGORIES, CATEGORY_LABEL, FREQUENCY_LABEL, effectivePref } from "./categories";
 import { STALE_PRICE_DAYS } from "./limits";
+import { emailFooter, emailSubject, unsubscribeUrl } from "./unsubscribe";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -252,7 +253,15 @@ async function weeklySupplierChecks(now: Date) {
 async function digests(now: Date) {
   const users = await db.user.findMany({
     where: { role: { in: ["CUSTOMER", "SUPPLIER"] } },
-    select: { id: true, email: true, role: true, customerId: true, supplierId: true, notificationPreferences: true },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      customerId: true,
+      supplierId: true,
+      marketingConsentAt: true,
+      notificationPreferences: true,
+    },
   });
   const emails: OutgoingEmail[] = [];
   for (const u of users) {
@@ -265,6 +274,8 @@ async function digests(now: Date) {
       if (pref.email !== "DAILY" && pref.email !== "WEEKLY") continue;
       const last = saved?.lastDigestAt ?? null;
       if (!digestDue(pref.email, last, now)) continue;
+      // חוק הספאם: סיכום פרסומי רק למי שנתן הסכמה מפורשת
+      if (category === "MARKETING" && !u.marketingConsentAt) continue;
       const period = pref.email === "DAILY" ? DAY : 7 * DAY;
       const from = new Date(Math.max(last?.getTime() ?? 0, now.getTime() - period));
       const items = await db.notification.findMany({
@@ -276,18 +287,26 @@ async function digests(now: Date) {
       if (items.length === 0) continue;
       const area = org === "CUSTOMER" ? "/customer" : "/supplier";
       const label = CATEGORY_LABEL[org][category].title;
+      const unsubscribe = category === "CRITICAL" ? undefined : unsubscribeUrl(u.id, category);
       emails.push({
         userId: u.id,
         to: u.email,
         kind: pref.email,
-        subject: `${FREQUENCY_LABEL[pref.email]}: ${label} (${items.length})`,
+        unsubscribeUrl: unsubscribe,
+        subject: emailSubject(category, `${FREQUENCY_LABEL[pref.email]}: ${label} (${items.length})`),
         text: [
           `${label}, ${pref.email === "DAILY" ? "מאתמול" : "מהשבוע האחרון"}:`,
           "",
           ...items.map((n) => `• ${n.title}${n.body ? `\n  ${n.body}` : ""}`),
           "",
           `לכל ההתראות: ${appUrl(`${area}/notifications`)}`,
-          `לשינוי ההגדרות: ${appUrl(`${area}/notifications/settings`)}`,
+          "",
+          ...emailFooter({
+            org,
+            category,
+            settingsUrl: appUrl(`${area}/notifications/settings`),
+            unsubscribeUrl: unsubscribe,
+          }),
         ].join("\n"),
       });
     }

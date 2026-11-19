@@ -151,6 +151,9 @@ model User {
   supplier                Supplier?                @relation(fields: [supplierId], references: [id])
   createdAt               DateTime                 @default(now())
   notificationPreferences NotificationPreference[]
+  /// הסכמה מפורשת לקבל דברי פרסומת (חוק התקשורת, סעיף 30א): מתי ואיפה. null = אין הסכמה
+  marketingConsentAt      DateTime?
+  marketingConsentSource  String?
 }
 
 model Region {
@@ -804,17 +807,19 @@ model NotificationEvent {
 
 /// כל אימייל שהמערכת שלחה (או ניסתה לשלוח)
 model EmailMessage {
-  id        String      @id @default(cuid())
-  userId    String?
-  to        String
-  subject   String
-  text      String
-  status    EmailStatus @default(QUEUED)
-  error     String?
+  id             String      @id @default(cuid())
+  userId         String?
+  to             String
+  subject        String
+  text           String
+  status         EmailStatus @default(QUEUED)
+  error          String?
   /// INSTANT / DAILY / WEEKLY
-  kind      String
-  createdAt DateTime    @default(now())
-  sentAt    DateTime?
+  kind           String
+  /// קישור הסרה בלחיצה אחת (נשלח גם בכותרת List-Unsubscribe)
+  unsubscribeUrl String?
+  createdAt      DateTime    @default(now())
+  sentAt         DateTime?
 
   @@index([createdAt])
 }
