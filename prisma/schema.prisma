@@ -397,6 +397,9 @@ model OfferImage {
   offer       SupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
   data        Bytes
   contentType String
+  // תמונה שנבחרה ממאגר פתוח ברשת: הדף שלה במאגר והקרדיט שהרישיון דורש
+  sourceUrl   String?
+  credit      String?
   updatedAt   DateTime      @updatedAt
 }
 

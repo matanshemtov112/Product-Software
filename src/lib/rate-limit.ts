@@ -21,6 +21,8 @@ export const LIMITS = {
   inquiries: { max: 30, windowMs: 24 * 60 * 60_000 },
   /** דיווחים, לכל משתמש */
   reports: { max: 10, windowMs: 24 * 60 * 60_000 },
+  /** חיפושי תמונות במאגרים פתוחים, לכל ספק */
+  imageSearch: { max: 60, windowMs: 60 * 60_000 },
 } satisfies Record<string, Limit>;
 
 type Store = Map<string, number[]>;

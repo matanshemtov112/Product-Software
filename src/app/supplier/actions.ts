@@ -12,7 +12,8 @@ import { UNIT_LABEL } from "@/lib/format";
 import { dealInput, dealLabel } from "@/lib/deal-label";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { checkImage } from "@/lib/supplier/images";
+import { checkImage, imageFromBytes, MAX_IMAGE_BYTES } from "@/lib/supplier/images";
+import { downloadSuggestion, readSuggestionChoice } from "@/lib/images/suggest";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { nominalPackSize, packLabel } from "@/lib/pack";
 import { brandChangeNeedsDecision, diffOffer } from "@/lib/supplier/offer-changes";
@@ -78,7 +79,10 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   const parsed = offerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const data = parsed.data;
-  const image = await checkImage(form.get("image"));
+  const uploaded = await checkImage(form.get("image"));
+  if (uploaded && !uploaded.ok) return { error: uploaded.error };
+  // בלי קובץ שהועלה: תמונה שהספק בחר ממאגר פתוח (לא ליצרנים)
+  const image = uploaded ?? (supplier.isManufacturer ? null : await suggestedImage(form.get("imageSuggestion")));
   if (image && !image.ok) return { error: image.error };
 
   // ספק בלי מדרגות מקבל מדרגה בסיסית אחת
@@ -457,13 +461,30 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   redirect(held ? `/supplier/products/${offer.id}?held=${held}` : listUrl(form.get("back"), offer.id));
 }
 
-async function storeImage(offerId: string, image: { data: Buffer; contentType: string }) {
+type StoredImage = { data: Buffer; contentType: string; credit?: string; sourceUrl?: string };
+
+/** מוריד את התמונה שנבחרה ממאגר פתוח ובודק שהיא באמת תמונה */
+async function suggestedImage(raw: FormDataEntryValue | null) {
+  const choice = readSuggestionChoice(raw);
+  if (!choice) return null;
+  const bytes = await downloadSuggestion(choice.url, MAX_IMAGE_BYTES);
+  if (!bytes)
+    return { ok: false as const, error: "לא הצלחנו להוריד את התמונה שבחרתם. נסו תמונה אחרת או העלו תמונה משלכם." };
+  const checked = imageFromBytes(bytes);
+  if (!checked.ok) return checked;
+  return { ...checked, credit: choice.credit, sourceUrl: choice.pageUrl || choice.url };
+}
+
+async function storeImage(offerId: string, image: StoredImage) {
   const data = new Uint8Array(image.data);
-  await db.offerImage.upsert({
-    where: { offerId },
-    create: { offerId, data, contentType: image.contentType },
-    update: { data, contentType: image.contentType },
-  });
+  // תמונה שהועלה מהמחשב מוחקת קרדיט ישן של תמונה ממאגר
+  const fields = {
+    data,
+    contentType: image.contentType,
+    credit: image.credit ?? null,
+    sourceUrl: image.sourceUrl ?? null,
+  };
+  await db.offerImage.upsert({ where: { offerId }, create: { offerId, ...fields }, update: fields });
 }
 
 /** סיום מבצע לפני הזמן: המחיר הרגיל חוזר מיד */

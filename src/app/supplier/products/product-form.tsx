@@ -43,6 +43,8 @@ export interface OfferFormValues {
   /** מחיר בשקלים לפי מזהה מדרגה */
   prices: Record<string, string>;
   imageSrc: string | null;
+  /** קרדיט לתמונה שנבחרה ממאגר פתוח */
+  imageCredit?: string | null;
   /** סוג המחיר הרגיל הנוכחי: קבוע או עם תוקף */
   priceType?: "FIXED" | "UNTIL";
   /** היום האחרון שהמחיר הרגיל בתוקף, yyyy-mm-dd */
@@ -92,7 +94,10 @@ export function ProductForm({
   tiers,
   back,
   openDeal,
+  imageSuggestions,
 }: {
+  /** להציע תמונות ממאגרים פתוחים (לא ליצרנים) */
+  imageSuggestions?: boolean;
   initial: OfferFormValues;
   /** נפתח מדף המבצעים: אזור מבצע הכמות פתוח */
   openDeal?: boolean;
@@ -354,7 +359,11 @@ export function ProductForm({
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 font-semibold">תמונה (לא חובה)</legend>
-        <ImageField currentSrc={initial.imageSrc} />
+        <ImageField
+          currentSrc={initial.imageSrc}
+          currentCredit={initial.imageCredit}
+          allowSuggestions={imageSuggestions && !initial.imageSrc}
+        />
       </fieldset>
 
       <fieldset className="flex flex-col gap-3">

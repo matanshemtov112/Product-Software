@@ -145,6 +145,16 @@ export default async function ProductDetails({
       <div className="grid gap-4 md:grid-cols-[14rem_1fr_1fr]">
         <Card title="תמונה">
           <OfferImage offerId={offer.id} src={imageSrc} name={offer.product.name} variant="card" />
+          {imageSrc && offer.image?.credit && <p className="mt-1 text-xs text-muted">קרדיט: {offer.image.credit}</p>}
+          {!imageSrc && !supplier.isManufacturer && !offer.archivedAt && (
+            <Link
+              href={`/supplier/products/${offer.id}/edit`}
+              data-needs="prices"
+              className="mt-2 block text-sm text-accent underline"
+            >
+              אין תמונה? חיפוש במאגרים פתוחים ברשת
+            </Link>
+          )}
           {imageSrc && (
             <form action={removeOfferImage} data-needs="prices" className="mt-2">
               <input type="hidden" name="offerId" value={offer.id} />

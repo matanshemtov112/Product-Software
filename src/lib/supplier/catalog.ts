@@ -41,7 +41,7 @@ const offerInclude = {
   product: { include: { category: { include: { parent: true } } } },
   // אותו כלל בחירה כמו בהשוואה של הלקוחות (load.ts): המחיר שנכנס לתוקף אחרון
   prices: { orderBy: [{ validFrom: "desc" }, { createdAt: "desc" }], include: { tier: true } },
-  image: { select: { updatedAt: true } },
+  image: { select: { updatedAt: true, credit: true } },
   quantityDeal: true,
 } satisfies Prisma.SupplierOfferInclude;
 

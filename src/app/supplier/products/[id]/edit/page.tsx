@@ -53,6 +53,7 @@ export default async function EditProductPage({
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
           back={back}
+          imageSuggestions={!supplier.isManufacturer}
           openDeal={deal === "1"}
           initial={{
             offerId: offer.id,
@@ -74,6 +75,7 @@ export default async function EditProductPage({
             available: offer.available,
             prices,
             imageSrc: offerImageUrl(offer),
+            imageCredit: offer.image?.credit ?? null,
             priceType: base?.liveValidTo || base?.expired ? "UNTIL" : "FIXED",
             validUntil: validUntilInput(base?.liveValidTo),
             promoPrices,

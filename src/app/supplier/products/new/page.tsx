@@ -65,6 +65,7 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
           categories={categories}
           catalog={catalog}
           tiers={supplier.priceTiers}
+          imageSuggestions={!supplier.isManufacturer}
         />
       </div>
     </div>
