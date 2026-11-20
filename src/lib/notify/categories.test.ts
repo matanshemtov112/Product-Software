@@ -7,10 +7,10 @@ describe("notification preferences", () => {
   it("keeps important notifications always on", () => {
     expect(effectivePref("CRITICAL", { inApp: false, email: "OFF" })).toEqual({ inApp: true, email: "INSTANT" });
   });
-  it("uses defaults: savings daily, prices weekly, marketing off", () => {
+  it("uses defaults: savings daily, prices weekly, deals in the app but not by email", () => {
     expect(effectivePref("SAVINGS")).toEqual({ inApp: true, email: "DAILY" });
     expect(effectivePref("PRICES")).toEqual({ inApp: true, email: "WEEKLY" });
-    expect(effectivePref("MARKETING")).toEqual({ inApp: false, email: "OFF" });
+    expect(effectivePref("MARKETING")).toEqual({ inApp: true, email: "OFF" });
     expect(effectivePref("OFFERS")).toEqual({ inApp: true, email: "INSTANT" });
   });
   it("ignores a frequency the category does not offer", () => {
@@ -21,7 +21,7 @@ describe("notification preferences", () => {
       { category: "PRICES", inApp: false, email: "OFF" },
       { category: "CRITICAL", inApp: false, email: "OFF" },
     ]);
-    expect(hidden).toEqual(["PRICES", "MARKETING"]);
+    expect(hidden).toEqual(["PRICES"]);
   });
   it("puts every kind in a category", () => {
     expect(CATEGORY_OF.NEW_DEAL).toBe("MARKETING");

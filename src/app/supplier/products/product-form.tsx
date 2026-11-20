@@ -91,8 +91,11 @@ export function ProductForm({
   catalog,
   tiers,
   back,
+  openDeal,
 }: {
   initial: OfferFormValues;
+  /** נפתח מדף המבצעים: אזור מבצע הכמות פתוח */
+  openDeal?: boolean;
   /** הרשימה שממנה הגיעו (חיפוש ותצוגה), כדי לחזור לאותו מקום אחרי שמירה */
   back?: string;
   /** סוגי מוצר לבחירה, מקובצים לפי תחום ראשי */
@@ -121,7 +124,7 @@ export function ProductForm({
   const [promoUntil, setPromoUntil] = useState(initial.promoUntil ?? "");
   const prices = promotion ? promoPrices : regularPrices;
   const setPrices = promotion ? setPromoPrices : setRegularPrices;
-  const [dealOn, setDealOn] = useState(Boolean(initial.deal));
+  const [dealOn, setDealOn] = useState(Boolean(initial.deal) || Boolean(openDeal));
   const [dealType, setDealType] = useState<"pct" | "price">(initial.deal?.type ?? "pct");
   const today = new Date();
   const maxDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
@@ -455,7 +458,7 @@ export function ProductForm({
         </p>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-3">
+      <fieldset id="deal" className="flex scroll-mt-4 flex-col gap-3">
         <legend className="mb-2 font-semibold">מבצע כמות (לא חובה)</legend>
         <label className="flex items-center gap-2 text-sm">
           <input

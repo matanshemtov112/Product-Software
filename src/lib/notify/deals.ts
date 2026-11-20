@@ -5,9 +5,16 @@ import { weekKey } from "./jobs";
 
 /**
  * הודעה שיווקית: מבצע כמות חדש על מוצר שהמסעדה קונה, אצל ספק שמגיע אליה.
- * נשלחת רק למי שבחר לקבל הודעות שיווקיות, ולכל היותר פעם בשבוע מכל ספק לכל מסעדה.
+ * מופיעה במערכת לכל מסעדה עם המוצר בסל (אפשר לכבות בהגדרות); באימייל רק למי שהסכים לקבל פרסומות.
+ * לכל היותר פעם בשבוע מכל ספק לכל מסעדה.
  */
-export async function notifyNewDeal(supplierId: string, productId: string, productName: string, now = new Date()) {
+export async function notifyNewDeal(
+  supplierId: string,
+  productId: string,
+  productName: string,
+  now = new Date(),
+  detail?: string,
+) {
   const supplier = await db.supplier.findUnique({
     where: { id: supplierId },
     select: {
@@ -19,7 +26,12 @@ export async function notifyNewDeal(supplierId: string, productId: string, produ
   });
   if (!supplier || supplier.status !== "APPROVED") return;
   const items = await db.basketItem.findMany({
-    where: { productId, basket: { currentSupplierId: { not: supplierId } } },
+    // לא ללקוחות שכבר קונים מהספק הזה. (ב-SQL "לא שווה" לא כולל ערך ריק, ולכן בודקים גם סל בלי ספק נוכחי)
+    where: {
+      productId,
+      monthlyQuantity: { gt: 0 },
+      basket: { OR: [{ currentSupplierId: null }, { currentSupplierId: { not: supplierId } }] },
+    },
     select: {
       basket: { select: { id: true, customer: { select: { id: true, regionId: true, lat: true, lng: true } } } },
     },
@@ -40,7 +52,7 @@ export async function notifyNewDeal(supplierId: string, productId: string, produ
           aboutSupplierId: supplierId,
           kind: "NEW_DEAL" as const,
           title: `מבצע חדש של ${supplier.companyName} על ${productName}`,
-          body: "מוצר שנמצא בסל שלכם. הפרטים בדף המבצעים.",
+          body: detail ? `${detail}. המוצר נמצא בסל שלכם.` : "מוצר שנמצא בסל שלכם. הפרטים בדף המבצעים.",
           href: "/customer/deals",
           dedupeKey: `deal:${supplierId}:${c.id}:${week}`,
         },

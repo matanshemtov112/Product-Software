@@ -55,7 +55,10 @@ export const CATEGORY_LABEL: Record<Org, Record<NotificationCategory, { title: s
       title: "עדכוני מחירים",
       description: "הספק שלכם העלה מחיר או הוריד אותו משמעותית, או לא עדכן מחירים הרבה זמן.",
     },
-    MARKETING: { title: "הודעות שיווקיות", description: "מבצעים חדשים של ספקים על מוצרים שאתם קונים. רק אם תבחרו." },
+    MARKETING: {
+      title: "מבצעים של ספקים",
+      description: "מבצע חדש של ספק על מוצר שנמצא בסל שלכם. מופיע במערכת, ובאימייל רק אם תבחרו.",
+    },
   },
   SUPPLIER: {
     CRITICAL: {
@@ -98,7 +101,8 @@ export interface Pref {
 
 /** ברירת המחדל: הכול במערכת חוץ משיווקי, ובאימייל לפי האפשרות הראשונה */
 export function defaultPref(category: NotificationCategory): Pref {
-  return { inApp: category !== "MARKETING", email: EMAIL_OPTIONS[category][0] };
+  // מבצעים על מוצרים שבסל מופיעים במערכת לכולם (אפשר לכבות); אימייל שיווקי רק בהסכמה
+  return { inApp: true, email: EMAIL_OPTIONS[category][0] };
 }
 
 /** ההעדפה שבתוקף: חשובות תמיד דולקות, ובחירה שלא קיימת בקבוצה חוזרת לברירת המחדל */

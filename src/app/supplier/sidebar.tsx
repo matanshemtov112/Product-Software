@@ -53,6 +53,11 @@ export function SupplierSidebar({
               </Link>
             </li>
           ))}
+          <li>
+            <Link href="/supplier/deals" className={item(pathname === "/supplier/deals")}>
+              מבצעים
+            </Link>
+          </li>
         </ul>
       </div>
       <div>

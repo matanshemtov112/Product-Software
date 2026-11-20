@@ -9,6 +9,7 @@ import { MAX_REPLIES, REPLY_LIMIT_MESSAGE } from "@/lib/notify/limits";
 import { notifyNewDeal } from "@/lib/notify/deals";
 import { notify, notifyPriceChange } from "@/lib/notifications";
 import { UNIT_LABEL } from "@/lib/format";
+import { dealInput, dealLabel } from "@/lib/deal-label";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { checkImage } from "@/lib/supplier/images";
@@ -439,8 +440,17 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
   if (image?.ok) await storeImage(offer.id, image);
   for (const entry of audits) await audit(entry);
   for (const alert of alerts) await notifyPriceChange(alert);
-  if (audits.some((a) => a.action === "deal.saved"))
-    await notifyNewDeal(supplier.id, offer.productId, data.productName);
+  if (audits.some((a) => a.action === "deal.saved")) {
+    const deal = await db.quantityDeal.findUnique({ where: { offerId: offer.id } });
+    const unit = await db.product.findUnique({ where: { id: offer.productId }, select: { unit: true } });
+    await notifyNewDeal(
+      supplier.id,
+      offer.productId,
+      data.productName,
+      new Date(),
+      deal && unit ? dealLabel(dealInput(deal), UNIT_LABEL[unit.unit]) : undefined,
+    );
+  }
 
   revalidatePath("/supplier");
   // חזרה לאותו מקום ברשימה (אותו חיפוש ותצוגה), עם גלילה למוצר שנשמר

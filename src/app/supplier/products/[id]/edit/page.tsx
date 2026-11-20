@@ -16,10 +16,10 @@ export default async function EditProductPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ back?: string }>;
+  searchParams: Promise<{ back?: string; deal?: string }>;
 }) {
   const { id } = await params;
-  const { back } = await searchParams;
+  const { back, deal } = await searchParams;
   const session = await requireRole("SUPPLIER");
   await requirePermission("prices", session.userId);
   const supplier = await supplierForUser(session.userId);
@@ -53,6 +53,7 @@ export default async function EditProductPage({
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
           back={back}
+          openDeal={deal === "1"}
           initial={{
             offerId: offer.id,
             productName: offer.product.name,

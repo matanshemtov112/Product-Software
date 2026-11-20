@@ -11,6 +11,8 @@ export function listQuery(params: Partial<Record<(typeof KEYS)[number], string |
 
 /** הכתובת לחזרה: רק הפרמטרים המותרים (לא כתובת חיצונית), עם המוצר שנשמר כדי לגלול אליו */
 export function listUrl(back: unknown, savedOfferId?: string) {
+  // עריכה שהתחילה מדף המבצעים חוזרת לדף המבצעים
+  if (back === "deals") return `/supplier/deals${savedOfferId ? `?saved=${savedOfferId}` : ""}`;
   const parsed = new URLSearchParams(typeof back === "string" ? back : "");
   const out = new URLSearchParams();
   for (const k of KEYS) {

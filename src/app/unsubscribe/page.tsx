@@ -50,9 +50,7 @@ export default async function UnsubscribePage({
             <p>
               להפסיק לשלוח אימיילים של ״{label}״ ל-<span dir="ltr">{user.email}</span>?
             </p>
-            {!marketing && (
-              <p className="text-sm text-muted">ההתראות ימשיכו להופיע בתוך המערכת. הודעות חשובות ימשיכו להישלח.</p>
-            )}
+            <p className="text-sm text-muted">ההתראות ימשיכו להופיע בתוך המערכת. הודעות חשובות ימשיכו להישלח.</p>
             <div>
               <button className="rounded-md bg-accent px-4 py-2 font-medium text-white">הסירו אותי</button>
             </div>

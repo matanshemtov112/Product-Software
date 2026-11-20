@@ -24,13 +24,14 @@ export async function setMarketingConsent(userId: string, on: boolean, source: s
   });
 }
 
-/** הסרה מקישור באימייל: מפסיק את האימיילים מהקבוצה, ובפרסומת גם מבטל את ההסכמה ומסתיר את ההודעות */
+/** הסרה מקישור באימייל: מפסיק את האימיילים מהקבוצה, ובפרסומת גם מבטל את ההסכמה */
 export async function unsubscribe(userId: string, category: NotificationCategory) {
   const marketing = category === "MARKETING";
   await db.notificationPreference.upsert({
     where: { userId_category: { userId, category } },
-    create: { userId, category, email: "OFF", inApp: !marketing },
-    update: marketing ? { email: "OFF", inApp: false } : { email: "OFF" },
+    // ההסרה חלה על האימיילים; ההתראות בתוך המערכת נשארות כמו שהן
+    create: { userId, category, email: "OFF", inApp: true },
+    update: { email: "OFF" },
   });
   if (marketing) await setMarketingConsent(userId, false, "unsubscribe-link");
   else
