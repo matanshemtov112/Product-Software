@@ -41,6 +41,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       confidence: suggested ? "low" : l.confidence,
       note: suggested ? "לא מצאנו התאמה בטוחה. בדקו שזה המוצר הנכון" : (l.note ?? null),
       included: Boolean(matched),
+      brand: l.brand ?? "",
     };
   });
   const supplierNames = await db.supplier.findMany({

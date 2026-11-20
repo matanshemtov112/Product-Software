@@ -17,6 +17,10 @@ export interface ReviewLine {
   confidence: Confidence;
   note: string | null;
   included: boolean;
+  /** המותג שזוהה בשורה; ריק כשלא זוהה */
+  brand: string;
+  /** להשוות רק למותג הזה (ברירת מחדל כשזוהה מותג) */
+  brandOnly?: boolean;
 }
 
 interface CatalogOption {
@@ -185,6 +189,48 @@ export function InvoiceReview({
                     />
                   </Field>
                 </div>
+              )}
+              {l.included && l.brand.trim() !== "" && (
+                <fieldset className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm">
+                  <legend className="px-1 text-xs text-muted">מותג</legend>
+                  <label className="flex flex-wrap items-center gap-2">
+                    <span>בחשבונית כתוב מותג:</span>
+                    <input
+                      name={`brand_${i}`}
+                      value={l.brand}
+                      onChange={(e) => update(i, { brand: e.target.value })}
+                      maxLength={40}
+                      aria-label="המותג שזוהה בחשבונית"
+                      className="w-32 rounded-md border border-border bg-surface px-2 py-1"
+                    />
+                  </label>
+                  <input type="hidden" name={`brandOnly_${i}`} value={l.brandOnly !== false ? "1" : "0"} />
+                  <div className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`brandChoice_${i}`}
+                        checked={l.brandOnly !== false}
+                        onChange={() => update(i, { brandOnly: true })}
+                        className="accent-accent"
+                      />
+                      להשוות רק ל{l.brand.trim()}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`brandChoice_${i}`}
+                        checked={l.brandOnly === false}
+                        onChange={() => update(i, { brandOnly: false })}
+                        className="accent-accent"
+                      />
+                      להשוות גם למותגים אחרים
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted">
+                    גם אם תבחרו רק {l.brand.trim()}, נראה לכם בדף הסל אם יש מוצר דומה ממותג אחר שזול יותר.
+                  </p>
+                </fieldset>
               )}
             </li>
           );

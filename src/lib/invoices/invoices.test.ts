@@ -88,8 +88,8 @@ describe("basketItemsFromInvoice", () => {
         4,
       ),
     ).toEqual([
-      { productId: "oil", monthlyQuantity: 96, currentUnitPriceAgorot: 1000 },
-      { productId: "tomato", monthlyQuantity: 40, currentUnitPriceAgorot: null },
+      { productId: "oil", monthlyQuantity: 96, currentUnitPriceAgorot: 1000, preferredBrand: null },
+      { productId: "tomato", monthlyQuantity: 40, currentUnitPriceAgorot: null, preferredBrand: null },
     ]);
   });
 });
@@ -104,5 +104,46 @@ describe("suggestProduct", () => {
   });
   it("returns null when no word matches", () => {
     expect(suggestProduct("פיקדון ארגזים", items, (i) => i)).toBeNull();
+  });
+});
+
+describe("brands from invoices", () => {
+  it("reads the brand of each line", async () => {
+    const { parseInvoice } = await import("./read");
+    const result = parseInvoice(
+      JSON.stringify({
+        supplierName: "",
+        invoiceDate: "",
+        pricesIncludeVat: false,
+        lines: [
+          {
+            text: "גבינת שמנת 5% גד",
+            product: "גבינת שמנת",
+            quantity: 10,
+            unitPrice: 20,
+            confidence: "high",
+            note: "",
+            brand: "גד",
+          },
+          { text: "סוכר", product: "סוכר", quantity: 5, unitPrice: 4, confidence: "high", note: "", brand: "" },
+        ],
+      }),
+      ["גבינת שמנת", "סוכר"],
+    );
+    expect(result.kind === "ok" && result.lines.map((l) => l.brand)).toEqual(["גד", undefined]);
+  });
+
+  it("keeps a preferred brand only when every line of the product asks for it", async () => {
+    const { basketItemsFromInvoice } = await import("./basket");
+    const items = basketItemsFromInvoice(
+      [
+        { productId: "a", quantity: 1, unitPriceAgorot: 100, preferredBrand: "גד" },
+        { productId: "a", quantity: 1, unitPriceAgorot: 100, preferredBrand: "גד" },
+        { productId: "b", quantity: 1, unitPriceAgorot: 100, preferredBrand: "גד" },
+        { productId: "b", quantity: 1, unitPriceAgorot: 100, preferredBrand: null },
+      ],
+      1,
+    );
+    expect(items.map((i) => i.preferredBrand)).toEqual(["גד", null]);
   });
 });

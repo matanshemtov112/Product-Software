@@ -24,6 +24,8 @@ export interface InvoiceLine {
   unitPriceAgorot: number | null;
   confidence: Confidence;
   note?: string;
+  /** המותג (היצרן) שמופיע בשורה, למשל "גד"; חסר כשלא מופיע מותג */
+  brand?: string;
 }
 
 export interface InvoiceReading {
@@ -38,7 +40,11 @@ export type ReadResult =
   | { kind: "refused" }
   | { kind: "error"; message: string };
 
-export type InvoiceReader = (files: InvoiceFile[], catalog: InvoiceCatalogEntry[]) => Promise<ReadResult>;
+export type InvoiceReader = (
+  files: InvoiceFile[],
+  catalog: InvoiceCatalogEntry[],
+  knownBrands?: string[],
+) => Promise<ReadResult>;
 
 export const INVOICE_MODEL = "claude-opus-5-5";
 
@@ -49,7 +55,7 @@ export function invoiceReadingEnabled() {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-function prompt(catalog: InvoiceCatalogEntry[]) {
+function prompt(catalog: InvoiceCatalogEntry[], knownBrands: string[] = []) {
   const lines = catalog
     .map(
       (c) =>
@@ -62,6 +68,7 @@ For each product line:
 - "text": the product description exactly as printed on the invoice.
 - "product": the matching product from the platform catalog below, using its name exactly as listed. Suppliers name products differently (brands, pack sizes, abbreviations), so match on what the product is, using the category and the "also called" names. Use "" if nothing in the catalog is the same product.
 - "quantity" and "unitPrice": convert to the catalog product's unit (ק״ג, ליטר or יחידה) when you can. For example a line of 2 tins of 18 liters of oil at ₪180 per tin is quantity 36 and unitPrice 10 for a product sold per liter. Take the unit price after any line discount. If there is no catalog match, give the numbers as printed. Use 0 for a number you cannot read.
+- "brand": the manufacturer or brand of the product when the line names one, for example "גד", "תנובה" or "שטראוס". Write it the way it appears in the list of known brands below when it is the same brand. Use "" when no brand is printed, or when the word is only the supplier's own name or a generic description.
 - "confidence": "high" when the text, the match and the numbers are all clear; "medium" when you had to convert units or the match is likely but not certain; "low" when something is unreadable or a guess.
 - "note": a short Hebrew note when confidence is not high, saying what to check, for example "לא ברור אם המחיר לקרטון או ליחידה". Otherwise "".
 
@@ -73,11 +80,11 @@ Also return:
 - "pricesIncludeVat": true only if the line prices printed on the invoice already include VAT (מע״מ). Most Israeli supplier invoices list prices before VAT and add VAT at the bottom.
 
 Catalog (name | unit | category | other names):
-${lines}`;
+${lines}${knownBrands.length ? `\n\nKnown brands on the platform: ${knownBrands.join(", ")}` : ""}`;
 }
 
 /** קורא חשבונית (תמונות או PDF) בעזרת Claude ומתאים את השורות לקטלוג */
-export const claudeInvoiceReader: InvoiceReader = async (files, catalog) => {
+export const claudeInvoiceReader: InvoiceReader = async (files, catalog, knownBrands = []) => {
   if (!invoiceReadingEnabled()) return { kind: "not_configured" };
   const names = catalog.map((c) => c.name);
   const client = new Anthropic();
@@ -109,8 +116,9 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog) => {
                     unitPrice: { type: "number" },
                     confidence: { type: "string", enum: ["high", "medium", "low"] },
                     note: { type: "string" },
+                    brand: { type: "string" },
                   },
-                  required: ["text", "product", "quantity", "unitPrice", "confidence", "note"],
+                  required: ["text", "product", "quantity", "unitPrice", "confidence", "note", "brand"],
                   additionalProperties: false,
                 },
               },
@@ -135,7 +143,7 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog) => {
                     source: { type: "base64", media_type: f.mediaType, data: f.data.toString("base64") },
                   } as const),
             ),
-            { type: "text", text: prompt(catalog) },
+            { type: "text", text: prompt(catalog, knownBrands) },
           ],
         },
       ],
@@ -191,6 +199,7 @@ export function parseInvoice(text: string, catalogNames: string[]): ReadResult {
         unitPriceAgorot: price ? Math.round((price * 100) / vat) : null,
         confidence,
         note: str(l.note) ?? undefined,
+        brand: str(l.brand)?.slice(0, 40) ?? undefined,
       },
     ];
   });

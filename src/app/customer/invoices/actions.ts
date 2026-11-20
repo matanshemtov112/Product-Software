@@ -54,7 +54,17 @@ export async function readInvoice(_: InvoiceFormState, form: FormData): Promise<
     category: c.parentCategory ? `${c.parentCategory} / ${c.category}` : c.category,
     aliases: c.aliases ?? [],
   }));
-  const result = fakeReading(catalog.map((c) => c.name)) ?? (await claudeInvoiceReader(checked.files, catalog));
+  // המותגים שספקים כתבו במערכת, כדי שהמותג מהחשבונית ייכתב באותה צורה וההשוואה לפי מותג תעבוד
+  const knownBrands = (
+    await db.supplierOffer.findMany({
+      where: { brand: { not: null }, archivedAt: null },
+      distinct: ["brand"],
+      select: { brand: true },
+      take: 300,
+    })
+  ).flatMap((o) => (o.brand ? [o.brand] : []));
+  const result =
+    fakeReading(catalog.map((c) => c.name)) ?? (await claudeInvoiceReader(checked.files, catalog, knownBrands));
 
   if (result.kind === "not_configured") return { error: "קריאת חשבוניות עוד לא הופעלה בשרת הזה." };
   if (result.kind === "refused") return { error: "לא הצלחנו לקרוא את הקובץ. נסו צילום ברור יותר של החשבונית." };
@@ -104,7 +114,16 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
     if (!product) return { error: `נא לבחור מוצר מהקטלוג לשורה ${Number(i) + 1}, או להוריד את הסימון שלה` };
     const quantity = Number(form.get(`quantity_${i}`));
     if (!Number.isFinite(quantity) || quantity <= 0) return { error: `נא למלא כמות ל"${product.name}"` };
-    lines.push({ productId: product.id, quantity, unitPriceAgorot: parseShekels(form.get(`price_${i}`)) });
+    const brand = String(form.get(`brand_${i}`) ?? "")
+      .trim()
+      .slice(0, 40);
+    lines.push({
+      productId: product.id,
+      quantity,
+      unitPriceAgorot: parseShekels(form.get(`price_${i}`)),
+      // הלקוח בחר "רק המותג הזה" במסך הבדיקה
+      preferredBrand: brand && form.get(`brandOnly_${i}`) === "1" ? brand : null,
+    });
   }
   if (lines.length === 0) return { error: "נא לסמן לפחות שורה אחת" };
 
