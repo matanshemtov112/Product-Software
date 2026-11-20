@@ -3,7 +3,15 @@ import { OfferFacts } from "@/components/offer-facts";
 import type { Plan } from "@/lib/engine";
 import { shekels } from "@/lib/format";
 
-export function PlanCard({ title, plan }: { title: string; plan: Plan | null }) {
+export function PlanCard({
+  title,
+  plan,
+  productName,
+}: {
+  title: string;
+  plan: Plan | null;
+  productName?: Map<string, string>;
+}) {
   return (
     <Card title={title}>
       {plan ? (
@@ -13,10 +21,21 @@ export function PlanCard({ title, plan }: { title: string; plan: Plan | null }) 
             <p className="text-2xl font-bold">{shekels(plan.totalAgorot)}</p>
           </div>
           <ul className="flex flex-col gap-1 text-muted">
-            {plan.explanation.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
+            {plan.explanation
+              .filter((e) => !(productName && e.startsWith("חסרים ")))
+              .map((e) => (
+                <li key={e}>{e}</li>
+              ))}
           </ul>
+          {productName && plan.missingProductIds.length > 0 && (
+            <p className="rounded-md bg-background px-2 py-1.5 text-xs">
+              <span className="font-medium text-danger">לא כלול: </span>
+              {plan.missingProductIds.map((id) => productName.get(id) ?? id).join(", ")}.{" "}
+              <a href="#split" className="text-accent hover:underline">
+                מה אפשר לעשות
+              </a>
+            </p>
+          )}
           <div className="flex flex-col gap-2">
             {plan.suppliers.map((s) => (
               <OfferFacts

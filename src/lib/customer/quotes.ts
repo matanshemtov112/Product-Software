@@ -17,6 +17,7 @@ import {
   type EngineResult,
   type SupplierInput,
   type SupplierQuote,
+  type SupplierShare,
 } from "@/lib/engine";
 import { loadEngineInput } from "@/lib/engine/load";
 import type { QuoteSnapshot } from "@/lib/inquiries";
@@ -65,6 +66,11 @@ export interface BasketAnalysis {
   volumeScale: number;
   /** מוצרים שהלקוח ביקש במותג מסוים: המחיר הזול באותו מותג, ומוצר דומה זול יותר ממותג אחר אם יש */
   brandChoices: BrandChoice[];
+  /**
+   * ספקים שמוכרים חלק מהסל אבל לא מגיעים למינימום ההזמנה שלהם, ולכן לא מופיעים בהצעות.
+   * המחירים שלהם מחושבים כאילו אין מינימום, כדי להראות ללקוח מה הם מוכרים.
+   */
+  belowMinimum: { supplierId: string; supplierName: string; minOrderAgorot: number; share: SupplierShare }[];
 }
 
 export interface BrandOffer {
@@ -98,9 +104,21 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
   const categoryOf = new Map(basket.items.map((i) => [i.productId, i.product.category.name]));
   const paid = new Map(basket.items.map((i) => [i.productId, i.currentUnitPriceAgorot]));
   const rows: QuoteRow[] = [];
+  const belowMinimum: BasketAnalysis["belowMinimum"] = [];
   for (const s of suppliers) {
     const quote = quoteForSupplier(lines, suppliers, options, s.id);
-    if (!quote) continue;
+    if (!quote) {
+      if (s.minOrderAgorot > 0) {
+        const noMin = optimizeBasket(lines, [{ ...s, minOrderAgorot: 0 }], {
+          ...options,
+          maxSuppliers: 1,
+        }).singleSupplier;
+        const share = noMin?.suppliers[0];
+        if (share)
+          belowMinimum.push({ supplierId: s.id, supplierName: s.name, minOrderAgorot: s.minOrderAgorot, share });
+      }
+      continue;
+    }
     rows.push({
       supplierId: s.id,
       supplierName: s.name,
@@ -117,6 +135,7 @@ export async function analyzeBasket(basketId: string): Promise<BasketAnalysis> {
     lineCount: lines.filter((l) => l.quantity > 0).length,
     volumeScale: options.volumeScale ?? 1,
     brandChoices: brandChoices(lines, suppliers, options, rows, units),
+    belowMinimum,
   };
 }
 

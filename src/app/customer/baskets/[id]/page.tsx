@@ -7,6 +7,8 @@ import { BlockedList, CostBreakdown } from "@/components/effective-cost";
 import { Card } from "@/components/form";
 import { PlanCard } from "@/components/plan-card";
 import { OfferFacts } from "@/components/offer-facts";
+import { SplitAdviceCard } from "@/components/split-advice";
+import { splitAdvice } from "@/lib/customer/split-advice";
 import { LOCK_DAYS } from "@/lib/quote-validity";
 import { BrandChoices } from "@/components/brand-choices";
 import { ProductComparison } from "@/components/product-comparison";
@@ -114,6 +116,32 @@ export default async function BasketPage({
     customer.preference,
   );
   const volume = volumeRangeFor(basket.monthlyVolumeMinAgorot);
+  // כשאין ספק אחד לכל הסל: מה חסר אצל כל ספק קרוב ומה צריך להפריד
+  const wantedItems = basket.items.filter((i) => i.monthlyQuantity > 0);
+  const productName = new Map(basket.items.map((i) => [i.productId, i.product.name]));
+  const split = splitAdvice(
+    wantedItems.map((i) => ({ productId: i.productId, name: i.product.name })),
+    rows
+      .map((r) => ({
+        supplierId: r.supplierId,
+        supplierName: r.supplierName,
+        minOrderAgorot: r.supplier.minOrderAgorot,
+        lines: r.quote.share.lines,
+        totalAgorot: r.quote.share.totalAgorot,
+      }))
+      .concat(
+        analysis.belowMinimum.map((b) => ({
+          supplierId: b.supplierId,
+          supplierName: b.supplierName,
+          minOrderAgorot: b.minOrderAgorot,
+          lines: b.share.lines,
+          totalAgorot: b.share.totalAgorot,
+          belowMinimum: true,
+        })),
+      ),
+    basket.deliveriesPerMonth,
+  );
+  const unitOf = new Map(basket.items.map((i) => [i.productId, UNIT_LABEL[i.product.unit]]));
   // המחירים שהלקוח משלם היום מול ההצעה הזולה במערכת לכל מוצר
   const paid = paidComparison(basket, analysis);
   const yourSupplier = basket.currentSupplier?.companyName ?? basket.currentSupplierName;
@@ -325,14 +353,16 @@ export default async function BasketPage({
         שלוש אפשרויות לסל
       </h2>
       <div className="grid gap-4 md:grid-cols-3">
-        <PlanCard title="המלצה" plan={result.recommended} />
-        <PlanCard title="העלות הנמוכה ביותר" plan={result.lowestCost} />
-        <PlanCard title="ספק יחיד" plan={result.singleSupplier} />
+        <PlanCard title="המלצה" plan={result.recommended} productName={productName} />
+        <PlanCard title="העלות הנמוכה ביותר" plan={result.lowestCost} productName={productName} />
+        <PlanCard title="ספק יחיד" plan={result.singleSupplier} productName={productName} />
       </div>
       <p className="-mt-2 text-xs text-muted">
         כל המחירים ללא מע״מ. נבדקו {result.evaluatedCombinations} צירופי ספקים. אחרי ששולחים פנייה לספק, המחירים שבהצעה
         נשמרים לכם {LOCK_DAYS} ימים.
       </p>
+
+      {split && <SplitAdviceCard advice={split} basketId={basket.id} unitOf={(id) => unitOf.get(id) ?? "יחידה"} />}
 
       {!basket.savedAt && (
         <div
