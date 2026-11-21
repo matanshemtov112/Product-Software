@@ -25,6 +25,7 @@ export default async function SupplierAssistant() {
         confirm={confirmSupplierAction}
         cancel={cancelSupplierAction}
         enabled={agentEnabled()}
+        placeholder="מה תרצו לעשות? למשל: אילו מחירים צריך לעדכן?"
       />
     </div>
   );
