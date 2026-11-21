@@ -35,6 +35,10 @@ describe("image suggestions", () => {
   it("only downloads from the open image hosts over https", () => {
     expect(isAllowedImageUrl("https://upload.wikimedia.org/x.jpg")).toBe(true);
     expect(isAllowedImageUrl("https://images.openfoodfacts.org/x.jpg")).toBe(true);
+    // Commons מחזיר כיום תמונות מוקטנות מהשרת הזה
+    expect(
+      isAllowedImageUrl("https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Tomato.jpg/400px-Tomato.jpg"),
+    ).toBe(true);
     expect(isAllowedImageUrl("http://upload.wikimedia.org/x.jpg")).toBe(false);
     expect(isAllowedImageUrl("https://localhost/x.jpg")).toBe(false);
     expect(isAllowedImageUrl("https://upload.wikimedia.org.evil.com/x.jpg")).toBe(false);

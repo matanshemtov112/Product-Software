@@ -19,7 +19,12 @@ export type ImageSuggestion = {
 type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
 
 /** השרתים היחידים שמהם השרת מוריד תמונה שהספק בחר (הגנה מפני הורדה מכתובת שרירותית) */
-export const ALLOWED_IMAGE_HOSTS = ["upload.wikimedia.org", "images.openfoodfacts.org", "static.openfoodfacts.org"];
+export const ALLOWED_IMAGE_HOSTS = [
+  "upload.wikimedia.org",
+  "thumb.wikimedia.org",
+  "images.openfoodfacts.org",
+  "static.openfoodfacts.org",
+];
 
 export const MAX_SUGGESTIONS = 8;
 const TIMEOUT_MS = 6000;
