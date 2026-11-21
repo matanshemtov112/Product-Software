@@ -57,6 +57,12 @@ export function CustomerSidebar({
       </div>
       <div id="customer-menu" className={`${open ? "flex" : "hidden"} flex-col gap-4 md:flex`}>
         <BellLink href="/customer/notifications" unread={unread} />
+        <Link
+          href="/customer/assistant"
+          className={`mx-1 -mt-2 rounded-md border px-3 py-2 text-center text-sm font-medium ${pathname === "/customer/assistant" ? "border-accent bg-accent-soft text-accent" : "border-border hover:border-accent hover:text-accent"}`}
+        >
+          ✦ העוזר החכם
+        </Link>
         <Needs p="buy">
           <Link
             href="/customer/baskets/new"
