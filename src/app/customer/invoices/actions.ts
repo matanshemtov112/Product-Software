@@ -12,7 +12,7 @@ import { db } from "@/lib/db";
 import { after } from "next/server";
 import { notifyInvoiceSavings } from "@/lib/notify/invoice-savings";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { basketItemsFromInvoice, type ConfirmedLine } from "@/lib/invoices/basket";
+import { basketItemsFromInvoice, monthlyFromUsage, type ConfirmedLine } from "@/lib/invoices/basket";
 import { checkInvoiceFiles } from "@/lib/invoices/files";
 import { purgeOldInvoices } from "@/lib/invoices/retention";
 import { claudeInvoiceReader, parseInvoice, type ReadResult } from "@/lib/invoices/read";
@@ -89,6 +89,9 @@ const confirmSchema = z.object({
   name: z.string().trim().min(2, "נא לתת שם לסל").max(60),
   supplierName: z.string().trim().max(80).optional(),
   invoicesPerMonth: z.coerce.number().min(0.25, "כמה פעמים בחודש מגיעה חשבונית כזו?").max(31),
+  // invoice = הכמויות מהחשבונית; own = רק המוצרים, והלקוח ממלא צריכה לשבוע או לחודש
+  quantityMode: z.enum(["invoice", "own"]).default("invoice"),
+  usagePeriod: z.enum(["week", "month"]).default("month"),
 });
 
 /** יצירת סל מהשורות שהלקוח אישר: הספק הנוכחי והמחירים של היום, ומשם ישר להשוואה */
@@ -108,12 +111,20 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
       p,
     ]),
   );
+  const own = data.quantityMode === "own";
+  const periodWord = data.usagePeriod === "week" ? "השבועית" : "החודשית";
   const lines: ConfirmedLine[] = [];
   for (const i of rows) {
     const product = products.get(String(form.get(`product_${i}`) ?? ""));
     if (!product) return { error: `נא לבחור מוצר מהקטלוג לשורה ${Number(i) + 1}, או להוריד את הסימון שלה` };
-    const quantity = Number(form.get(`quantity_${i}`));
-    if (!Number.isFinite(quantity) || quantity <= 0) return { error: `נא למלא כמות ל"${product.name}"` };
+    const entered = Number(form.get(own ? `usage_${i}` : `quantity_${i}`));
+    if (!Number.isFinite(entered) || entered <= 0) {
+      return {
+        error: own ? `נא למלא את הצריכה ${periodWord} של "${product.name}"` : `נא למלא כמות ל"${product.name}"`,
+      };
+    }
+    // במצב "הצריכה שלי" הכמות כבר חודשית; במצב החשבונית היא מוכפלת במספר החשבוניות בחודש
+    const quantity = own ? monthlyFromUsage(entered, data.usagePeriod) : entered;
     const brand = String(form.get(`brand_${i}`) ?? "")
       .trim()
       .slice(0, 40);
@@ -146,7 +157,7 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
       currentSupplierName: registered?.companyName ?? typedName,
       monthlyVolumeMinAgorot: volume ? volume.min * 100 : null,
       monthlyVolumeMaxAgorot: volume?.max ? volume.max * 100 : null,
-      items: { create: basketItemsFromInvoice(lines, data.invoicesPerMonth) },
+      items: { create: basketItemsFromInvoice(lines, own ? 1 : data.invoicesPerMonth) },
     },
   });
   await db.invoice.update({ where: { id: invoice.id }, data: { basketId: basket.id, supplierName: typedName } });

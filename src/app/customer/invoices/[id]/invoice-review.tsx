@@ -5,6 +5,7 @@ import { ActionForm } from "@/components/action-form";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
+import { monthlyFromUsage, WEEKS_PER_MONTH, type UsagePeriod } from "@/lib/invoices/basket";
 import type { Confidence } from "@/lib/invoices/read";
 import { basketFromInvoice } from "../actions";
 
@@ -21,6 +22,8 @@ export interface ReviewLine {
   brand: string;
   /** להשוות רק למותג הזה (ברירת מחדל כשזוהה מותג) */
   brandOnly?: boolean;
+  /** הצריכה שהלקוח ממלא בעצמו, כשבחר להעתיק רק את המוצרים */
+  usage?: string;
 }
 
 interface CatalogOption {
@@ -52,6 +55,10 @@ export function InvoiceReview({
   const [state, action, pending] = useActionState(basketFromInvoice, {});
   const [lines, setLines] = useState(initial);
   const [perMonth, setPerMonth] = useState("4");
+  const [mode, setMode] = useState<"invoice" | "own">("invoice");
+  const [period, setPeriod] = useState<UsagePeriod>("week");
+  const own = mode === "own";
+  const periodWord = period === "week" ? "לשבוע" : "לחודש";
   const byId = useMemo(() => new Map(catalog.map((p) => [p.id, p])), [catalog]);
   const groups = useMemo(() => {
     const map = new Map<string, CatalogOption[]>();
@@ -65,10 +72,72 @@ export function InvoiceReview({
   const included = lines.filter((l) => l.included);
   const invoiceTotal = included.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0);
   const factor = Number(perMonth) || 0;
+  // במצב "הצריכה שלי": עלות חודשית לפי הצריכה שמולאה והמחיר מהחשבונית
+  const ownMonthly = included.reduce(
+    (sum, l) => sum + monthlyFromUsage(Number(l.usage) || 0, period) * (Number(l.price) || 0),
+    0,
+  );
+  const ownMissing = own ? included.filter((l) => !(Number(l.usage) > 0)).length : 0;
 
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="invoiceId" value={invoiceId} />
+      <input type="hidden" name="quantityMode" value={mode} />
+      <input type="hidden" name="usagePeriod" value={period} />
+      <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <legend className="px-1 font-semibold">איך לבנות את הסל מהחשבונית?</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(
+            [
+              ["invoice", "להעתיק את הכמויות מהחשבונית", "הסל יקבל את המוצרים ואת הכמויות כפי שהם בחשבונית."],
+              [
+                "own",
+                "רק רשימת המוצרים, את הכמויות אמלא בעצמי",
+                "מתאים כשהחשבונית לא מייצגת את הצריכה הרגילה. ממלאים כמה צורכים בשבוע או בחודש מכל מוצר.",
+              ],
+            ] as const
+          ).map(([value, title, hint]) => (
+            <label
+              key={value}
+              className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 ${mode === value ? "border-accent bg-accent-soft" : "border-border"}`}
+            >
+              <input
+                type="radio"
+                name="quantityModeChoice"
+                checked={mode === value}
+                onChange={() => setMode(value)}
+                className="mt-1 accent-accent"
+              />
+              <span>
+                <span className="block font-medium">{title}</span>
+                <span className="block text-xs text-muted">{hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {own && (
+          <div role="radiogroup" aria-label="הצריכה שאתם ממלאים" className="flex flex-wrap items-center gap-3 text-sm">
+            <span>הכמויות שאמלא הן:</span>
+            {(
+              [
+                ["week", "צריכה שבועית"],
+                ["month", "צריכה חודשית"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="flex items-center gap-1.5">
+                <input
+                  type="radio"
+                  name="usagePeriodChoice"
+                  checked={period === value}
+                  onChange={() => setPeriod(value)}
+                  className="accent-accent"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
       <div className="grid gap-4 rounded-lg border border-border bg-surface p-5 sm:grid-cols-2">
         <Field label="הספק שהוציא את החשבונית">
           <Input name="supplierName" defaultValue={initialSupplierName} list="invoice-suppliers" maxLength={80} />
@@ -86,7 +155,7 @@ export function InvoiceReview({
             maxLength={60}
           />
         </Field>
-        <Field label="כמה חשבוניות כאלה מגיעות בחודש?">
+        <Field label={own ? "כמה הזמנות בחודש אתם עושים מהספק?" : "כמה חשבוניות כאלה מגיעות בחודש?"}>
           <Input
             name="invoicesPerMonth"
             type="number"
@@ -110,7 +179,11 @@ export function InvoiceReview({
           </Select>
         </Field>
         <p className="text-xs text-muted sm:col-span-2">
-          הכמות החודשית בסל = הכמות בחשבונית × מספר החשבוניות בחודש. לדוגמה, חשבונית שבועית = 4.
+          {own
+            ? period === "week"
+              ? `הכמות החודשית בסל = הצריכה השבועית × ${WEEKS_PER_MONTH}. מספר ההזמנות עוזר לבדוק את המינימום להזמנה אצל כל ספק.`
+              : "הכמות החודשית בסל = הצריכה החודשית שתמלאו. מספר ההזמנות עוזר לבדוק את המינימום להזמנה אצל כל ספק."
+            : "הכמות החודשית בסל = הכמות בחשבונית × מספר החשבוניות בחודש. לדוגמה, חשבונית שבועית = 4."}
         </p>
       </div>
 
@@ -165,18 +238,34 @@ export function InvoiceReview({
                       ))}
                     </Select>
                   </Field>
-                  <Field label={`כמות בחשבונית${unit ? ` (${unit})` : ""}`}>
-                    <Input
-                      name={`quantity_${i}`}
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step="any"
-                      value={l.quantity}
-                      onChange={(e) => update(i, { quantity: e.target.value })}
-                      required
-                    />
-                  </Field>
+                  {own ? (
+                    <Field label={`צריכה ${periodWord}${unit ? ` (${unit})` : ""}`}>
+                      <Input
+                        name={`usage_${i}`}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="any"
+                        value={l.usage ?? ""}
+                        placeholder={`בחשבונית: ${l.quantity}`}
+                        onChange={(e) => update(i, { usage: e.target.value })}
+                        required
+                      />
+                    </Field>
+                  ) : (
+                    <Field label={`כמות בחשבונית${unit ? ` (${unit})` : ""}`}>
+                      <Input
+                        name={`quantity_${i}`}
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        step="any"
+                        value={l.quantity}
+                        onChange={(e) => update(i, { quantity: e.target.value })}
+                        required
+                      />
+                    </Field>
+                  )}
                   <Field label={`מחיר ליחידה ₪${unit ? ` (ל${unit})` : ""}`}>
                     <Input
                       name={`price_${i}`}
@@ -239,9 +328,24 @@ export function InvoiceReview({
 
       <div className="sticky bottom-0 flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm">
-          {included.length} מתוך {lines.length} שורות בסל · סה״כ בחשבונית{" "}
-          <span className="font-semibold">{shekels(Math.round(invoiceTotal * 100))}</span>
-          {factor > 0 && (
+          {included.length} מתוך {lines.length} שורות בסל
+          {own ? (
+            ownMissing > 0 ? (
+              <> · חסרה צריכה {ownMissing === 1 ? "למוצר אחד" : `ל-${ownMissing} מוצרים`}</>
+            ) : (
+              <>
+                {" "}
+                · לפי מחירי החשבונית, בחודש בערך{" "}
+                <span className="font-semibold">{shekels(Math.round(ownMonthly * 100))}</span>
+              </>
+            )
+          ) : (
+            <>
+              {" "}
+              · סה״כ בחשבונית <span className="font-semibold">{shekels(Math.round(invoiceTotal * 100))}</span>
+            </>
+          )}
+          {!own && factor > 0 && (
             <>
               {" "}
               · בחודש בערך <span className="font-semibold">{shekels(Math.round(invoiceTotal * factor * 100))}</span>

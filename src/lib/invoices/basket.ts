@@ -40,3 +40,13 @@ export function basketItemsFromInvoice(lines: ConfirmedLine[], invoicesPerMonth:
     preferredBrand: e.brands.every((b) => b !== null && b === e.brands[0]) ? e.brands[0] : null,
   }));
 }
+
+/** שבועות בחודש, להמרת צריכה שבועית לחודשית */
+export const WEEKS_PER_MONTH = 4.33;
+
+export type UsagePeriod = "week" | "month";
+
+/** צריכה שהלקוח מילא בעצמו (לשבוע או לחודש) כצריכה חודשית */
+export function monthlyFromUsage(usage: number, period: UsagePeriod): number {
+  return Math.round(usage * (period === "week" ? WEEKS_PER_MONTH : 1) * 100) / 100;
+}

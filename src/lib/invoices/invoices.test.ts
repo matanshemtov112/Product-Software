@@ -147,3 +147,11 @@ describe("brands from invoices", () => {
     expect(items.map((i) => i.preferredBrand)).toEqual(["גד", null]);
   });
 });
+
+describe("monthlyFromUsage", () => {
+  it("turns weekly usage into monthly and keeps monthly as is", async () => {
+    const { monthlyFromUsage } = await import("./basket");
+    expect(monthlyFromUsage(5, "week")).toBe(21.65);
+    expect(monthlyFromUsage(20, "month")).toBe(20);
+  });
+});
