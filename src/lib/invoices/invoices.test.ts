@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { basketItemsFromInvoice } from "./basket";
-import { parseInvoice } from "./read";
+import { discountPct, parseInvoice } from "./read";
 import { suggestProduct } from "./suggest";
 
 const catalog = ["שמן קנולה", "עגבניות", "חזה עוף טרי"];
@@ -25,6 +25,7 @@ describe("parseInvoice", () => {
       kind: "ok",
       supplierName: "סיטונאות הצפון",
       invoiceDate: "2026-10-20",
+      discountPct: 0,
       lines: [
         {
           text: "קנולה פח 18 ל׳",
@@ -171,5 +172,59 @@ describe("invoice age", () => {
     expect(normalizeInvoiceDate("3.11.26")).toBe("2026-11-03");
     expect(normalizeInvoiceDate("31/02/2026")).toBeNull();
     expect(ageText(invoiceAge("2026-07-21", "2026-11-21"))).toBe("לפני כ-4 חודשים");
+  });
+});
+
+describe("invoice discounts", () => {
+  it("reads a general invoice discount and line discounts", () => {
+    const result = parseInvoice(
+      JSON.stringify({
+        supplierName: "",
+        invoiceDate: "",
+        invoiceDiscountPct: 5,
+        pricesIncludeVat: false,
+        lines: [
+          {
+            text: "עגבניות",
+            product: "עגבניות",
+            quantity: 10,
+            unitPrice: 9,
+            confidence: "high",
+            note: "",
+            lineDiscountPct: 10,
+          },
+          {
+            text: "שמן",
+            product: "שמן קנולה",
+            quantity: 18,
+            unitPrice: 9.5,
+            confidence: "high",
+            note: "",
+            lineDiscountPct: 0,
+          },
+        ],
+      }),
+      catalog,
+    );
+    expect(result.kind === "ok" && result.discountPct).toBe(5);
+    expect(result.kind === "ok" && result.lines.map((l) => l.lineDiscountPct)).toEqual([10, undefined]);
+  });
+
+  it("ignores impossible discounts", () => {
+    expect(discountPct(150)).toBe(0);
+    expect(discountPct(-3)).toBe(0);
+    expect(discountPct("5")).toBe(0);
+    expect(discountPct(7.456)).toBe(7.46);
+  });
+});
+
+describe("quantity input helpers", () => {
+  it("steps quantities and lists choices", async () => {
+    const { stepQuantity, quantityChoices } = await import("@/components/quantity-input");
+    expect(stepQuantity("3", 1)).toBe("4");
+    expect(stepQuantity("1", -1)).toBe("0.5");
+    expect(stepQuantity("0.5", -1)).toBe("");
+    expect(stepQuantity("", 1)).toBe("1");
+    expect(quantityChoices([12]).slice(0, 3)).toEqual([12, 1, 2]);
   });
 });

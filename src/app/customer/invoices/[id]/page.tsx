@@ -42,6 +42,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       note: suggested ? "לא מצאנו התאמה בטוחה. בדקו שזה המוצר הנכון" : (l.note ?? null),
       included: Boolean(matched),
       brand: l.brand ?? "",
+      lineDiscountPct: l.lineDiscountPct,
     };
   });
   const supplierNames = await db.supplier.findMany({
@@ -76,6 +77,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         initialSupplierName={invoice.supplierName ?? ""}
         supplierNames={supplierNames.map((s) => s.companyName)}
         initialDate={invoice.invoiceDate}
+        initialDiscount={invoice.discountPct}
       />
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted">

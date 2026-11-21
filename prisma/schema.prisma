@@ -485,6 +485,8 @@ model Invoice {
   /// שם הספק כפי שמופיע בחשבונית; לא נחשף לספקים אחרים
   supplierName String?
   invoiceDate  String?
+  /// הנחה כללית על החשבונית באחוזים, שלא כלולה במחירי השורות
+  discountPct  Float    @default(0)
   fileCount    Int
   /// השורות שנקראו (InvoiceLine[]), מחירים ללא מע״מ באגורות
   lines        Json

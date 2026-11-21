@@ -27,11 +27,15 @@ export interface InvoiceLine {
   note?: string;
   /** המותג (היצרן) שמופיע בשורה, למשל "גד"; חסר כשלא מופיע מותג */
   brand?: string;
+  /** אחוז הנחה שהודפס בשורה (המחיר כבר אחרי ההנחה הזו); חסר כשאין */
+  lineDiscountPct?: number;
 }
 
 export interface InvoiceReading {
   supplierName: string | null;
   invoiceDate: string | null;
+  /** הנחה כללית על כל החשבונית באחוזים (לא כלולה במחירי השורות); 0 כשאין */
+  discountPct: number;
   lines: InvoiceLine[];
 }
 
@@ -68,7 +72,7 @@ function prompt(catalog: InvoiceCatalogEntry[], knownBrands: string[] = []) {
 For each product line:
 - "text": the product description exactly as printed on the invoice.
 - "product": the matching product from the platform catalog below, using its name exactly as listed. Suppliers name products differently (brands, pack sizes, abbreviations), so match on what the product is, using the category and the "also called" names. Use "" if nothing in the catalog is the same product.
-- "quantity" and "unitPrice": convert to the catalog product's unit (ק״ג, ליטר or יחידה) when you can. For example a line of 2 tins of 18 liters of oil at ₪180 per tin is quantity 36 and unitPrice 10 for a product sold per liter. Take the unit price after any line discount. If there is no catalog match, give the numbers as printed. Use 0 for a number you cannot read.
+- "quantity" and "unitPrice": convert to the catalog product's unit (ק״ג, ליטר or יחידה) when you can. For example a line of 2 tins of 18 liters of oil at ₪180 per tin is quantity 36 and unitPrice 10 for a product sold per liter. Take the unit price after any line discount, and put that line discount in "lineDiscountPct" (for example 10 for "הנחה 10%"; if the line shows a discount amount instead, convert it to a percent of the line before discount; 0 if none). If there is no catalog match, give the numbers as printed. Use 0 for a number you cannot read.
 - "brand": the manufacturer or brand of the product when the line names one, for example "גד", "תנובה" or "שטראוס". Write it the way it appears in the list of known brands below when it is the same brand. Use "" when no brand is printed, or when the word is only the supplier's own name or a generic description.
 - "confidence": "high" when the text, the match and the numbers are all clear; "medium" when you had to convert units or the match is likely but not certain; "low" when something is unreadable or a guess.
 - "note": a short Hebrew note when confidence is not high, saying what to check, for example "לא ברור אם המחיר לקרטון או ליחידה". Otherwise "".
@@ -78,6 +82,7 @@ Skip lines that are not products: deposits (פיקדון), delivery fees, totals
 Also return:
 - "supplierName": the name of the supplier that issued the invoice, as printed (not the restaurant's name). "" if not visible.
 - "invoiceDate": the invoice date (תאריך החשבונית / תאריך הפקה, not a due date or delivery date) as YYYY-MM-DD, or "" if not visible. Israeli invoices print dates day first, so 03/11/2026 is 2026-11-03.
+- "invoiceDiscountPct": a general discount on the whole invoice that is NOT already inside the line prices, as a percent (for example "הנחה כללית 5%" or "הנחת לקוח 3%" -> 5 or 3). If it is printed as an amount (for example "הנחה ₪120" on a ₪2,400 subtotal), convert it to a percent of the subtotal before the discount (5). 0 if there is no such discount.
 - "pricesIncludeVat": true only if the line prices printed on the invoice already include VAT (מע״מ). Most Israeli supplier invoices list prices before VAT and add VAT at the bottom.
 
 Catalog (name | unit | category | other names):
@@ -105,6 +110,7 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog, knownBr
             properties: {
               supplierName: { type: "string" },
               invoiceDate: { type: "string" },
+              invoiceDiscountPct: { type: "number" },
               pricesIncludeVat: { type: "boolean" },
               lines: {
                 type: "array",
@@ -118,13 +124,23 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog, knownBr
                     confidence: { type: "string", enum: ["high", "medium", "low"] },
                     note: { type: "string" },
                     brand: { type: "string" },
+                    lineDiscountPct: { type: "number" },
                   },
-                  required: ["text", "product", "quantity", "unitPrice", "confidence", "note", "brand"],
+                  required: [
+                    "text",
+                    "product",
+                    "quantity",
+                    "unitPrice",
+                    "confidence",
+                    "note",
+                    "brand",
+                    "lineDiscountPct",
+                  ],
                   additionalProperties: false,
                 },
               },
             },
-            required: ["supplierName", "invoiceDate", "pricesIncludeVat", "lines"],
+            required: ["supplierName", "invoiceDate", "invoiceDiscountPct", "pricesIncludeVat", "lines"],
             additionalProperties: false,
           },
         },
@@ -167,6 +183,9 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog, knownBr
 };
 
 const positive = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null);
+/** אחוז הנחה סביר (מעל 0 ועד 90), מעוגל לשתי ספרות; אחרת 0 */
+export const discountPct = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) && v > 0 && v <= 90 ? Math.round(v * 100) / 100 : 0;
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
 /**
@@ -201,6 +220,7 @@ export function parseInvoice(text: string, catalogNames: string[]): ReadResult {
         confidence,
         note: str(l.note) ?? undefined,
         brand: str(l.brand)?.slice(0, 40) ?? undefined,
+        lineDiscountPct: discountPct(l.lineDiscountPct) || undefined,
       },
     ];
   });
@@ -208,6 +228,7 @@ export function parseInvoice(text: string, catalogNames: string[]): ReadResult {
     kind: "ok",
     supplierName: str(obj.supplierName),
     invoiceDate: normalizeInvoiceDate(date),
+    discountPct: discountPct(obj.invoiceDiscountPct),
     lines,
   };
 }

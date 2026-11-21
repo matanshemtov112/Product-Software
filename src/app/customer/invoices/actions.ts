@@ -78,11 +78,17 @@ export async function readInvoice(_: InvoiceFormState, form: FormData): Promise<
       customerId: customer.id,
       supplierName: result.supplierName,
       invoiceDate: result.invoiceDate,
+      discountPct: result.discountPct,
       fileCount: checked.files.length,
       lines: JSON.parse(JSON.stringify(result.lines)),
     },
   });
   redirect(`/customer/invoices/${invoice.id}`);
+}
+
+/** המחיר בשורה אחרי ההנחה הכללית של החשבונית, כדי שההשוואה תהיה מול מה שהלקוח באמת משלם */
+function afterDiscount(agorot: number | null, pct: number): number | null {
+  return agorot === null || !pct ? agorot : Math.round(agorot * (1 - pct / 100));
 }
 
 const confirmSchema = z.object({
@@ -94,6 +100,12 @@ const confirmSchema = z.object({
   quantityMode: z.enum(["invoice", "own"]).default("invoice"),
   usagePeriod: z.enum(["week", "month"]).default("month"),
   invoiceDate: z.string().trim().max(20).optional(),
+  // הנחה כללית על החשבונית (%), שמורידה את המחיר של כל שורה
+  discountPct: z.coerce
+    .number()
+    .min(0, "ההנחה לא יכולה להיות שלילית")
+    .max(90, "הנחה של יותר מ-90%? בדקו את המספר")
+    .default(0),
   // חשבונית בת 3-12 חודשים: האם המחירים בה עדיין נכונים
   oldPrices: z.enum(["keep", "drop"]).optional(),
 });
@@ -145,7 +157,7 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
     lines.push({
       productId: product.id,
       quantity,
-      unitPriceAgorot: usePrices ? parseShekels(form.get(`price_${i}`)) : null,
+      unitPriceAgorot: usePrices ? afterDiscount(parseShekels(form.get(`price_${i}`)), data.discountPct) : null,
       // הלקוח בחר "רק המותג הזה" במסך הבדיקה
       preferredBrand: brand && form.get(`brandOnly_${i}`) === "1" ? brand : null,
     });
@@ -176,7 +188,7 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
   });
   await db.invoice.update({
     where: { id: invoice.id },
-    data: { basketId: basket.id, supplierName: typedName, invoiceDate },
+    data: { basketId: basket.id, supplierName: typedName, invoiceDate, discountPct: data.discountPct },
   });
   // התראה אחת על כל ההזדמנויות בחשבונית, ולא אחת לכל מוצר (אחרי שהלקוח כבר עבר לדף הסל)
   after(() => notifyInvoiceSavings(customer.id, basket.id, invoice.id, typedName));

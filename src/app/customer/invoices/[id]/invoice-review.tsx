@@ -9,6 +9,7 @@ import { monthlyFromUsage, WEEKS_PER_MONTH, type UsagePeriod } from "@/lib/invoi
 import type { Confidence } from "@/lib/invoices/read";
 import { ageText, FRESH_DAYS, invoiceAge, todayInIsrael } from "@/lib/invoices/age";
 import { basketFromInvoice } from "../actions";
+import { QuantityInput } from "@/components/quantity-input";
 import { ProductPicker, type PickerOption } from "./product-picker";
 
 export interface ReviewLine {
@@ -26,9 +27,14 @@ export interface ReviewLine {
   brandOnly?: boolean;
   /** הצריכה שהלקוח ממלא בעצמו, כשבחר להעתיק רק את המוצרים */
   usage?: string;
+  /** הנחה שהודפסה בשורה; המחיר כבר אחריה */
+  lineDiscountPct?: number;
 }
 
 type CatalogOption = PickerOption;
+
+const QTY_INPUT =
+  "min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent";
 
 const CONFIDENCE: Record<Confidence, { label: string; className: string }> = {
   high: { label: "נקרא בבירור", className: "bg-accent-soft text-accent" },
@@ -43,7 +49,10 @@ export function InvoiceReview({
   initialSupplierName,
   supplierNames,
   initialDate,
+  initialDiscount,
 }: {
+  /** הנחה כללית שזוהתה בחשבונית (%) */
+  initialDiscount: number;
   /** תאריך החשבונית כפי שנקרא (YYYY-MM-DD), או null כשלא זוהה */
   initialDate: string | null;
   invoiceId: string;
@@ -55,6 +64,9 @@ export function InvoiceReview({
   const [state, action, pending] = useActionState(basketFromInvoice, {});
   const [lines, setLines] = useState(initial);
   const [perMonth, setPerMonth] = useState("4");
+  const [discount, setDiscount] = useState(initialDiscount ? String(initialDiscount) : "");
+  const pct = Math.min(90, Math.max(0, Number(discount) || 0));
+  const net = (price: string) => (Number(price) || 0) * (1 - pct / 100);
   const [date, setDate] = useState(initialDate ?? "");
   const [oldPrices, setOldPrices] = useState<"" | "keep" | "drop">("");
   const today = todayInIsrael();
@@ -70,11 +82,11 @@ export function InvoiceReview({
     setLines((current) => current.map((l, j) => (j === i ? { ...l, ...patch } : l)));
 
   const included = lines.filter((l) => l.included);
-  const invoiceTotal = included.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.price) || 0), 0);
+  const invoiceTotal = included.reduce((sum, l) => sum + (Number(l.quantity) || 0) * net(l.price), 0);
   const factor = Number(perMonth) || 0;
   // במצב "הצריכה שלי": עלות חודשית לפי הצריכה שמולאה והמחיר מהחשבונית
   const ownMonthly = included.reduce(
-    (sum, l) => sum + monthlyFromUsage(Number(l.usage) || 0, period) * (Number(l.price) || 0),
+    (sum, l) => sum + monthlyFromUsage(Number(l.usage) || 0, period) * net(l.price),
     0,
   );
   const ownMissing = own ? included.filter((l) => !(Number(l.usage) > 0)).length : 0;
@@ -247,6 +259,30 @@ export function InvoiceReview({
             ))}
           </Select>
         </Field>
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <Field label="הנחה כללית על כל החשבונית, באחוזים (אם יש)">
+            <Input
+              name="discountPct"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              max={90}
+              step="any"
+              value={discount}
+              placeholder="0"
+              onChange={(e) => setDiscount(e.target.value)}
+              className="w-32"
+            />
+          </Field>
+          <p className="text-xs text-muted">
+            {initialDiscount > 0
+              ? `זיהינו בחשבונית הנחה כללית של ${initialDiscount}%. `
+              : "לא זיהינו הנחה כללית בחשבונית. אם יש לכם הנחה קבועה מהספק, כתבו אותה כאן. "}
+            {pct > 0
+              ? `נוריד ${pct}% מהמחיר של כל מוצר, כדי שההשוואה תהיה מול מה שאתם באמת משלמים.`
+              : "המחירים יושוו כפי שהם בשורות."}
+          </p>
+        </div>
         <p className="text-xs text-muted sm:col-span-2">
           {own
             ? period === "week"
@@ -298,28 +334,28 @@ export function InvoiceReview({
                   </Field>
                   {own ? (
                     <Field label={`צריכה ${periodWord}${unit ? ` (${unit})` : ""}`}>
-                      <Input
+                      <QuantityInput
                         name={`usage_${i}`}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step="any"
                         value={l.usage ?? ""}
                         placeholder={`בחשבונית: ${l.quantity}`}
-                        onChange={(e) => update(i, { usage: e.target.value })}
+                        preferred={[Number(l.quantity)]}
+                        onValue={(v) => update(i, { usage: v })}
+                        aria-label={`צריכה ${periodWord} של ${l.text}`}
+                        inputClassName={QTY_INPUT}
+                        wrapperClassName="flex w-full items-center gap-1"
                         required
                       />
                     </Field>
                   ) : (
                     <Field label={`כמות בחשבונית${unit ? ` (${unit})` : ""}`}>
-                      <Input
+                      <QuantityInput
                         name={`quantity_${i}`}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step="any"
                         value={l.quantity}
-                        onChange={(e) => update(i, { quantity: e.target.value })}
+                        preferred={[Number(initial[i]?.quantity)]}
+                        onValue={(v) => update(i, { quantity: v })}
+                        aria-label={`כמות בחשבונית של ${l.text}`}
+                        inputClassName={QTY_INPUT}
+                        wrapperClassName="flex w-full items-center gap-1"
                         required
                       />
                     </Field>
@@ -334,6 +370,14 @@ export function InvoiceReview({
                       value={l.price}
                       onChange={(e) => update(i, { price: e.target.value })}
                     />
+                    {pct > 0 && Number(l.price) > 0 && (
+                      <span className="text-xs text-accent">
+                        אחרי ההנחה: {shekels(Math.round(net(l.price) * 100), 2)}
+                      </span>
+                    )}
+                    {l.lineDiscountPct ? (
+                      <span className="text-xs text-muted">כולל הנחה של {l.lineDiscountPct}% שמופיעה בשורה</span>
+                    ) : null}
                   </Field>
                 </div>
               )}

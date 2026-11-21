@@ -6,6 +6,7 @@ import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { UNIT_LABEL } from "@/lib/format";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { normalize, searchItems } from "@/lib/search";
+import { QuantityInput } from "@/components/quantity-input";
 import { saveBasket } from "../actions";
 
 export interface CatalogItem {
@@ -254,18 +255,14 @@ export function BasketBuilder({
                   {r.included && <input type="hidden" name="productId" value={r.productId} />}
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-1.5 text-sm">
-                      <input
+                      <QuantityInput
                         name={r.included ? `quantity_${r.productId}` : undefined}
-                        type="number"
-                        min="0"
-                        step="any"
                         value={r.quantity}
-                        onChange={(e) => update(r.productId, { quantity: e.target.value, included: true })}
+                        onValue={(v) => update(r.productId, { quantity: v, included: true })}
                         disabled={!r.included && !checklist}
                         required={r.included && visible.has(r.productId)}
                         aria-label={`כמות חודשית של ${p.name}`}
-                        className="w-20 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent sm:w-24"
-                        dir="ltr"
+                        inputClassName="w-16 rounded-md border border-border bg-surface px-2 py-1.5 outline-none focus:border-accent sm:w-20"
                       />
                       <span className="w-10 text-muted sm:w-12">{unit}</span>
                     </label>
