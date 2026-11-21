@@ -43,8 +43,11 @@ export function AgentChat({
   confirm,
   cancel,
   enabled,
+  placeholder = "מה תרצו לעשות? למשל: תבנה לי סל ירקות לשבוע",
 }: {
   storageKey: string;
+  /** הטקסט בתיבת ההודעה כשהיא ריקה */
+  placeholder?: string;
   intro: string;
   suggestions: string[];
   send: (history: AgentHistory, text: string) => Promise<TurnResult>;
@@ -172,7 +175,7 @@ export function AgentChat({
           rows={2}
           maxLength={4000}
           disabled={!enabled}
-          placeholder={enabled ? "מה תרצו לעשות? למשל: תבנה לי סל ירקות לשבוע" : "העוזר עוד לא מחובר"}
+          placeholder={enabled ? placeholder : "העוזר עוד לא מחובר"}
           className="min-w-0 flex-1 resize-none rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
         />
         <div className="flex gap-2 sm:flex-col">
