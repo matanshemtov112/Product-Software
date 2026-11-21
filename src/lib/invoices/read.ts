@@ -1,3 +1,4 @@
+import { normalizeInvoiceDate } from "./age";
 import Anthropic from "@anthropic-ai/sdk";
 import { UNIT_LABEL } from "@/lib/format";
 
@@ -76,7 +77,7 @@ Skip lines that are not products: deposits (פיקדון), delivery fees, totals
 
 Also return:
 - "supplierName": the name of the supplier that issued the invoice, as printed (not the restaurant's name). "" if not visible.
-- "invoiceDate": the invoice date as YYYY-MM-DD, or "" if not visible.
+- "invoiceDate": the invoice date (תאריך החשבונית / תאריך הפקה, not a due date or delivery date) as YYYY-MM-DD, or "" if not visible. Israeli invoices print dates day first, so 03/11/2026 is 2026-11-03.
 - "pricesIncludeVat": true only if the line prices printed on the invoice already include VAT (מע״מ). Most Israeli supplier invoices list prices before VAT and add VAT at the bottom.
 
 Catalog (name | unit | category | other names):
@@ -206,7 +207,7 @@ export function parseInvoice(text: string, catalogNames: string[]): ReadResult {
   return {
     kind: "ok",
     supplierName: str(obj.supplierName),
-    invoiceDate: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+    invoiceDate: normalizeInvoiceDate(date),
     lines,
   };
 }

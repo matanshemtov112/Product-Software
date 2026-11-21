@@ -67,7 +67,8 @@ describe("parseInvoice", () => {
       catalog,
     );
     expect(result.kind === "ok" && result.lines[0].unitPriceAgorot).toBe(1000);
-    expect(result.kind === "ok" && [result.supplierName, result.invoiceDate]).toEqual([null, null]);
+    // תאריך ישראלי (יום קודם) מנורמל
+    expect(result.kind === "ok" && [result.supplierName, result.invoiceDate]).toEqual([null, "2026-10-20"]);
   });
 
   it("reports an error for a reply that is not JSON", () => {
@@ -153,5 +154,22 @@ describe("monthlyFromUsage", () => {
     const { monthlyFromUsage } = await import("./basket");
     expect(monthlyFromUsage(5, "week")).toBe(21.65);
     expect(monthlyFromUsage(20, "month")).toBe(20);
+  });
+});
+
+describe("invoice age", () => {
+  it("classifies invoices by age and reads Israeli dates", async () => {
+    const { invoiceAge, normalizeInvoiceDate, ageText } = await import("./age");
+    expect(invoiceAge("2026-11-11", "2026-11-21")).toMatchObject({ kind: "fresh", days: 10 });
+    expect(invoiceAge("2026-05-01", "2026-11-21").kind).toBe("old");
+    expect(invoiceAge("2025-01-01", "2026-11-21").kind).toBe("too_old");
+    expect(invoiceAge("2026-12-25", "2026-11-21").kind).toBe("future");
+    expect(invoiceAge("2026-11-22", "2026-11-21").kind).toBe("fresh");
+    expect(invoiceAge(null, "2026-11-21").kind).toBe("unknown");
+    expect(invoiceAge("2026-02-30", "2026-11-21").kind).toBe("unknown");
+    expect(normalizeInvoiceDate("03/11/2026")).toBe("2026-11-03");
+    expect(normalizeInvoiceDate("3.11.26")).toBe("2026-11-03");
+    expect(normalizeInvoiceDate("31/02/2026")).toBeNull();
+    expect(ageText(invoiceAge("2026-07-21", "2026-11-21"))).toBe("לפני כ-4 חודשים");
   });
 });

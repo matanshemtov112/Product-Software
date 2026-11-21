@@ -7,7 +7,9 @@ import { shekels, UNIT_LABEL } from "@/lib/format";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { monthlyFromUsage, WEEKS_PER_MONTH, type UsagePeriod } from "@/lib/invoices/basket";
 import type { Confidence } from "@/lib/invoices/read";
+import { ageText, FRESH_DAYS, invoiceAge, todayInIsrael } from "@/lib/invoices/age";
 import { basketFromInvoice } from "../actions";
+import { ProductPicker, type PickerOption } from "./product-picker";
 
 export interface ReviewLine {
   text: string;
@@ -26,12 +28,7 @@ export interface ReviewLine {
   usage?: string;
 }
 
-interface CatalogOption {
-  id: string;
-  name: string;
-  unit: string;
-  category: string;
-}
+type CatalogOption = PickerOption;
 
 const CONFIDENCE: Record<Confidence, { label: string; className: string }> = {
   high: { label: "נקרא בבירור", className: "bg-accent-soft text-accent" },
@@ -45,7 +42,10 @@ export function InvoiceReview({
   catalog,
   initialSupplierName,
   supplierNames,
+  initialDate,
 }: {
+  /** תאריך החשבונית כפי שנקרא (YYYY-MM-DD), או null כשלא זוהה */
+  initialDate: string | null;
   invoiceId: string;
   lines: ReviewLine[];
   catalog: CatalogOption[];
@@ -55,16 +55,16 @@ export function InvoiceReview({
   const [state, action, pending] = useActionState(basketFromInvoice, {});
   const [lines, setLines] = useState(initial);
   const [perMonth, setPerMonth] = useState("4");
+  const [date, setDate] = useState(initialDate ?? "");
+  const [oldPrices, setOldPrices] = useState<"" | "keep" | "drop">("");
+  const today = todayInIsrael();
+  const age = invoiceAge(date, today);
+  const pricesUsed = age.kind === "fresh" || (age.kind === "old" && oldPrices === "keep");
   const [mode, setMode] = useState<"invoice" | "own">("invoice");
   const [period, setPeriod] = useState<UsagePeriod>("week");
   const own = mode === "own";
   const periodWord = period === "week" ? "לשבוע" : "לחודש";
   const byId = useMemo(() => new Map(catalog.map((p) => [p.id, p])), [catalog]);
-  const groups = useMemo(() => {
-    const map = new Map<string, CatalogOption[]>();
-    for (const p of catalog) map.set(p.category, [...(map.get(p.category) ?? []), p]);
-    return [...map];
-  }, [catalog]);
 
   const update = (i: number, patch: Partial<ReviewLine>) =>
     setLines((current) => current.map((l, j) => (j === i ? { ...l, ...patch } : l)));
@@ -83,6 +83,75 @@ export function InvoiceReview({
     <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="invoiceId" value={invoiceId} />
       <input type="hidden" name="quantityMode" value={mode} />
+      {age.kind === "old" && oldPrices && <input type="hidden" name="oldPrices" value={oldPrices} />}
+      <section
+        aria-label="תאריך החשבונית"
+        className={`flex flex-col gap-3 rounded-lg border p-5 ${
+          age.kind === "fresh"
+            ? "border-border bg-surface"
+            : age.kind === "old" || age.kind === "unknown"
+              ? "border-[#e0b400] bg-[#fffbe6]"
+              : "border-danger bg-[#fdecec]"
+        }`}
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="תאריך החשבונית">
+            <Input
+              name="invoiceDate"
+              type="date"
+              value={date}
+              max={today}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="w-44"
+            />
+          </Field>
+          <p className="pb-2 text-sm">
+            {age.kind === "unknown"
+              ? initialDate
+                ? "נא לבדוק את התאריך."
+                : "לא הצלחנו לקרוא את התאריך מהחשבונית. נא למלא אותו."
+              : age.kind === "future"
+                ? "התאריך בעתיד. בדקו שהוא נכון."
+                : `החשבונית ${ageText(age)}.${initialDate && date === initialDate ? " זה התאריך שקראנו, אפשר לתקן." : ""}`}
+          </p>
+        </div>
+        {age.kind === "fresh" && <p className="text-sm text-muted">חשבונית עדכנית: נשווה את הסל מול המחירים שבה.</p>}
+        {age.kind === "old" && (
+          <div className="flex flex-col gap-2 text-sm">
+            <p>
+              החשבונית ישנה מ-{FRESH_DAYS} יום. ייתכן שהמחירים אצל הספק השתנו מאז, וההשוואה מול מחירים ישנים יכולה
+              להראות חיסכון שלא באמת קיים. האם אתם עדיין משלמים את המחירים שבחשבונית?
+            </p>
+            <div role="radiogroup" aria-label="המחירים בחשבונית" className="flex flex-col gap-1 sm:flex-row sm:gap-4">
+              {(
+                [
+                  ["keep", "כן, אלה המחירים שאני משלם היום"],
+                  ["drop", "לא בטוח, להשוות בלי המחירים מהחשבונית"],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="oldPricesChoice"
+                    checked={oldPrices === value}
+                    onChange={() => setOldPrices(value)}
+                    required
+                    className="accent-accent"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+        {age.kind === "too_old" && (
+          <p className="text-sm">
+            החשבונית ישנה מדי (יותר משנה). נשתמש רק ברשימת המוצרים ובכמויות, בלי המחירים שבה. כדי לראות כמה תחסכו מול מה
+            שאתם משלמים היום, העלו חשבונית מהחודשים האחרונים.
+          </p>
+        )}
+      </section>
       <input type="hidden" name="usagePeriod" value={period} />
       <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
         <legend className="px-1 font-semibold">איך לבנות את הסל מהחשבונית?</legend>
@@ -220,23 +289,12 @@ export function InvoiceReview({
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] [&_input]:w-full [&_input]:min-w-0 [&_select]:w-full [&_select]:min-w-0">
                   <input type="hidden" name="line" value={i} />
                   <Field label="המוצר בקטלוג">
-                    <Select
+                    <ProductPicker
                       name={`product_${i}`}
                       value={l.productId}
-                      onChange={(e) => update(i, { productId: e.target.value, suggested: false })}
-                      required
-                    >
-                      <option value="">בחרו מוצר…</option>
-                      {groups.map(([category, items]) => (
-                        <optgroup key={category} label={category}>
-                          {items.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </Select>
+                      options={catalog}
+                      onChange={(id) => update(i, { productId: id, suggested: false })}
+                    />
                   </Field>
                   {own ? (
                     <Field label={`צריכה ${periodWord}${unit ? ` (${unit})` : ""}`}>
@@ -353,8 +411,11 @@ export function InvoiceReview({
           )}
         </p>
         <div className="flex flex-col gap-1">
+          {!pricesUsed && (age.kind === "old" || age.kind === "too_old") && (
+            <p className="text-xs text-muted">המחירים מהחשבונית לא יישמרו בסל</p>
+          )}
           <FormError message={state.error} />
-          <SubmitButton pending={pending || included.length === 0}>
+          <SubmitButton pending={pending || included.length === 0 || age.kind === "future"}>
             {pending ? "משווים…" : "השוואת המחירים"}
           </SubmitButton>
         </div>

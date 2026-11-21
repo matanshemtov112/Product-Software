@@ -13,6 +13,7 @@ import { after } from "next/server";
 import { notifyInvoiceSavings } from "@/lib/notify/invoice-savings";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { basketItemsFromInvoice, monthlyFromUsage, type ConfirmedLine } from "@/lib/invoices/basket";
+import { invoiceAge, normalizeInvoiceDate } from "@/lib/invoices/age";
 import { checkInvoiceFiles } from "@/lib/invoices/files";
 import { purgeOldInvoices } from "@/lib/invoices/retention";
 import { claudeInvoiceReader, parseInvoice, type ReadResult } from "@/lib/invoices/read";
@@ -92,6 +93,9 @@ const confirmSchema = z.object({
   // invoice = הכמויות מהחשבונית; own = רק המוצרים, והלקוח ממלא צריכה לשבוע או לחודש
   quantityMode: z.enum(["invoice", "own"]).default("invoice"),
   usagePeriod: z.enum(["week", "month"]).default("month"),
+  invoiceDate: z.string().trim().max(20).optional(),
+  // חשבונית בת 3-12 חודשים: האם המחירים בה עדיין נכונים
+  oldPrices: z.enum(["keep", "drop"]).optional(),
 });
 
 /** יצירת סל מהשורות שהלקוח אישר: הספק הנוכחי והמחירים של היום, ומשם ישר להשוואה */
@@ -111,6 +115,16 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
       p,
     ]),
   );
+  // תאריך החשבונית: חשבונית ישנה מדי לא משמשת כמחיר הנוכחי של הלקוח
+  const invoiceDate = normalizeInvoiceDate(data.invoiceDate);
+  const age = invoiceAge(invoiceDate);
+  if (age.kind === "unknown") return { error: "נא למלא את תאריך החשבונית" };
+  if (age.kind === "future") return { error: "תאריך החשבונית בעתיד. בדקו שהתאריך נכון" };
+  if (age.kind === "old" && !data.oldPrices) {
+    return { error: "החשבונית מלפני כמה חודשים. נא לבחור אם המחירים בה עדיין נכונים" };
+  }
+  const usePrices = age.kind === "fresh" || (age.kind === "old" && data.oldPrices === "keep");
+
   const own = data.quantityMode === "own";
   const periodWord = data.usagePeriod === "week" ? "השבועית" : "החודשית";
   const lines: ConfirmedLine[] = [];
@@ -131,7 +145,7 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
     lines.push({
       productId: product.id,
       quantity,
-      unitPriceAgorot: parseShekels(form.get(`price_${i}`)),
+      unitPriceAgorot: usePrices ? parseShekels(form.get(`price_${i}`)) : null,
       // הלקוח בחר "רק המותג הזה" במסך הבדיקה
       preferredBrand: brand && form.get(`brandOnly_${i}`) === "1" ? brand : null,
     });
@@ -160,7 +174,10 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
       items: { create: basketItemsFromInvoice(lines, own ? 1 : data.invoicesPerMonth) },
     },
   });
-  await db.invoice.update({ where: { id: invoice.id }, data: { basketId: basket.id, supplierName: typedName } });
+  await db.invoice.update({
+    where: { id: invoice.id },
+    data: { basketId: basket.id, supplierName: typedName, invoiceDate },
+  });
   // התראה אחת על כל ההזדמנויות בחשבונית, ולא אחת לכל מוצר (אחרי שהלקוח כבר עבר לדף הסל)
   after(() => notifyInvoiceSavings(customer.id, basket.id, invoice.id, typedName));
   revalidatePath("/customer", "layout");

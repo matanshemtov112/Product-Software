@@ -66,9 +66,16 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       <InvoiceReview
         invoiceId={invoice.id}
         lines={lines}
-        catalog={catalog.map((p) => ({ id: p.id, name: p.name, unit: p.unit, category: p.category }))}
+        catalog={catalog.map((p) => ({
+          id: p.id,
+          name: p.name,
+          unit: p.unit,
+          category: p.parentCategory ? `${p.parentCategory} / ${p.category}` : p.category,
+          aliases: p.aliases ?? [],
+        }))}
         initialSupplierName={invoice.supplierName ?? ""}
         supplierNames={supplierNames.map((s) => s.companyName)}
+        initialDate={invoice.invoiceDate}
       />
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted">
