@@ -77,7 +77,10 @@ export default async function SupplierDemand() {
         <p className="mt-1 text-xs text-muted">
           הכול חסוי: מוצר מופיע רק כשלפחות {MIN_BUSINESSES} עסקים שונים בדקו אותו, והמספר מוצג בטווח. לא מוצגים שמות
           עסקים, כמויות, מחירים או פרטים מחשבוניות.
-          {!paywallActive() && " בתקופת ההשקה הדף פתוח לכל הספקים ללא תשלום."}
+          {!paywallActive() && " בתקופת ההשקה הדף פתוח לכל הספקים ללא תשלום."}{" "}
+          <Link href="/privacy" className="underline">
+            מדיניות הפרטיות
+          </Link>
         </p>
       </div>
 

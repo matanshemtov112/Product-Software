@@ -2,6 +2,7 @@
 
 import { ActionForm } from "@/components/action-form";
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { Field, FormError, Input, Select, SubmitButton } from "@/components/form";
 import { register } from "@/lib/auth/actions";
 import { KindToggle } from "@/components/kind-toggle";
@@ -96,6 +97,13 @@ export function RegisterForm({
         </>
       )}
 
+      <p className="text-xs text-muted">
+        לפני ההרשמה כדאי לקרוא{" "}
+        <Link href="/privacy" target="_blank" className="text-accent underline">
+          איך אנחנו משתמשים במידע
+        </Link>
+        , כולל סטטיסטיקה מצטברת וחסויה לספקים על מוצרים מבוקשים.
+      </p>
       <FormError message={state.error} />
       <SubmitButton pending={pending}>הרשמה</SubmitButton>
     </ActionForm>
