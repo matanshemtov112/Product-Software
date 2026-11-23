@@ -8,11 +8,13 @@ export async function currentMember() {
   if (!session || (session.role !== "CUSTOMER" && session.role !== "SUPPLIER")) return null;
   const user = await db.user.findUnique({ where: { id: session.userId } });
   if (!user) return null;
-  const org = user.customerId
-    ? { customerId: user.customerId }
-    : user.supplierId
-      ? { supplierId: user.supplierId }
-      : null;
+  // לפי הצד שהמשתמש נמצא בו: לספק עם חשבון קנייה יש גם עסק וגם ספק
+  const org =
+    session.role === "CUSTOMER" && user.customerId
+      ? { customerId: user.customerId }
+      : session.role === "SUPPLIER" && user.supplierId
+        ? { supplierId: user.supplierId }
+        : null;
   if (!org) return null;
   return { user, org, role: session.role };
 }

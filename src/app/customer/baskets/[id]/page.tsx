@@ -19,6 +19,7 @@ import { rankSuppliers } from "@/lib/customer/fit";
 import { volumeRangeFor } from "@/lib/customer/volume";
 import { recordSupplierViews } from "@/lib/supplier/stats";
 import { recordDemand } from "@/lib/supplier/demand";
+import { RESTRICTED_NOTE, restrictedProductIds } from "@/lib/buying-account";
 import { analyzeBasket, customerForUser, getBasket, paidComparison } from "@/lib/customer/quotes";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { deleteBasket, recordCheck } from "../../actions";
@@ -67,6 +68,8 @@ export default async function BasketPage({
     db.invoice.findFirst({ where: { basketId: id, customerId: customer.id }, select: { id: true, createdAt: true } }),
   ]);
   if (!basket || !analysis) notFound();
+  const restricted = await restrictedProductIds(customer.id);
+  const ownProducts = basket.items.filter((i) => restricted.has(i.productId)).map((i) => i.product.name);
   // סטטיסטיקת צפיות לספקים נרשמת אחרי שהדף נשלח, כדי לא לעכב את הלקוח
   after(async () => {
     await recordSupplierViews(
@@ -213,6 +216,11 @@ export default async function BasketPage({
           <DeleteBasketButton basketId={basket.id} name={basket.name} action={deleteBasket} />
         </div>
       </div>
+      {ownProducts.length > 0 && (
+        <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
+          {RESTRICTED_NOTE}: {ownProducts.join(", ")}.
+        </p>
+      )}
 
       {invoice && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">

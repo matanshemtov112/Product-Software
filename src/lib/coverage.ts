@@ -32,7 +32,12 @@ export async function servingSupplierIds(customer: CoverageCustomer): Promise<st
     customerPoint(customer),
     db.supplier.findMany({
       // ספק שהעסק חסם לא מופיע לו בשום השוואה
-      where: { status: "APPROVED", blockedBy: { none: { customerId: customer.id, mode: "BLOCK" } } },
+      where: {
+        status: "APPROVED",
+        blockedBy: { none: { customerId: customer.id, mode: "BLOCK" } },
+        // ספק שקונה דרך חשבון הקנייה שלו לא מופיע לעצמו
+        OR: [{ buyingAccount: { is: null } }, { buyingAccount: { isNot: { id: customer.id } } }],
+      },
       select: {
         id: true,
         deliveryAreas: { select: { lat: true, lng: true, radiusKm: true } },

@@ -141,7 +141,7 @@ export default async function NewBasket({
   }
 
   if (mode === "supplier") {
-    const list = await supplierPriceList(supplierId!);
+    const list = await supplierPriceList(supplierId!, customer.id);
     if (!list) notFound();
     return (
       <div className="flex flex-col gap-4">

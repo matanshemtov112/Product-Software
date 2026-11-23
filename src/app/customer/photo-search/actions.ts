@@ -2,6 +2,7 @@
 
 import { requireRole } from "@/lib/auth/current";
 import { requirePermission } from "@/lib/auth/permission-check";
+import { withoutRestricted } from "@/lib/buying-account";
 import { servingSupplierIds } from "@/lib/coverage";
 import { catalogForBasket } from "@/lib/customer/catalog";
 import { customerForUser } from "@/lib/customer/quotes";
@@ -55,7 +56,10 @@ export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promis
   if (result.kind === "refused") return { error: "לא הצלחנו לזהות את התמונה. נסו תמונה אחרת של המוצר." };
   if (result.kind === "error") return { error: result.message };
 
-  const offers = await offersForProducts([...result.exact, ...result.similar], await servingSupplierIds(customer));
+  const offers = await withoutRestricted(
+    customer.id,
+    await offersForProducts([...result.exact, ...result.similar], await servingSupplierIds(customer)),
+  );
   // אות ביקוש מצטבר: רק המוצר שזוהה בוודאות, בלי התמונה ובלי פרטי העסק
   const exact = await db.product.findMany({ where: { name: { in: result.exact } }, select: { id: true } });
   after(() =>

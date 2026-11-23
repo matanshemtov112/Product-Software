@@ -68,6 +68,8 @@ export async function updateMember(form: FormData) {
   const action = String(form.get("action") ?? "");
   const target = await db.user.findFirst({ where: { id: userId, ...me.org } });
   if (!target || target.id === me.user.id) return;
+  // משתמש של ספק שנכנס לחשבון הקנייה מנוהל מהצד של הספק בלבד
+  if (me.role === "CUSTOMER" && target.supplierId) return;
   let details: Record<string, string>;
   if (action === "remove") {
     await db.user.delete({ where: { id: target.id } });

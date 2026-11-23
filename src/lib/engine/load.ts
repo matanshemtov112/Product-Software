@@ -1,3 +1,4 @@
+import { restrictedProductIds } from "@/lib/buying-account";
 import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel } from "@/lib/pack";
@@ -17,7 +18,9 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
     where: { id: basketId },
     include: { customer: true, items: { include: { product: { include: { category: true } } } } },
   });
-  const productIds = basket.items.map((i) => i.productId);
+  // חשבון קנייה של ספק: בלי מחירי מתחרים על מוצרים שהספק עצמו מוכר (המוצר יופיע כלא זמין)
+  const restricted = await restrictedProductIds(basket.customerId);
+  const productIds = basket.items.map((i) => i.productId).filter((id) => !restricted.has(id));
   const serving = await servingSupplierIds(basket.customer);
 
   const suppliers = await db.supplier.findMany({

@@ -7,6 +7,7 @@ import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { audit, clientIp } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { getSession } from "./current";
 import { hashPassword, verifyPassword } from "./password";
 import { HOME_BY_ROLE, SESSION_COOKIE, SESSION_MAX_AGE, type Session, signSession } from "./session";
 
@@ -176,4 +177,82 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
     details: { email: user.email, companyNumber: data.companyNumber },
   });
   redirect(HOME_BY_ROLE.SUPPLIER);
+}
+
+const buyingSchema = z.object({
+  businessType: z.string().trim().min(2, "נא לבחור סוג עסק").max(40),
+  city: z.string().trim().min(2, "נא למלא עיר").max(60),
+  address: z.string().trim().max(120, "הכתובת ארוכה מדי").optional(),
+  regionId: z.string().min(1, "נא לבחור אזור"),
+});
+
+/**
+ * מסחר בין ספקים: מנהל הספק פותח חשבון קנייה, כדי לקנות מספקים אחרים כמו כל עסק (למשל מפעל שקונה קמח).
+ * שם העסק בחשבון הקנייה הוא שם הספק, והמשתמש עובר אליו מיד.
+ */
+export async function openBuyingAccount(_: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  if (!session || session.role !== "SUPPLIER") redirect("/login");
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    include: { supplier: { include: { buyingAccount: { select: { id: true } } } } },
+  });
+  if (!user?.supplier || user.role !== "SUPPLIER") redirect("/login");
+  if (user.teamRole !== "MANAGER") return { error: "רק מנהל יכול לפתוח חשבון קנייה" };
+  const parsed = buyingSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
+  if (!(await db.region.findUnique({ where: { id: parsed.data.regionId } }))) return { error: "נא לבחור אזור" };
+  const supplier = user.supplier;
+  const account =
+    supplier.buyingAccount ??
+    (await db.customer.create({
+      data: {
+        businessName: supplier.companyName,
+        businessType: parsed.data.businessType,
+        city: parsed.data.city,
+        address: parsed.data.address || null,
+        regionId: parsed.data.regionId,
+        // לא מסעדה: מדלגים על בחירת סוג המסעדה (רשימה סטנדרטית של "אחר")
+        cuisine: "אחר",
+        ownerSupplierId: supplier.id,
+      },
+      select: { id: true },
+    }));
+  await audit({
+    action: "buying.opened",
+    userId: user.id,
+    actor: user.name,
+    targetType: "customer",
+    targetId: account.id,
+  });
+  return enterSide(user.id, user.name, "CUSTOMER", account.id);
+}
+
+/** מעבר בין צד המכירה (ספק) לצד הקנייה (חשבון הקנייה של אותו ספק) */
+export async function switchSide() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+    include: { supplier: { select: { buyingAccount: { select: { id: true } } } } },
+  });
+  if (!user?.supplierId || user.role === "ADMIN") redirect("/login");
+  if (user.role === "SUPPLIER") {
+    const account = user.supplier?.buyingAccount;
+    if (!account) redirect("/supplier/buying");
+    await enterSide(user.id, user.name, "CUSTOMER", account.id);
+  }
+  await enterSide(user.id, user.name, "SUPPLIER", user.customerId);
+}
+
+async function enterSide(
+  userId: string,
+  name: string,
+  role: "CUSTOMER" | "SUPPLIER",
+  customerId: string | null,
+): Promise<never> {
+  await db.user.update({ where: { id: userId }, data: { role, customerId } });
+  await startSession({ userId, role, name });
+  await audit({ action: "side.switched", userId, actor: name, details: { to: role } });
+  redirect(HOME_BY_ROLE[role]);
 }

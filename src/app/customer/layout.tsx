@@ -11,6 +11,7 @@ import { visibleFilter } from "@/lib/notify/prefs";
 import { notify } from "@/lib/notifications";
 import { CuisinePicker } from "./cuisine-picker";
 import { CustomerSidebar } from "./sidebar";
+import { switchSide } from "@/lib/auth/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,20 @@ export default async function CustomerLayout({ children }: { children: React.Rea
         />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">
-        {teamRole && teamRole !== "MANAGER" && (
+        {customer.ownerSupplierId && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent bg-accent-soft px-4 py-2 text-sm">
+            <span>
+              אתם בצד הקנייה של <span className="font-medium">{customer.businessName}</span>: קונים מספקים אחרים כמו כל
+              עסק.
+            </span>
+            <form action={switchSide}>
+              <button className="rounded-md border border-accent bg-surface px-3 py-1 font-medium text-accent hover:bg-background">
+                חזרה לצד הספק
+              </button>
+            </form>
+          </div>
+        )}
+        {teamRole && teamRole !== "MANAGER" && ROLE_DESCRIPTION.CUSTOMER[teamRole] && (
           <p data-role-note className="rounded-md border border-border bg-surface px-4 py-2 text-sm text-muted">
             אתם מחוברים בתפקיד <span className="font-medium text-foreground">{ROLE_LABEL[teamRole]}</span>:{" "}
             {ROLE_DESCRIPTION.CUSTOMER[teamRole]}.

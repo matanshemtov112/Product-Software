@@ -1,3 +1,4 @@
+import { restrictedProductIds } from "@/lib/buying-account";
 import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { UNIT_LABEL } from "@/lib/format";
@@ -15,6 +16,7 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
     select: { id: true, regionId: true, city: true, lat: true, lng: true },
   });
   const serving = await servingSupplierIds(customer);
+  const restricted = await restrictedProductIds(customerId);
   const baskets = await db.basket.findMany({
     where: { customerId, createdAt: { lt: month.end } },
     include: { items: { include: { product: { select: { name: true, unit: true } } } } },
@@ -25,7 +27,7 @@ export async function loadMonthlyReport(customerId: string, month: ReportMonth) 
   const products = new Map<string, WatchedProduct>();
   for (const b of baskets) {
     for (const i of b.items) {
-      if (products.has(i.productId)) continue;
+      if (products.has(i.productId) || restricted.has(i.productId)) continue;
       products.set(i.productId, {
         productId: i.productId,
         productName: i.product.name,

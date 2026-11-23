@@ -182,6 +182,9 @@ model Customer {
   preference           PricePreference        @default(BALANCED)
   /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
   cuisine              String?
+  /// חשבון קנייה של ספק (מסחר בין ספקים): הספק שהעסק הזה שייך לו; null = עסק רגיל
+  ownerSupplierId      String?                @unique
+  ownerSupplier        Supplier?              @relation("BuyingAccount", fields: [ownerSupplierId], references: [id])
   users                User[]
   baskets              Basket[]
   demandSignals        DemandSignal[]
@@ -238,6 +241,8 @@ model Supplier {
   allCategories            Boolean                @default(false)
   /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
   categoriesSetAt          DateTime?
+  /// חשבון הקנייה של הספק, לקנייה מספקים אחרים במערכת
+  buyingAccount            Customer?              @relation("BuyingAccount")
   users                    User[]
   categories               SupplierCategory[]
   deliveryZones            DeliveryZone[]

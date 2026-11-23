@@ -1,3 +1,4 @@
+import { restrictedProductIds } from "@/lib/buying-account";
 import { servingSupplierIds, type CoverageCustomer } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { pricedPerPack, minOrderLabel, packLabel, packPriceLabel, type PackInfo } from "@/lib/pack";
@@ -72,13 +73,18 @@ export async function suppliersServing(customer: CoverageCustomer) {
 }
 
 /** המחירון של ספק אחד במדרגה הראשונה, כנקודת התחלה ל"המחיר שאני משלם היום" */
-export async function supplierPriceList(supplierId: string, now = new Date()) {
+export async function supplierPriceList(supplierId: string, customerId?: string, now = new Date()) {
   const supplier = await db.supplier.findFirst({
     where: { id: supplierId, status: "APPROVED" },
     include: {
       priceTiers: { orderBy: { minMonthlyAgorot: "asc" }, take: 1 },
       offers: {
-        where: { available: true, product: { pendingReview: false } },
+        where: {
+          available: true,
+          product: { pendingReview: false },
+          // חשבון קנייה של ספק לא רואה מחירי מתחרים על מוצרים שהוא עצמו מוכר
+          ...(customerId ? { productId: { notIn: [...(await restrictedProductIds(customerId))] } } : {}),
+        },
         include: {
           product: { include: { category: { include: { parent: true } } } },
           prices: {

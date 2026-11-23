@@ -58,11 +58,11 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
   }
 
   const current = suppliers.find((s) => s.id === supplierId);
-  const mine = current && (await supplierPriceList(current.id));
+  const mine = current && (await supplierPriceList(current.id, customer.id));
   if (!current || !mine) notFound();
   const others = suppliers.filter((s) => s.id !== current.id);
   const [lists, ratings] = await Promise.all([
-    Promise.all(others.map((s) => supplierPriceList(s.id))),
+    Promise.all(others.map((s) => supplierPriceList(s.id, customer.id))),
     db.review.groupBy({
       by: ["supplierId"],
       where: { status: "PUBLISHED", supplierId: { in: others.map((s) => s.id) } },

@@ -1,3 +1,4 @@
+import { restrictedProductIds } from "@/lib/buying-account";
 import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { dealInput, dealLabel } from "@/lib/deal-label";
@@ -47,6 +48,7 @@ export async function customerDeals(customerId: string, now = new Date()): Promi
     where: {
       available: true,
       product: { pendingReview: false },
+      productId: { notIn: [...(await restrictedProductIds(customerId))] },
       supplierId: { in: serving },
       OR: [
         { quantityDeal: { OR: [{ validTo: null }, { validTo: { gt: now } }] } },

@@ -27,7 +27,7 @@ export default async function EditBasket({ params }: { params: Promise<{ id: str
   // סל לפי ספק נוכחי: מציגים שוב את כל הקטלוג של הספק, עם הבחירות שנשמרו
   const list =
     basket.source === "CURRENT_SUPPLIER" && basket.currentSupplierId
-      ? await supplierPriceList(basket.currentSupplierId)
+      ? await supplierPriceList(basket.currentSupplierId, customer.id)
       : null;
   const catalog = list ? list.items.map((i) => i.product) : await catalogForBasket();
   const rows = list
