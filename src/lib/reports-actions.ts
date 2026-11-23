@@ -54,7 +54,8 @@ export async function createReport(_: ReportFormState, form: FormData): Promise<
   }
   if (!target) return { error: "לא נמצא מה לדווח עליו" };
   if (!REPORT_REASONS_FOR[target.type].some(([r]) => r === reason)) return { error: "נא לבחור סיבה" };
-  if (!rateLimit.hit(`report:${user.id}`, LIMITS.reports)) return { error: "שלחתם הרבה דיווחים היום. נסו שוב מחר." };
+  if (!(await rateLimit.hit(`report:${user.id}`, LIMITS.reports)))
+    return { error: "שלחתם הרבה דיווחים היום. נסו שוב מחר." };
 
   const report = await db.abuseReport.create({
     data: {

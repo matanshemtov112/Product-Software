@@ -1,5 +1,6 @@
 "use client";
 
+import { userMessage } from "@/lib/user-message";
 import { useRef, useState, useTransition } from "react";
 import { downscaleImage } from "@/lib/images/downscale";
 import { uploadOfferImage } from "./actions";
@@ -46,7 +47,7 @@ export function OfferImage({
         const result = await uploadOfferImage(form);
         if (result.error) setError(result.error);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "ההעלאה נכשלה");
+        setError(userMessage(e, "ההעלאה נכשלה"));
       }
       if (input.current) input.current.value = "";
     });

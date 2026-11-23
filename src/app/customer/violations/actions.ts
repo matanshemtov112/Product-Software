@@ -55,7 +55,7 @@ export async function reportPriceViolation(_: ViolationFormState, form: FormData
     },
   });
   if (repeat) return { error: `כבר דיווחתם על המוצר הזה אצל הספק ב-${REPEAT_REPORT_DAYS} הימים האחרונים` };
-  if (!rateLimit.hit(`violation:${customer.id}`, LIMITS.reports)) {
+  if (!(await rateLimit.hit(`violation:${customer.id}`, LIMITS.reports))) {
     return { error: "שלחתם הרבה דיווחים היום. נסו שוב מחר." };
   }
   const text =

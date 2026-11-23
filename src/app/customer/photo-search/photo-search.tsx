@@ -1,5 +1,6 @@
 "use client";
 
+import { userMessage } from "@/lib/user-message";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ActionForm } from "@/components/action-form";
@@ -59,7 +60,7 @@ export function PhotoSearch() {
       payload.current.files = files.files;
       setPreview(URL.createObjectURL(small));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "לא הצלחנו לעבד את התמונה");
+      setError(userMessage(e, "לא הצלחנו לעבד את התמונה"));
     } finally {
       setBusy(false);
     }

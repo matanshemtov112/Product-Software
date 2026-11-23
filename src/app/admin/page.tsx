@@ -106,6 +106,14 @@ export default async function AdminHome() {
             href="/admin/violations"
           />
           <Stat label="דיווחים פתוחים" value={openReports} href="/admin/reports" />
+          <Stat
+            label="התראות אבטחה (7 ימים)"
+            value={await db.auditLog.count({
+              where: { action: "security.alert", createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
+            })}
+            note="נשלחות גם באימייל"
+            href="/admin/audit?group=security"
+          />
         </div>
       </section>
 

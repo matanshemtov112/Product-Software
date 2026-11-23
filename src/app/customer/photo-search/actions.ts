@@ -40,7 +40,7 @@ export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promis
   const session = await requireRole("CUSTOMER");
   await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
-  if (!rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests)) {
+  if (!(await rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests))) {
     return { error: "הגעתם למספר החיפושים המרבי לשעה. נסו שוב בעוד קצת." };
   }
   const image = await checkImage(form.get("photo"));

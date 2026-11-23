@@ -1,5 +1,6 @@
 "use client";
 
+import { userMessage } from "@/lib/user-message";
 import { useEffect, useRef, useState } from "react";
 import { downscaleImage } from "@/lib/images/downscale";
 import type { ImageSuggestion } from "@/lib/images/suggest";
@@ -79,7 +80,7 @@ export function ImageField({
       setPreview(URL.createObjectURL(small));
       setChosen(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "לא הצלחנו לעבד את התמונה");
+      setError(userMessage(e, "לא הצלחנו לעבד את התמונה"));
     } finally {
       setBusy(false);
     }

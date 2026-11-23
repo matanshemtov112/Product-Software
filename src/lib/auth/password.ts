@@ -18,3 +18,10 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const actual = await scrypt(password, Buffer.from(saltHex, "hex"), expected.length);
   return timingSafeEqual(expected, actual);
 }
+
+let dummy: Promise<string> | null = null;
+
+/** גיבוב קבוע לבדיקת סיסמה כשאין משתמש, כדי שזמן התשובה יהיה זהה */
+export function dummyHash(): Promise<string> {
+  return (dummy ??= hashPassword(randomBytes(16).toString("hex")));
+}

@@ -42,7 +42,7 @@ function fakeReading(catalogNames: string[]): ReadResult | null {
 /** קריאת החשבונית ושמירת השורות, ואז מעבר למסך הבדיקה */
 export async function readInvoice(_: InvoiceFormState, form: FormData): Promise<InvoiceFormState> {
   const customer = await currentCustomer();
-  if (!rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests)) {
+  if (!(await rateLimit.hit(`ai:${customer.id}`, LIMITS.aiRequests))) {
     return { error: "הגעתם למספר הקריאות המרבי לשעה. נסו שוב בעוד קצת." };
   }
   await purgeOldInvoices();

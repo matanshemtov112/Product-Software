@@ -154,6 +154,17 @@ model User {
   /// הסכמה מפורשת לקבל דברי פרסומת (חוק התקשורת, סעיף 30א): מתי ואיפה. null = אין הסכמה
   marketingConsentAt      DateTime?
   marketingConsentSource  String?
+  /// גרסת ההתחברות: עולה ביציאה מכל המכשירים ובשינוי סיסמה, וכל עוגייה עם גרסה ישנה מפסיקה לעבוד
+  sessionVersion          Int                      @default(0)
+}
+
+/// ספירת ניסיונות להגבלת קצב (כניסה, הרשמה, קריאות AI). משותף לכל השרתים ושורד הפעלה מחדש
+model RateLimitHit {
+  id  String   @id @default(cuid())
+  key String
+  at  DateTime @default(now())
+
+  @@index([key, at])
 }
 
 model Region {

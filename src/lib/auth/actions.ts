@@ -8,22 +8,12 @@ import { audit, clientIp } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { getSession } from "./current";
-import { hashPassword, verifyPassword } from "./password";
-import { HOME_BY_ROLE, SESSION_COOKIE, SESSION_MAX_AGE, type Session, signSession } from "./session";
+import { dummyHash, hashPassword, verifyPassword } from "./password";
+import { startSession } from "./start-session";
+import { HOME_BY_ROLE, SESSION_COOKIE } from "./session";
 
 export interface FormState {
   error?: string;
-}
-
-async function startSession(session: Session) {
-  const store = await cookies();
-  store.set(SESSION_COOKIE, await signSession(session), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: SESSION_MAX_AGE,
-    path: "/",
-  });
 }
 
 const loginSchema = z.object({
@@ -38,22 +28,35 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
   const { email } = parsed.data;
   // הגבלה לפי אימייל (לא תלויה בכתובת, שאפשר לזייף) ובנוסף לפי כתובת.
   // הניסיון נספר לפני בדיקת הסיסמה, כך שגם ניסיונות רבים באותו רגע נעצרים במגבלה; כניסה מוצלחת מאפסת
-  const key = `login:${email}`;
-  const ipKey = `login-ip:${await clientIp()}`;
-  if (rateLimit.blocked(ipKey, LIMITS.loginPerIp) || !rateLimit.hit(key, LIMITS.loginFailures)) {
+  // המגבלה לאימייל היא לכל כתובת בנפרד, כדי שאי אפשר יהיה לנעול לקוח מחוץ לחשבון מבחוץ;
+  // מגבלה גבוהה יותר לאימייל מכל הכתובות יחד עוצרת ניחוש מהרבה מחשבים
+  const ip = (await clientIp()) ?? "unknown";
+  const key = `login:${email}:${ip}`;
+  const emailKey = `login-email:${email}`;
+  const ipKey = `login-ip:${ip}`;
+  if (
+    (await rateLimit.blocked(ipKey, LIMITS.loginPerIp)) ||
+    (await rateLimit.blocked(emailKey, LIMITS.loginPerEmail)) ||
+    !(await rateLimit.hit(key, LIMITS.loginFailures))
+  ) {
     await audit({ action: "login.blocked", actor: email });
-    return { error: `יותר מדי ניסיונות. נסו שוב בעוד ${rateLimit.retryMinutes(key, LIMITS.loginFailures)} דקות.` };
+    return {
+      error: `יותר מדי ניסיונות. נסו שוב בעוד ${Math.max(1, await rateLimit.retryMinutes(key, LIMITS.loginFailures))} דקות.`,
+    };
   }
   const user = await db.user.findUnique({ where: { email } });
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-    rateLimit.hit(ipKey, LIMITS.loginPerIp);
+  // גם כשאין משתמש כזה בודקים סיסמה (מול גיבוב קבוע), כדי שזמן התשובה לא יגלה אילו אימיילים רשומים
+  const passwordOk = await verifyPassword(parsed.data.password, user?.passwordHash ?? (await dummyHash()));
+  if (!user || !passwordOk) {
+    await rateLimit.hit(ipKey, LIMITS.loginPerIp);
+    await rateLimit.hit(emailKey, LIMITS.loginPerEmail);
     await audit({ action: "login.failed", actor: email, userId: user?.id });
     return { error: "אימייל או סיסמה שגויים" };
   }
-  rateLimit.reset(key);
+  await rateLimit.reset(key);
   // הצד (מסעדה או ספק) נקבע לפי החשבון עצמו, ולא לפי הלשונית שנבחרה: כך כניסה עובדת גם אם הלשונית
   // נלחצה לפני שהדף סיים להיטען, וכל משתמש מגיע לאזור שלו
-  await startSession({ userId: user.id, role: user.role, name: user.name });
+  await startSession(user);
   await audit({ action: "login.success", userId: user.id, actor: user.name });
   redirect(HOME_BY_ROLE[user.role]);
 }
@@ -108,7 +111,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "פרטים חסרים" };
   const data = parsed.data;
-  if (!rateLimit.hit(`register:${await clientIp()}`, LIMITS.register)) {
+  if (!(await rateLimit.hit(`register:${await clientIp()}`, LIMITS.register))) {
     return { error: "יותר מדי הרשמות מהכתובת הזו. נסו שוב מאוחר יותר." };
   }
 
@@ -138,7 +141,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
         },
       },
     });
-    await startSession({ userId: user.id, role: user.role, name: user.name });
+    await startSession(user);
     await audit({
       action: "register",
       userId: user.id,
@@ -168,7 +171,7 @@ export async function register(_: FormState, form: FormData): Promise<FormState>
       },
     },
   });
-  await startSession({ userId: user.id, role: user.role, name: user.name });
+  await startSession(user);
   await audit({
     action: "register",
     userId: user.id,
@@ -251,8 +254,8 @@ async function enterSide(
   role: "CUSTOMER" | "SUPPLIER",
   customerId: string | null,
 ): Promise<never> {
-  await db.user.update({ where: { id: userId }, data: { role, customerId } });
-  await startSession({ userId, role, name });
+  const user = await db.user.update({ where: { id: userId }, data: { role, customerId } });
+  await startSession(user);
   await audit({ action: "side.switched", userId, actor: name, details: { to: role } });
   redirect(HOME_BY_ROLE[role]);
 }

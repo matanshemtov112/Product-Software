@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const supplier = user?.supplier;
   if (!supplier) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (supplier.isManufacturer) return Response.json({ manufacturer: true, suggestions: [] });
-  if (!rateLimit.hit(`images:${supplier.id}`, LIMITS.imageSearch)) {
+  if (!(await rateLimit.hit(`images:${supplier.id}`, LIMITS.imageSearch))) {
     return Response.json(
       { error: "חיפשתם הרבה תמונות בשעה האחרונה. נסו שוב מאוחר יותר.", suggestions: [] },
       { status: 429 },

@@ -1,5 +1,6 @@
 "use client";
 
+import { userMessage } from "@/lib/user-message";
 import { type FormEvent, startTransition, useActionState, useEffect, useRef, useState } from "react";
 import { FormError, SubmitButton } from "@/components/form";
 import { downscaleImage } from "@/lib/images/downscale";
@@ -46,7 +47,7 @@ export function InvoiceUpload() {
         return next.slice(0, MAX_INVOICE_FILES);
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "לא הצלחנו לעבד את הקובץ");
+      setError(userMessage(e, "לא הצלחנו לעבד את הקובץ"));
     } finally {
       setBusy(false);
     }

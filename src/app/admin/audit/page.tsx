@@ -5,7 +5,25 @@ import { db } from "@/lib/db";
 
 const GROUPS: { key: string; label: string; actions: string[] }[] = [
   { key: "all", label: "הכל", actions: [] },
-  { key: "logins", label: "כניסות", actions: ["login.success", "login.failed", "login.blocked", "register"] },
+  {
+    key: "security",
+    label: "אבטחה",
+    actions: [
+      "security.alert",
+      "access.denied",
+      "login.blocked",
+      "password.changed",
+      "password.change_failed",
+      "password.reset_requested",
+      "password.reset",
+      "logout.everywhere",
+    ],
+  },
+  {
+    key: "logins",
+    label: "כניסות",
+    actions: ["login.success", "login.failed", "login.blocked", "register", "side.switched"],
+  },
   { key: "prices", label: "מחירים", actions: ["price.changed", "price.held", "price.approved", "price.rejected"] },
   {
     key: "admin",

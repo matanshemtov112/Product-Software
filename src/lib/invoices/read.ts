@@ -172,7 +172,7 @@ export const claudeInvoiceReader: InvoiceReader = async (files, catalog, knownBr
     return parseInvoice(text, names);
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError)
-      return { kind: "error", message: "מפתח ה-API של Claude לא תקין" };
+      return { kind: "error", message: "השירות לא זמין כרגע. נסו שוב מאוחר יותר" };
     if (error instanceof Anthropic.RateLimitError) return { kind: "error", message: "יש עומס כרגע. נסו שוב בעוד דקה" };
     if (error instanceof Anthropic.APIError) {
       console.error("invoice reading failed", error.status, error.message);

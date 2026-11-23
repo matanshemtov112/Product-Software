@@ -75,7 +75,7 @@ export async function sendMatchRequest(_: MatchFormState, form: FormData): Promi
       loadedAt: Date.now(),
     };
   }
-  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+  if (!(await rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries))) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
 

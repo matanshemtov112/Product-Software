@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { TeamRole } from "@prisma/client";
 import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { getSession } from "./current";
 import { DENIED, type Permission, roleCan } from "./permissions";
 
@@ -27,5 +28,8 @@ export async function deniedMessage(permission: Permission, userId?: string) {
 
 /** לפעולות בלי טופס: אם אין הרשאה, מעבר לדף שמסביר למה */
 export async function requirePermission(permission: Permission, userId?: string) {
-  if (!(await can(permission, userId))) redirect(`/no-access?need=${permission}`);
+  if (!(await can(permission, userId))) {
+    await audit({ action: "access.denied", details: { need: permission }, ...(userId ? { userId } : {}) });
+    redirect(`/no-access?need=${permission}`);
+  }
 }

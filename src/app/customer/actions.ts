@@ -241,7 +241,7 @@ export async function sendInquiry(_: InquiryFormState, form: FormData): Promise<
   }
 
   // המכסה היומית נספרת רק לשליחה אמיתית, לא לשגיאה או לאזהרת שינוי מחיר
-  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+  if (!(await rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries))) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
   const profile = JSON.parse(JSON.stringify(await customerProfile(customer.id, basket)));
@@ -303,7 +303,7 @@ export async function sendDealInquiry(_: FormState, form: FormData): Promise<For
   const { offerId, quantity, deliveries, message } = parsed.data;
   const deal = (await customerDeals(customer.id)).find((d) => d.offerId === offerId);
   if (!deal) return { error: "המבצע כבר לא בתוקף" };
-  if (!rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries)) {
+  if (!(await rateLimit.hit(`inquiry:${customer.id}`, LIMITS.inquiries))) {
     return { error: "שלחתם הרבה פניות היום. נסו שוב מחר." };
   }
 

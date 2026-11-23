@@ -1,3 +1,5 @@
+import { clientIpFrom } from "@/lib/flood";
+import { checkSecurityEvent } from "@/lib/security-alerts";
 import type { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 import { getSession } from "@/lib/auth/current";
@@ -10,7 +12,10 @@ import { db } from "@/lib/db";
 export async function clientIp(): Promise<string | null> {
   try {
     const h = await headers();
-    return h.get("x-real-ip")?.trim() || h.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
+    // הכתובת נלקחת רק מכותרת שהשרת המארח קובע בעצמו, ולא מכותרת שהדפדפן יכול לזייף.
+    // TRUSTED_IP_HEADER: שם הכותרת אצל המארח (למשל x-real-ip ב-Vercel). ברירת מחדל: הכתובת האחרונה
+    // ב-x-forwarded-for, שהשרת המתווך שלפני האתר מוסיף בעצמו
+    return clientIpFrom(h);
   } catch {
     return null;
   }
@@ -20,6 +25,15 @@ export const AUDIT_LABEL: Record<string, string> = {
   "login.success": "כניסה",
   "login.failed": "ניסיון כניסה שנכשל",
   "login.blocked": "כניסה נחסמה (יותר מדי ניסיונות)",
+  "security.alert": "התראת אבטחה",
+  "access.denied": "ניסיון פעולה בלי הרשאה",
+  "password.changed": "שינוי סיסמה",
+  "password.change_failed": "ניסיון שינוי סיסמה שנכשל",
+  "password.reset_requested": "בקשה לאיפוס סיסמה",
+  "password.reset": "איפוס סיסמה",
+  "logout.everywhere": "יציאה מכל המכשירים",
+  "side.switched": "מעבר בין צד הספק לצד הקנייה",
+  "buying.opened": "פתיחת חשבון קנייה לספק",
   register: "הרשמה",
   "price.changed": "שינוי מחיר",
   "price.held": "שינוי מחיר גדול ממתין לאישור",
@@ -76,10 +90,19 @@ export interface AuditEntry {
 }
 
 /** רושם פעולה ביומן. כשל ברישום לא עוצר את הפעולה עצמה */
+/** פעולות שנבדקות לפעילות חשודה */
+const SECURITY_ACTIONS = new Set([
+  "login.blocked",
+  "login.failed",
+  "login.success",
+  "access.denied",
+  "password.reset_requested",
+]);
+
 export async function audit(entry: AuditEntry) {
   try {
     const session = entry.userId || entry.actor ? null : await getSession();
-    await db.auditLog.create({
+    const row = await db.auditLog.create({
       data: {
         action: entry.action,
         targetType: entry.targetType,
@@ -90,6 +113,7 @@ export async function audit(entry: AuditEntry) {
         ip: await clientIp(),
       },
     });
+    if (SECURITY_ACTIONS.has(row.action)) await checkSecurityEvent(row);
   } catch (e) {
     console.error("audit failed", e);
   }

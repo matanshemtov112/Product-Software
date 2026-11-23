@@ -72,7 +72,10 @@ export const claudeIdentifier: Identifier = async (image, catalog) => {
         {
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data.toString("base64") } },
+            {
+              type: "image",
+              source: { type: "base64", media_type: image.mediaType, data: image.data.toString("base64") },
+            },
             { type: "text", text: prompt(catalog) },
           ],
         },
@@ -82,7 +85,8 @@ export const claudeIdentifier: Identifier = async (image, catalog) => {
     const text = response.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
     return parseIdentification(text, names);
   } catch (error) {
-    if (error instanceof Anthropic.AuthenticationError) return { kind: "error", message: "מפתח ה-API של Claude לא תקין" };
+    if (error instanceof Anthropic.AuthenticationError)
+      return { kind: "error", message: "השירות לא זמין כרגע. נסו שוב מאוחר יותר" };
     if (error instanceof Anthropic.RateLimitError) return { kind: "error", message: "יש עומס כרגע. נסו שוב בעוד דקה" };
     if (error instanceof Anthropic.APIError) {
       console.error("photo search failed", error.status, error.message);
