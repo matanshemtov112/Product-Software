@@ -36,6 +36,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   "password.change_failed": "ניסיון שינוי סיסמה שנכשל",
   "password.reset_requested": "בקשה לאיפוס סיסמה",
   "password.reset": "איפוס סיסמה",
+  logout: "יציאה",
   "logout.everywhere": "יציאה מכל המכשירים",
   "side.switched": "מעבר בין צד הספק לצד הקנייה",
   "buying.opened": "פתיחת חשבון קנייה לספק",

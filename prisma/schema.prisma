@@ -166,6 +166,14 @@ model User {
 }
 
 /// ספירת ניסיונות להגבלת קצב (כניסה, הרשמה, קריאות AI). משותף לכל השרתים ושורד הפעלה מחדש
+/// עוגיות התחברות שבוטלו ביציאה רגילה (מזוהות לפי גיבוב, לא שומרים את העוגייה עצמה). נמחקות אחרי שפגו ממילא
+model RevokedSession {
+  tokenHash String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 model RateLimitHit {
   id  String   @id @default(cuid())
   key String

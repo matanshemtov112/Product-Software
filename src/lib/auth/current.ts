@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
@@ -6,19 +7,27 @@ import { type Role, SESSION_COOKIE, type Session, verifySession } from "./sessio
 
 /** המשתמש כפי שהוא במסד עכשיו (פעם אחת לכל בקשה) */
 const currentUser = cache(async (userId: string) =>
-  db.user.findUnique({ where: { id: userId }, select: { role: true, sessionVersion: true } }),
+  db.user.findUnique({ where: { id: userId }, select: { role: true, sessionVersion: true, totpEnabledAt: true } }),
 );
 
 /**
  * ההתחברות הנוכחית. עוגייה של משתמש שנמחק, או שגרסת ההתחברות שלה ישנה (יצא מכל המכשירים או שינה סיסמה),
  * לא נחשבת התחברות, גם אם החתימה שלה תקינה.
  */
+export const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
+
+/** האם העוגייה בוטלה ביציאה רגילה (פעם אחת לכל בקשה) */
+const isRevoked = cache(
+  async (token: string) => !!(await db.revokedSession.findUnique({ where: { tokenHash: tokenHash(token) } })),
+);
+
 export async function getSession(): Promise<Session | null> {
   const store = await cookies();
-  const session = await verifySession(store.get(SESSION_COOKIE)?.value);
-  if (!session) return null;
-  const user = await currentUser(session.userId);
-  if (!user || user.sessionVersion !== session.v) return null;
+  const token = store.get(SESSION_COOKIE)?.value;
+  const session = await verifySession(token);
+  if (!session || !token) return null;
+  const [user, revoked] = await Promise.all([currentUser(session.userId), isRevoked(token)]);
+  if (!user || revoked || user.sessionVersion !== session.v) return null;
   return session;
 }
 
@@ -40,5 +49,7 @@ export async function requireRole(role: Role): Promise<Session> {
     }
     redirect("/login");
   }
+  // מנהל מערכת בלי אימות דו-שלבי לא עובר, לא בדפים ולא בפעולות (פעולה שנקראת ישירות בודקת כאן)
+  if (role === "ADMIN" && !(await currentUser(session.userId))?.totpEnabledAt) redirect("/account/security?required=1");
   return session;
 }

@@ -7,10 +7,10 @@ import { VOLUME_RANGES } from "@/lib/customer/volume";
 import { audit, clientIp } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
-import { getSession } from "./current";
+import { getSession, tokenHash } from "./current";
 import { dummyHash, hashPassword, verifyPassword } from "./password";
 import { beginMfa, startSession } from "./start-session";
-import { HOME_BY_ROLE, SESSION_COOKIE } from "./session";
+import { HOME_BY_ROLE, SESSION_COOKIE, SESSION_MAX_AGE, verifySession } from "./session";
 
 export interface FormState {
   error?: string;
@@ -65,6 +65,19 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
 
 export async function logout() {
   const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  const session = token ? await verifySession(token) : null;
+  // העוגייה עצמה מבוטלת, כך שמי שהעתיק אותה לא יוכל להמשיך בה אחרי היציאה. שאר המכשירים נשארים מחוברים
+  if (token && session) {
+    const now = new Date();
+    await db.revokedSession.deleteMany({ where: { expiresAt: { lt: now } } });
+    await db.revokedSession.upsert({
+      where: { tokenHash: tokenHash(token) },
+      create: { tokenHash: tokenHash(token), expiresAt: new Date(now.getTime() + SESSION_MAX_AGE * 1000) },
+      update: {},
+    });
+    await audit({ action: "logout", userId: session.userId, actor: session.name });
+  }
   store.delete(SESSION_COOKIE);
   redirect("/");
 }

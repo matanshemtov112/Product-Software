@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { type Role, SESSION_COOKIE, verifySession } from "@/lib/auth/session";
-import { clientIpFrom, floodCheck } from "@/lib/flood";
+import { floodCheckRequest } from "@/lib/flood";
 
 const AREAS: { prefix: string; role: Role }[] = [
   { prefix: "/customer", role: "CUSTOMER" },
@@ -17,9 +17,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(secure, 308);
   }
   // הגבלה כללית לדקה לכל כתובת, נגד הצפה בבקשות (בנוסף למגבלות של כניסה, הרשמה ו-AI)
-  // בלי כתובת (שרת מקומי בלי שרת מתווך) אין לפי מה להגביל, ולא מגבילים את כולם יחד
-  const ip = clientIpFrom(request.headers);
-  const flood = ip ? floodCheck(ip, request.method !== "GET" && request.method !== "HEAD") : 0;
+  // בלי כותרת כתובת אמינה (TRUSTED_IP_HEADER) יש גם מגבלה משותפת, כדי שזיוף כתובות לא יעקוף את ההגבלה
+  const flood = floodCheckRequest(request.headers, request.method !== "GET" && request.method !== "HEAD");
   if (flood) {
     return new NextResponse("יותר מדי בקשות. נסו שוב בעוד דקה.", {
       status: 429,
