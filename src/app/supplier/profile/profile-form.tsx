@@ -113,7 +113,7 @@ export function ProfileForm({
           </label>
           <span className="text-xs text-muted">
             {perCustomer
-              ? "הלקוחות יראו \"נקבעים מול כל לקוח\". את התנאים ללקוח מסוים בוחרים כשעונים לפנייה שלו."
+              ? 'הלקוחות יראו "נקבעים מול כל לקוח". את התנאים ללקוח מסוים בוחרים כשעונים לפנייה שלו.'
               : "0 ימים = מזומן או תשלום בעת האספקה. אפשר לתת ללקוח מסוים תנאים אחרים כשעונים לפנייה שלו."}
           </span>
           {perCustomer && <input type="hidden" name="paymentTermsDays" value={initial.paymentTermsDays} />}

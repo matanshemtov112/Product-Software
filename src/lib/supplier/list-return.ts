@@ -13,6 +13,7 @@ export function listQuery(params: Partial<Record<(typeof KEYS)[number], string |
 export function listUrl(back: unknown, savedOfferId?: string) {
   // עריכה שהתחילה מדף המבצעים חוזרת לדף המבצעים
   if (back === "deals") return `/supplier/deals${savedOfferId ? `?saved=${savedOfferId}` : ""}`;
+  if (back === "demand") return "/supplier/demand";
   const parsed = new URLSearchParams(typeof back === "string" ? back : "");
   const out = new URLSearchParams();
   for (const k of KEYS) {

@@ -18,6 +18,7 @@ import { checkSnapshot, compareChecks, isCheckSnapshot } from "@/lib/customer/ch
 import { rankSuppliers } from "@/lib/customer/fit";
 import { volumeRangeFor } from "@/lib/customer/volume";
 import { recordSupplierViews } from "@/lib/supplier/stats";
+import { recordDemand } from "@/lib/supplier/demand";
 import { analyzeBasket, customerForUser, getBasket, paidComparison } from "@/lib/customer/quotes";
 import { shekels, UNIT_LABEL } from "@/lib/format";
 import { deleteBasket, recordCheck } from "../../actions";
@@ -67,13 +68,20 @@ export default async function BasketPage({
   ]);
   if (!basket || !analysis) notFound();
   // סטטיסטיקת צפיות לספקים נרשמת אחרי שהדף נשלח, כדי לא לעכב את הלקוח
-  after(() =>
-    recordSupplierViews(
+  after(async () => {
+    await recordSupplierViews(
       basket.id,
       customer.id,
       analysis.rows.map((r) => r.supplierId),
-    ),
-  );
+    );
+    // אות ביקוש מצטבר לספקים באזור (בלי פרטי העסק, הכמויות או החשבונית)
+    await recordDemand(
+      customer.id,
+      basket.items.map((i) => i.productId),
+      basket.source === "INVOICE" ? "INVOICE" : "PRICE_CHECK",
+      Boolean(basket.currentSupplierId || basket.currentSupplierName),
+    );
+  });
   const { result, rows } = analysis;
 
   const lastRun = basket.runs[0];

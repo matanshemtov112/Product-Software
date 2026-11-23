@@ -184,6 +184,7 @@ model Customer {
   cuisine              String?
   users                User[]
   baskets              Basket[]
+  demandSignals        DemandSignal[]
   reviews              Review[]
   reviewsBySuppliers   CustomerReview[]
   invoices             Invoice[]
@@ -315,6 +316,7 @@ model Product {
   aliases       String[]        @default([])
   /// מוצר שספק הוסיף ועדיין לא נבדק מול הקטלוג (כפילויות, שם, יחידה)
   pendingReview Boolean         @default(false)
+  demandSignals DemandSignal[]
   offers        SupplierOffer[]
   basketItems   BasketItem[]
   alerts        PriceAlert[]
@@ -753,6 +755,7 @@ enum NotificationKind {
   NEW_INTEREST
   /// ספק: מוצרים שלו יקרים ביחס לשוק
   EXPENSIVE_PRODUCTS
+  DEMAND_RISING
   /// ספק: צריך לעדכן מחירים או אזורי חלוקה
   UPDATE_NEEDED
   /// מסעדה (שיווקי, רק למי שבחר): מבצע חדש על מוצר שהיא קונה
@@ -1004,4 +1007,30 @@ model SupplierDocument {
 
   @@unique([supplierId, kind])
   @@index([status, updatedAt])
+}
+
+enum DemandKind {
+  /// הלקוח פתח השוואת מחירים לסל עם המוצר
+  PRICE_CHECK
+  /// סל שנבנה מחשבונית
+  INVOICE
+  /// המוצר זוהה בחיפוש בצילום
+  PHOTO_SEARCH
+}
+
+/// אות ביקוש: עסק התעניין במוצר. משמש רק לסיכום מצטבר לספקים (לפחות 3 עסקים, בטווחים),
+/// בלי שם העסק, בלי כמויות ובלי פרטי חשבונית. אחד לכל עסק, מוצר, סוג ויום.
+model DemandSignal {
+  id          String     @id @default(cuid())
+  customerId  String
+  customer    Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind        DemandKind
+  /// לעסק כבר יש ספק למוצר והוא בודק חלופות
+  hasSupplier Boolean    @default(false)
+  day         DateTime   @db.Date
+
+  @@unique([customerId, productId, kind, day])
+  @@index([day])
 }

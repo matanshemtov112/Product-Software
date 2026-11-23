@@ -5,12 +5,24 @@ import { categoryTree, selectableCategories } from "@/lib/categories";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../product-form";
 
-export default async function NewProductPage({ searchParams }: { searchParams: Promise<{ addPack?: string }> }) {
+export default async function NewProductPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ addPack?: string; product?: string }>;
+}) {
   const session = await requireRole("SUPPLIER");
   await requirePermission("prices", session.userId);
   const supplier = await supplierForUser(session.userId);
   // אריזה נוספת למוצר שכבר ברשימה: מתחילים מפרטי המוצר, בלי אריזה ומחירים
-  const { addPack } = await searchParams;
+  const { addPack, product } = await searchParams;
+  // הגיעו מדף הביקוש באזור: המוצר כבר נבחר
+  const wanted =
+    !addPack && product
+      ? await db.product.findFirst({
+          where: { id: product, pendingReview: false },
+          select: { name: true, categoryId: true, unit: true },
+        })
+      : null;
   const base = addPack
     ? await db.supplierOffer.findFirst({
         where: { id: addPack, supplierId: supplier.id },
@@ -46,9 +58,9 @@ export default async function NewProductPage({ searchParams }: { searchParams: P
         <ProductForm
           initial={{
             addPack: Boolean(base),
-            productName: base?.product.name ?? "",
-            categoryId: base?.product.categoryId ?? "",
-            unit: base?.product.unit ?? "KG",
+            productName: base?.product.name ?? wanted?.name ?? "",
+            categoryId: base?.product.categoryId ?? wanted?.categoryId ?? "",
+            unit: base?.product.unit ?? wanted?.unit ?? "KG",
             brand: base?.brand ?? "",
             supplierSku: "",
             supplierProductName: base?.supplierProductName ?? "",

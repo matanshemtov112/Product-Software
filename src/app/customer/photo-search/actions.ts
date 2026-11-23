@@ -12,7 +12,10 @@ import {
   type PhotoImage,
 } from "@/lib/photo-search/identify";
 import { groupMatches, type PhotoMatches } from "@/lib/photo-search/match";
+import { after } from "next/server";
+import { db } from "@/lib/db";
 import { offersForProducts } from "@/lib/photo-search/offers";
+import { recordDemand } from "@/lib/supplier/demand";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { checkImage } from "@/lib/supplier/images";
 
@@ -53,5 +56,14 @@ export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promis
   if (result.kind === "error") return { error: result.message };
 
   const offers = await offersForProducts([...result.exact, ...result.similar], await servingSupplierIds(customer));
+  // אות ביקוש מצטבר: רק המוצר שזוהה בוודאות, בלי התמונה ובלי פרטי העסק
+  const exact = await db.product.findMany({ where: { name: { in: result.exact } }, select: { id: true } });
+  after(() =>
+    recordDemand(
+      customer.id,
+      exact.map((p) => p.id),
+      "PHOTO_SEARCH",
+    ),
+  );
   return { description: result.description, matches: groupMatches(result, offers) };
 }

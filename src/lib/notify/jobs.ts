@@ -1,3 +1,5 @@
+import { supplierCanUse } from "@/lib/billing/plans";
+import { demandForSupplier } from "@/lib/supplier/demand";
 import type { NotificationCategory, NotificationFrequency } from "@prisma/client";
 import { after } from "next/server";
 import { db } from "@/lib/db";
@@ -64,6 +66,7 @@ export async function runNotificationJobs(now = new Date(), { force = false } = 
     ...(await newInterest(now)),
   ]);
   await weeklySupplierChecks(now);
+  await demandAlerts(now);
   await digests(now);
   await deliverQueued();
   return true;
@@ -245,6 +248,40 @@ async function weeklySupplierChecks(now: Date) {
           dedupeKey: `update:${s.id}:${week}`,
         });
     }
+  }
+  await notify(notes);
+}
+
+/**
+ * לספק, פעם בשבוע: מוצרים שהביקוש להם באזור שלו עולה, או שעסקים באזור מחפשים והוא עוד לא מוכר.
+ * רק מצטבר (לפחות 3 עסקים, בטווחים), בלי פרטי עסקים. פתוח לכולם עד שמופעל תשלום (billing/plans).
+ */
+async function demandAlerts(now: Date) {
+  const week = weekKey(now);
+  const suppliers = await db.supplier.findMany({ where: { status: "APPROVED" }, select: { id: true } });
+  const done = new Set(
+    (
+      await db.notification.findMany({
+        where: { dedupeKey: { in: suppliers.map((s) => `demand:${s.id}:${week}`) } },
+        select: { dedupeKey: true },
+      })
+    ).map((n) => n.dedupeKey),
+  );
+  if (!(await db.demandSignal.count({ where: { day: { gte: new Date(now.getTime() - 14 * DAY) } } }))) return;
+  const notes: NewNotification[] = [];
+  for (const s of suppliers) {
+    if (done.has(`demand:${s.id}:${week}`) || !(await supplierCanUse(s.id, "demandInsights", now))) continue;
+    const hot = (await demandForSupplier(s.id, now)).filter((r) => r.trend !== "steady" || !r.sells);
+    if (hot.length === 0) continue;
+    const names = hot.slice(0, 3).map((r) => r.name);
+    notes.push({
+      supplierId: s.id,
+      kind: "DEMAND_RISING",
+      title: hot.length === 1 ? `ביקוש למוצר באזור שלכם: ${names[0]}` : `ביקוש ל-${hot.length} מוצרים באזור שלכם`,
+      body: `עסקים באזור בדקו לאחרונה ${names.join(", ")}${hot.length > 3 ? " ועוד" : ""}. זה הזמן לעדכן מחיר או להציע מבצע.`,
+      href: "/supplier/demand",
+      dedupeKey: `demand:${s.id}:${week}`,
+    });
   }
   await notify(notes);
 }

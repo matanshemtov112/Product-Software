@@ -69,6 +69,11 @@ export function SupplierSidebar({
             </Link>
           </li>
           <li>
+            <Link href="/supplier/demand" className={item(pathname === "/supplier/demand")}>
+              ביקוש באזור
+            </Link>
+          </li>
+          <li>
             <Link
               href="/supplier/inquiries"
               className={item(pathname.startsWith("/supplier/inquiries") || pathname.startsWith("/supplier/matches"))}

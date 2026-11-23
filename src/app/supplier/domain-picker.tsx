@@ -48,7 +48,13 @@ export function DomainPicker({
   return (
     <ActionForm action={action} className="flex flex-col gap-4">
       <label className={chip(all)}>
-        <input type="checkbox" name="all" checked={all} onChange={(e) => setAll(e.target.checked)} className="size-4 accent-accent" />
+        <input
+          type="checkbox"
+          name="all"
+          checked={all}
+          onChange={(e) => setAll(e.target.checked)}
+          className="size-4 accent-accent"
+        />
         <span>
           כל התחומים
           <span className="block text-xs font-normal text-muted">ספק כללי שמוכר מכל סוגי המוצרים</span>

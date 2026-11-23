@@ -404,6 +404,7 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   OFFER_EXPIRING: "⏳",
   OFFER_EXPIRED: "⌛",
   NEW_INTEREST: "👋",
+  DEMAND_RISING: "📈",
   EXPENSIVE_PRODUCTS: "🏷️",
   UPDATE_NEEDED: "✏️",
   NEW_DEAL: "🎁",

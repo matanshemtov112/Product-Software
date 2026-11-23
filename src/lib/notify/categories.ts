@@ -26,6 +26,7 @@ export const CATEGORY_OF: Record<NotificationKind, NotificationCategory> = {
   INVOICE_SAVINGS: "SAVINGS",
   MONTHLY_REPORT: "SAVINGS",
   NEW_INTEREST: "SAVINGS",
+  DEMAND_RISING: "SAVINGS",
   // עדכוני מחירים
   PRICE_INCREASE: "PRICES",
   PRICE_DROP: "PRICES",
@@ -69,7 +70,7 @@ export const CATEGORY_LABEL: Record<Org, Record<NotificationCategory, { title: s
       title: "פניות מלקוחות",
       description: "פנייה או בקשת השוואה חדשה, לקוח שקיבל, דחה או ביטל, הצעה שפגה.",
     },
-    SAVINGS: { title: "הזדמנויות", description: "עסקים חדשים שראו את המחירים שלכם בהשוואות." },
+    SAVINGS: { title: "הזדמנויות", description: "עסקים חדשים שראו את המחירים שלכם, וביקוש עולה למוצרים באזור שלכם." },
     PRICES: {
       title: "המחירון שלכם",
       description: "מוצרים שיקרים ביחס לשוק, ותזכורת לעדכן מחירים או אזורי חלוקה. פעם בשבוע.",

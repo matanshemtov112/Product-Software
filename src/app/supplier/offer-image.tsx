@@ -52,10 +52,7 @@ export function OfferImage({
     });
   };
 
-  const box =
-    variant === "thumb"
-      ? "size-16 shrink-0 rounded-md"
-      : "aspect-[4/3] w-full rounded-md";
+  const box = variant === "thumb" ? "size-16 shrink-0 rounded-md" : "aspect-[4/3] w-full rounded-md";
 
   return (
     <div className={variant === "card" ? "flex flex-col gap-1" : "flex flex-col items-center gap-1"}>
