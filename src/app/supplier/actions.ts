@@ -1,5 +1,6 @@
 "use server";
 
+import { releaseAtProvider } from "@/lib/payments/holds";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -930,4 +931,24 @@ export async function withdrawOffer(form: FormData) {
   await audit({ action: "offer.withdrawn", targetType: isMatch ? "match" : "inquiry", targetId: id });
   revalidatePath("/supplier", "layout");
   redirect(isMatch ? `/supplier/matches/${id}` : `/supplier/inquiries/${id}`);
+}
+
+/** הספק מאשר שההזמנה הראשונה של הלקוח סופקה: מסגרת האשראי של הלקוח משתחררת */
+export async function confirmFirstOrder(form: FormData) {
+  const supplier = await currentSupplier("reply");
+  const id = String(form.get("id") ?? "");
+  const hold = await db.cardHold.findFirst({
+    where: { inquiryId: id, supplierId: supplier.id, status: "AUTHORIZED" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (hold && (await releaseAtProvider(hold))) {
+    await db.cardHold.update({ where: { id: hold.id }, data: { status: "RELEASED", releasedAt: new Date() } });
+    await audit({
+      action: "hold.released",
+      targetType: "inquiry",
+      targetId: id,
+      details: { supplier: supplier.companyName, by: "supplier" },
+    });
+  }
+  revalidatePath(`/supplier/inquiries/${id}`);
 }

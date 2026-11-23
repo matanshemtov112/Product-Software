@@ -4,6 +4,8 @@ import { QuoteValidity } from "@/components/quote-validity";
 import { newInquiryHref, recheckHref } from "@/lib/customer/offer-links";
 import { VerifiedBadge } from "@/components/verified-badge";
 import Link from "next/link";
+import { HOLD_STATE_LABEL, holdAmountAgorot, holdState, holdsEnabled } from "@/lib/payments/holds";
+import { deliveriesFor } from "@/lib/customer/accept-inquiry";
 import { notFound } from "next/navigation";
 import { Card } from "@/components/form";
 import { OfferButton, OfferReasonAction, OfferStatus } from "@/components/offer-actions";
@@ -21,8 +23,15 @@ import { canCancel, canDecide, inquiryStage, offerStageNote, ENDED_STAGES } from
 import { paymentTermsLabel } from "@/lib/terms";
 import { cancelInquiry, decideInquiry } from "../../offers/actions";
 
-export default async function CustomerInquiry({ params }: { params: Promise<{ id: string }> }) {
+export default async function CustomerInquiry({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ hold?: string }>;
+}) {
   const { id } = await params;
+  const { hold: holdResult } = await searchParams;
   const session = await requireRole("CUSTOMER");
   const customer = await customerForUser(session.userId);
   const inquiry = await db.negotiationRequest.findFirst({
@@ -52,6 +61,15 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
     (await db.basket.findMany({ where: { customerId: customer.id }, select: { id: true } })).map((b) => b.id),
   );
   const ended = ENDED_STAGES.includes(stage);
+  // תפיסת מסגרת באשראי: האחרונה שאושרה, וגובה המסגרת שתתבקש לפני קבלת ההצעה
+  const hold = await db.cardHold.findFirst({
+    where: { inquiryId: inquiry.id, status: { not: "PENDING" } },
+    orderBy: { createdAt: "desc" },
+  });
+  const holdBefore =
+    canDecide(stage) && holdsEnabled()
+      ? holdAmountAgorot(inquiry.totalAgorot, await deliveriesFor(inquiry.basketId, inquiry.customerProfile))
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -66,6 +84,19 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
         <p className="text-sm text-muted">נשלחה {inquiry.createdAt.toLocaleDateString("he-IL")} · המחירים ללא מע״מ</p>
       </div>
 
+      {holdResult === "failed" && (
+        <p role="alert" className="rounded-md border border-danger bg-[#fdecec] px-4 py-3 text-sm">
+          אישור המסגרת באשראי נכשל{hold?.failureReason ? ` (${hold.failureReason})` : ""}, וההצעה עוד לא התקבלה. אפשר
+          לנסות שוב עם כרטיס אחר.
+        </p>
+      )}
+      {hold && hold.status !== "FAILED" && stage === "ACCEPTED" && (
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm">
+          {holdState(hold) === "active"
+            ? `אישרתם את ההזמנה הראשונה עם מסגרת אשראי של ${shekels(hold.amountAgorot)}${hold.cardLast4 ? ` (כרטיס ${hold.cardLast4}••••)` : ""}. לא בוצע חיוב. המסגרת משתחררת כשהספק מאשר שההזמנה סופקה, ולכל המאוחר ב-${hold.expiresAt?.toLocaleDateString("he-IL")}.`
+            : `מסגרת האשראי של ${shekels(hold.amountAgorot)}: ${HOLD_STATE_LABEL[holdState(hold)]}.`}
+        </p>
+      )}
       <OfferStatus stage={stage} note={offerStageNote(stage, "CUSTOMER", inquiry)}>
         {canDecide(stage) && (
           <>
@@ -73,8 +104,14 @@ export default async function CustomerInquiry({ params }: { params: Promise<{ id
               needs="buy"
               action={decideInquiry}
               fields={{ ...fields, decision: "ACCEPTED" }}
-              label="קבלת ההצעה"
+              label={holdBefore ? "קבלת ההצעה ואישור באשראי" : "קבלת ההצעה"}
             />
+            {holdBefore && (
+              <p className="basis-full text-xs text-muted">
+                בקבלת ההצעה תאשרו את ההזמנה הראשונה במסגרת אשראי של {shekels(holdBefore)} (כולל מע״מ). הכסף לא יורד,
+                והמסגרת משתחררת אחרי שההזמנה סופקה. כך הספק יודע שאתם רציניים, ורק אז מקבל את פרטי הקשר שלכם.
+              </p>
+            )}
             <OfferReasonAction
               needs="buy"
               action={decideInquiry}

@@ -9,6 +9,8 @@ import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { offeredPrice } from "@/lib/matches";
 import { notify } from "@/lib/notifications";
+import { acceptInquiry, deliveriesFor } from "@/lib/customer/accept-inquiry";
+import { checkoutUrl, holdAmountAgorot, paymentsProvider } from "@/lib/payments/holds";
 import { canCancel, canDecide, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
 
 async function currentCustomer() {
@@ -24,7 +26,27 @@ export async function decideInquiry(form: FormData) {
   const decision = form.get("decision") === "ACCEPTED" ? "ACCEPTED" : "REJECTED";
   const inquiry = await db.negotiationRequest.findFirst({ where: { id, customerId: customer.id } });
   if (!inquiry || !canDecide(inquiryStage(inquiry))) redirect(`/customer/inquiries/${id}`);
-  const note = decision === "REJECTED" ? parseOutcomeNote(form.get("note")) : null;
+  if (decision === "ACCEPTED") {
+    // קבלת הצעה מתחילה בתפיסת מסגרת באשראי (סימן רצינות לספק), כשחברת סליקה מוגדרת
+    const provider = paymentsProvider();
+    if (!provider) {
+      await acceptInquiry(inquiry, customer.businessName);
+      revalidatePath("/customer", "layout");
+      redirect(`/customer/inquiries/${id}`);
+    }
+    const deliveries = await deliveriesFor(inquiry.basketId, inquiry.customerProfile);
+    const hold = await db.cardHold.create({
+      data: {
+        customerId: customer.id,
+        supplierId: inquiry.supplierId,
+        inquiryId: id,
+        amountAgorot: holdAmountAgorot(inquiry.totalAgorot, deliveries),
+        provider,
+      },
+    });
+    redirect(checkoutUrl(hold));
+  }
+  const note = parseOutcomeNote(form.get("note"));
   await db.negotiationRequest.update({
     where: { id },
     data: { outcome: decision, outcomeAt: new Date(), outcomeNote: note, status: "CLOSED" },
@@ -33,23 +55,13 @@ export async function decideInquiry(form: FormData) {
     {
       supplierId: inquiry.supplierId,
       kind: "OFFER_DECIDED",
-      title:
-        decision === "ACCEPTED"
-          ? `${customer.businessName} קיבלו את ההצעה שלכם`
-          : `${customer.businessName} דחו את ההצעה שלכם`,
-      body:
-        decision === "ACCEPTED"
-          ? "פרטי הקשר של הלקוח פתוחים עכשיו בפנייה. צרו קשר כדי לסגור את ההזמנה."
-          : (note ?? undefined),
+      title: `${customer.businessName} דחו את ההצעה שלכם`,
+      body: note ?? undefined,
       href: `/supplier/inquiries/${id}`,
       dedupeKey: `offer-decided:inquiry:${id}`,
     },
   ]);
-  await audit({
-    action: decision === "ACCEPTED" ? "offer.accepted" : "offer.rejected",
-    targetType: "inquiry",
-    targetId: id,
-  });
+  await audit({ action: "offer.rejected", targetType: "inquiry", targetId: id });
   revalidatePath("/customer", "layout");
   redirect(`/customer/inquiries/${id}`);
 }

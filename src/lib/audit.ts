@@ -47,6 +47,8 @@ export const AUDIT_LABEL: Record<string, string> = {
   "inquiry.sent": "פנייה נשלחה לספק",
   "match.sent": "בקשת השוואה נשלחה לספק",
   "offer.accepted": "הצעה התקבלה",
+  "hold.released": "מסגרת אשראי שוחררה",
+  "hold.captured": "נגבו דמי אי-הזמנה ממסגרת אשראי",
   "offer.rejected": "הצעה נדחתה",
   "offer.cancelled": "פנייה בוטלה",
   "inquiry.replied": "תשובה לפנייה נשלחה",

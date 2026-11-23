@@ -185,6 +185,7 @@ model Customer {
   users                User[]
   baskets              Basket[]
   demandSignals        DemandSignal[]
+  cardHolds            CardHold[]
   reviews              Review[]
   reviewsBySuppliers   CustomerReview[]
   invoices             Invoice[]
@@ -608,6 +609,7 @@ model NegotiationRequest {
   customerDeletedAt DateTime?
   /// הסל שממנו נשלחה הפנייה, לפנייה חדשה לאותו ספק
   basketId          String?
+  cardHolds         CardHold[]
   createdAt         DateTime          @default(now())
 
   @@index([supplierId, createdAt])
@@ -1033,4 +1035,43 @@ model DemandSignal {
 
   @@unique([customerId, productId, kind, day])
   @@index([day])
+}
+
+enum CardHoldStatus {
+  PENDING
+  AUTHORIZED
+  FAILED
+  RELEASED
+  CAPTURED
+}
+
+/// תפיסת מסגרת באשראי כשעסק מקבל הצעה של ספק: סימן רצינות לפני שהספק מקבל את פרטי הקשר.
+/// הכסף לא יורד; המסגרת משתחררת כשהספק מאשר שההזמנה הראשונה סופקה, או פגה מעצמה.
+/// פרטי הכרטיס לא נשמרים כאן (רק 4 ספרות אחרונות); הכרטיס מוזן בדף התשלום של חברת הסליקה.
+model CardHold {
+  id             String             @id @default(cuid())
+  customerId     String
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId     String
+  inquiryId      String
+  inquiry        NegotiationRequest @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  /// גובה המסגרת: ההזמנה הראשונה, כולל מע״מ
+  amountAgorot   Int
+  status         CardHoldStatus     @default(PENDING)
+  /// "demo" או שם חברת הסליקה
+  provider       String
+  providerRef    String?
+  cardLast4      String?
+  failureReason  String?
+  authorizedAt   DateTime?
+  /// עד מתי המסגרת תפוסה; אחרי זה היא פגה מעצמה
+  expiresAt      DateTime?
+  releasedAt     DateTime?
+  /// דמי אי-הזמנה שנגבו (על ידי צוות הפלטפורמה)
+  capturedAgorot Int?
+  capturedAt     DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([inquiryId])
+  @@index([status, createdAt])
 }

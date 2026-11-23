@@ -14,7 +14,9 @@ import { shekels } from "@/lib/format";
 import { CONTACT_HIDDEN_NOTE, isCustomerProfile, isQuoteSnapshot, profileRows } from "@/lib/inquiries";
 import { canCancel, inquiryStage, offerStageNote } from "@/lib/offer-status";
 import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
-import { withdrawOffer } from "../../actions";
+import { confirmFirstOrder, withdrawOffer } from "../../actions";
+import { ConfirmForm } from "@/components/confirm-form";
+import { HOLD_STATE_LABEL, holdState } from "@/lib/payments/holds";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { CustomerReviewForm } from "./customer-review-form";
 import { ReplyForm } from "./reply-form";
@@ -66,6 +68,13 @@ export default async function SupplierInquiry({
       ? { name: sent.contactName ?? "", email: sent.email, phone: sent.phone }
       : customer.users[0];
   const deal = isDealSnapshot(inquiry.deal) ? inquiry.deal : null;
+  const hold = revealed
+    ? await db.cardHold.findFirst({
+        where: { inquiryId: inquiry.id, status: { in: ["AUTHORIZED", "RELEASED", "CAPTURED"] } },
+        orderBy: { createdAt: "desc" },
+      })
+    : null;
+  const holdNow = hold ? holdState(hold) : null;
   const gapPct = inquiry.gapAgorot ? (inquiry.gapAgorot / (inquiry.totalAgorot - inquiry.gapAgorot)) * 100 : 0;
 
   return (
@@ -93,6 +102,29 @@ export default async function SupplierInquiry({
           />
         )}
       </OfferStatus>
+
+      {hold && (
+        <div className="flex flex-col gap-2 rounded-lg border border-accent bg-accent-soft p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <strong>הלקוח אישר את ההזמנה הראשונה באשראי ✓</strong> מסגרת של {shekels(hold.amountAgorot)} כולל מע״מ
+            {holdNow === "active"
+              ? `, תפוסה עד ${hold.expiresAt?.toLocaleDateString("he-IL")}`
+              : ` · ${HOLD_STATE_LABEL[holdNow!]}`}
+            . זו לא העברת כסף אליכם: את ההזמנה הלקוח משלם לכם כרגיל.
+          </p>
+          {holdNow === "active" && (
+            <ConfirmForm
+              needs="reply"
+              action={confirmFirstOrder}
+              fields={{ id: inquiry.id }}
+              confirm="לאשר שההזמנה הראשונה סופקה? המסגרת של הלקוח תשתחרר."
+              className="shrink-0 rounded-md border border-accent bg-surface px-3 py-1.5 text-accent"
+            >
+              ההזמנה הראשונה סופקה
+            </ConfirmForm>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         {deal ? (
