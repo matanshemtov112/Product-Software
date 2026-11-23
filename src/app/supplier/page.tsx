@@ -190,7 +190,7 @@ export default async function SupplierProducts({
         <Link
           href="/supplier/products/new"
           data-needs="prices"
-          className="shrink-0 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+          className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
         >
           + מוצר חדש
         </Link>
@@ -234,7 +234,7 @@ export default async function SupplierProducts({
           />
           {category && <input type="hidden" name="category" value={category} />}
           <input type="hidden" name="view" value={view} />
-          <button className="rounded-md border border-border bg-surface px-4 py-2 text-sm">חיפוש</button>
+          <button className="rounded-full border border-border bg-surface px-4 py-2 text-sm">חיפוש</button>
         </form>
         <ViewToggle view={view} params={params} />
       </div>

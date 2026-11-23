@@ -9,7 +9,7 @@ export function BellLink({ href, unread }: { href: string; unread: number }) {
   return (
     <Link
       href={href}
-      className={`mx-1 flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${active ? "bg-accent-soft font-medium text-accent" : "hover:bg-background"}`}
+      className={`mx-1 flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm ${active ? "bg-ink font-medium text-ink-foreground" : "hover:bg-sand"}`}
     >
       <span className="flex items-center gap-2">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">

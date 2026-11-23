@@ -79,7 +79,7 @@ export default async function SecurityPage({
       <Card title="יציאה מכל המכשירים">
         <p className="text-sm">מנתק את החשבון בכל טלפון ומחשב, כולל מחשב משותף ששכחתם בו את החשבון מחובר.</p>
         <form action={logoutEverywhere} className="mt-3">
-          <button className="rounded-md border border-border px-4 py-2 text-sm hover:bg-background">
+          <button className="rounded-full border border-border px-4 py-2 text-sm hover:bg-background">
             יציאה מכל המכשירים
           </button>
         </form>

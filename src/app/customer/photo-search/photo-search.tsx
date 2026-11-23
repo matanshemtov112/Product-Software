@@ -25,7 +25,7 @@ function ProductResult({ product }: { product: ProductSuppliers }) {
               {s.name}
               {s.pack && <span className="ms-2 text-xs text-muted">{s.pack}</span>}
               {i === 0 && product.suppliers.length > 1 && s.priceAgorot != null && (
-                <span className="ms-2 rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent">הכי זול</span>
+                <span className="ms-2 rounded bg-good-soft px-1.5 py-0.5 text-xs text-good">הכי זול</span>
               )}
             </span>
             <span className="text-muted">

@@ -65,7 +65,7 @@ export function QuoteTable({ quote }: { quote: QuoteSnapshot }) {
                 {showPaid && (
                   <td className="py-2">
                     {l.customerPaidAgorot != null ? (
-                      <span className={l.customerPaidAgorot < l.unitPriceAgorot ? "font-medium text-accent" : ""}>
+                      <span className={l.customerPaidAgorot < l.unitPriceAgorot ? "font-medium text-good" : ""}>
                         {shekels(l.customerPaidAgorot, 2)}
                       </span>
                     ) : (

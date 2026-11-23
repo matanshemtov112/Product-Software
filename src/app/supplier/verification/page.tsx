@@ -10,7 +10,7 @@ import { UploadForm } from "./upload-form";
 const STATE: Record<DocState, { label: string; style: string }> = {
   MISSING: { label: "חסר", style: "bg-background text-muted" },
   PENDING: { label: "ממתין לבדיקה", style: "bg-[#fff4c2] text-[#6b5500]" },
-  APPROVED: { label: "אושר", style: "bg-accent-soft text-accent" },
+  APPROVED: { label: "אושר", style: "bg-good-soft text-good" },
   REJECTED: { label: "נדחה", style: "bg-[#fde2e1] text-danger" },
   EXPIRED: { label: "פג תוקף", style: "bg-[#fde2e1] text-danger" },
 };
@@ -63,7 +63,7 @@ export default async function SupplierVerification() {
       >
         {verified ? (
           <p>
-            <strong className="text-accent">החשבון מאומת ✓</strong>
+            <strong className="text-good">החשבון מאומת ✓</strong>
             {supplier.verifiedUntil && ` · בתוקף עד ${supplier.verifiedUntil.toLocaleDateString("he-IL")}`}
           </p>
         ) : (
@@ -99,7 +99,7 @@ export default async function SupplierVerification() {
             מפעל: אנחנו מייצרים את המוצרים בעצמנו (נדרשים גם רישיון יצרן ואישור משרד הבריאות)
           </label>
           {manager && (
-            <button className="self-start rounded-md border border-border bg-surface px-4 py-2">שמירה</button>
+            <button className="self-start rounded-full border border-border bg-surface px-4 py-2">שמירה</button>
           )}
         </form>
       </Card>
@@ -113,7 +113,7 @@ export default async function SupplierVerification() {
             <div className="flex flex-col gap-3 text-sm">
               <p className="text-muted">{HINT[kind]}</p>
               <p className="flex flex-wrap items-center gap-2">
-                <span className={`rounded px-2 py-0.5 text-xs font-medium ${STATE[state].style}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATE[state].style}`}>
                   {STATE[state].label}
                 </span>
                 {doc && (

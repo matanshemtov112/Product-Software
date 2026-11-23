@@ -64,7 +64,7 @@ export function ProductComparison({
                   {l.best ? (
                     <>
                       <WasPrice nowAgorot={l.best.unitPriceAgorot} regularAgorot={l.best.regularUnitAgorot} />
-                      <span className={l.monthlySavingAgorot > 0 ? "font-medium text-accent" : ""}>
+                      <span className={l.monthlySavingAgorot > 0 ? "font-medium text-good" : ""}>
                         {shekels(l.best.unitPriceAgorot, 2)} / {unit}
                       </span>
                       <span className="block text-xs text-muted">
@@ -95,7 +95,7 @@ export function ProductComparison({
                 <span>
                   <span className="block text-xs text-muted">הפרש מחיר בחודש</span>
                   {l.monthlySavingAgorot > 0 ? (
-                    <span className="font-semibold text-accent">{shekels(l.monthlySavingAgorot)}</span>
+                    <span className="font-semibold text-good">{shekels(l.monthlySavingAgorot)}</span>
                   ) : l.best ? (
                     <span className="text-muted">המחיר שלכם טוב יותר</span>
                   ) : (

@@ -33,15 +33,15 @@ export function floodCheck(ip: string, write: boolean, now = Date.now(), factor 
 
 /**
  * בלי TRUSTED_IP_HEADER הכתובת לקוחה מ-X-Forwarded-For, שמבקר יכול לזייף (כתובת אחרת בכל בקשה).
- * לכן במצב הזה יש גם מגבלה משותפת לכל הבקשות יחד, פי 10 מהמגבלה לכתובת, שאי אפשר לעקוף בזיוף.
+ * לכן במצב הזה יש גם מגבלה משותפת לכל הבקשות יחד, פי 20 מהמגבלה לכתובת, שאי אפשר לעקוף בזיוף.
  * באתר האמיתי מגדירים TRUSTED_IP_HEADER לכותרת שהשרת המארח קובע, ואז הכתובת אמינה.
  */
-export const SHARED_FACTOR = 10;
+export const SHARED_FACTOR = 20;
 const SHARED_KEY = "*shared*";
 
 /** בדיקת הצפה לבקשה: לפי כתובת, ובלי כותרת אמינה גם מגבלה משותפת. מחזיר שניות לחכות או 0 */
 export function floodCheckRequest(headers: Headers, write: boolean, now = Date.now()): number {
-  const trusted = !!process.env.TRUSTED_IP_HEADER?.trim();
+  const trusted = !!trustedHeader();
   const ip = clientIpFrom(headers);
   const own = ip && ip !== SHARED_KEY ? floodCheck(ip, write, now) : 0;
   if (trusted) return own;
@@ -50,8 +50,15 @@ export function floodCheckRequest(headers: Headers, write: boolean, now = Date.n
 }
 
 /** הכתובת מכותרת שהשרת המארח קובע (ראו clientIp ב-audit.ts) */
+/** הכותרת שהשרת המארח קובע ומבקר לא יכול לזייף. ב-Vercel זו x-real-ip גם בלי הגדרה */
+function trustedHeader(): string | null {
+  const set = process.env.TRUSTED_IP_HEADER?.trim().toLowerCase();
+  if (set) return set;
+  return process.env.VERCEL === "1" ? "x-real-ip" : null;
+}
+
 export function clientIpFrom(headers: Headers): string | null {
-  const trusted = process.env.TRUSTED_IP_HEADER?.trim().toLowerCase();
+  const trusted = trustedHeader();
   if (trusted) return headers.get(trusted)?.split(",")[0]?.trim() || null;
   return headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || null;
 }

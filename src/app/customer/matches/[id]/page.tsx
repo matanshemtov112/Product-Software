@@ -21,7 +21,7 @@ const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
 
 const RESPONSE_STYLE = {
   PENDING: "bg-background text-muted",
-  MATCHED: "bg-accent-soft text-accent",
+  MATCHED: "bg-good-soft text-good",
   COUNTER: "bg-[#fff4c2] text-[#6b5500]",
   DECLINED: "bg-background text-danger",
 } as const;
@@ -133,7 +133,7 @@ export default async function CustomerMatch({
         </div>
         <div className="rounded-lg bg-accent-soft p-4">
           <p className="text-sm">אישרתם</p>
-          <p className="text-2xl font-bold text-accent">{shekels(summary.acceptedAgorot)}</p>
+          <p className="text-2xl font-bold text-good">{shekels(summary.acceptedAgorot)}</p>
           <p className="text-xs text-muted">חיסכון בחודש ({shekels(summary.acceptedAgorot * 12)} בשנה)</p>
         </div>
       </div>
@@ -184,7 +184,7 @@ export default async function CustomerMatch({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{l.productName}</span>
-                    <span className={`rounded px-2 py-0.5 text-xs ${RESPONSE_STYLE[l.response]}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${RESPONSE_STYLE[l.response]}`}>
                       {MATCH_RESPONSE_LABEL[l.response]}
                     </span>
                   </div>
@@ -211,21 +211,21 @@ export default async function CustomerMatch({
                       <button
                         name="decision"
                         value="ACCEPTED"
-                        className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+                        className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
                       >
                         אישור המחיר
                       </button>
                       <button
                         name="decision"
                         value="REJECTED"
-                        className="rounded-md border border-border bg-surface px-4 py-2 text-sm"
+                        className="rounded-full border border-border bg-surface px-4 py-2 text-sm"
                       >
                         דחייה
                       </button>
                     </form>
                   ) : (
                     <span
-                      className={`shrink-0 text-sm ${l.decision === "ACCEPTED" ? "font-medium text-accent" : "text-muted"}`}
+                      className={`shrink-0 text-sm ${l.decision === "ACCEPTED" ? "font-medium text-good" : "text-muted"}`}
                     >
                       {MATCH_DECISION_LABEL[l.decision]}
                     </span>

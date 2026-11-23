@@ -42,7 +42,7 @@ export default async function BuyingPage() {
             {account.businessName} · {account.city} · {account.region.name}
           </p>
           <form action={switchSide} className="mt-3">
-            <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+            <button className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
               מעבר לצד הקנייה
             </button>
           </form>

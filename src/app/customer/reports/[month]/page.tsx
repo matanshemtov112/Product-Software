@@ -12,7 +12,7 @@ function Stat({ label, value, note, highlight }: { label: string; value: string;
   return (
     <div className={`rounded-lg p-4 ${highlight ? "bg-accent-soft" : "border border-border bg-surface"}`}>
       <p className="text-sm text-muted">{label}</p>
-      <p className={`text-2xl font-bold ${highlight ? "text-accent" : ""}`}>{value}</p>
+      <p className={`text-2xl font-bold ${highlight ? "text-good" : ""}`}>{value}</p>
       {note && <p className="text-xs text-muted">{note}</p>}
     </div>
   );
@@ -41,7 +41,7 @@ function Moves({ moves, empty, showSupplier }: { moves: PriceMove[]; empty: stri
                 {pct(m.beforeAgorot, m.afterAgorot)}
               </p>
             </div>
-            <p className={`shrink-0 text-sm font-medium ${up ? "text-danger" : "text-accent"}`}>
+            <p className={`shrink-0 text-sm font-medium ${up ? "text-danger" : "text-good"}`}>
               {up ? "+" : "−"}
               {shekels(Math.abs(m.monthlyImpactAgorot))} בחודש
             </p>
@@ -146,7 +146,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
                     ))}
                     <CostBreakdown cost={o.cost} />
                   </div>
-                  <p className="shrink-0 text-sm font-medium text-accent">{shekels(o.monthlySavingAgorot)} בחודש</p>
+                  <p className="shrink-0 text-sm font-medium text-good">{shekels(o.monthlySavingAgorot)} בחודש</p>
                 </li>
               ))}
             </ul>
@@ -177,7 +177,7 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
                     {l.decidedAt.toLocaleDateString("he-IL")}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-medium text-accent">
+                <p className="shrink-0 text-sm font-medium text-good">
                   {shekels(Math.max(0, Math.round((l.beforeAgorot - l.afterAgorot) * l.monthlyQuantity)))} בחודש
                 </p>
               </li>

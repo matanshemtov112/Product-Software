@@ -105,7 +105,7 @@ export default async function AdminAudit({ searchParams }: { searchParams: Promi
           aria-label="חיפוש ביומן"
           className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent"
         />
-        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">חיפוש</button>
+        <button className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">חיפוש</button>
       </form>
       <section className="rounded-lg border border-border bg-surface p-2">
         {entries.length === 0 ? (

@@ -31,7 +31,7 @@ export function SupplierSidebar({
     return qs ? `/supplier?${qs}` : "/supplier";
   };
   const item = (selected: boolean) =>
-    `flex items-center justify-between rounded-md px-3 py-2 text-sm ${selected ? "bg-accent-soft font-medium text-accent" : "hover:bg-background"}`;
+    `flex items-center justify-between rounded-2xl px-3 py-2 text-sm ${selected ? "bg-ink font-medium text-ink-foreground [&_.text-muted]:text-ink-muted" : "hover:bg-sand"}`;
 
   return (
     <nav aria-label="תפריט ספק" className="flex flex-col gap-4">

@@ -76,7 +76,7 @@ export default async function ProductDetails({
         {archived ? (
           <form action={restoreOffer} data-needs="prices">
             <input type="hidden" name="offerId" value={offer.id} />
-            <button className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft">
+            <button className="rounded-full border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft">
               החזרה מהארכיון
             </button>
           </form>
@@ -84,13 +84,13 @@ export default async function ProductDetails({
           <div data-needs="prices" className="flex flex-wrap items-center gap-3">
             <Link
               href={`/supplier/products/${offer.id}/edit`}
-              className="rounded-md bg-accent px-4 py-2 text-sm text-white"
+              className="rounded-full bg-accent px-4 py-2 text-sm text-white"
             >
               עריכה
             </Link>
             <Link
               href={`/supplier/products/new?addPack=${offer.id}`}
-              className="rounded-md border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft"
+              className="rounded-full border border-accent px-4 py-2 text-sm text-accent hover:bg-accent-soft"
             >
               + אריזה נוספת
             </Link>

@@ -27,7 +27,7 @@ function ModeCard({
       <h2 className="text-lg font-semibold">{title}</h2>
       <p className="flex-1 text-sm text-muted">{text}</p>
       {extra ?? (
-        <Link href={href} className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
+        <Link href={href} className="self-start rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">
           בחירה
         </Link>
       )}
@@ -75,12 +75,12 @@ export default async function NewBasket({
             text={`בוחרים מוצרים בעצמכם, או מקבלים רשימה סטנדרטית ל${customer.cuisine} ומעדכנים אותה.`}
             extra={
               <div className="flex flex-wrap gap-2">
-                <Link href="?mode=template" className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
+                <Link href="?mode=template" className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">
                   רשימה סטנדרטית
                 </Link>
                 <Link
                   href="?mode=manual"
-                  className="rounded-md border border-border px-4 py-2 text-sm hover:bg-background"
+                  className="rounded-full border border-border px-4 py-2 text-sm hover:bg-background"
                 >
                   אבחר בעצמי
                 </Link>

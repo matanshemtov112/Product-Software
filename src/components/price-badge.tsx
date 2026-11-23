@@ -4,7 +4,7 @@ import type { QuantityDealInput } from "@/lib/engine/quantity-deal";
 import { priceStatus, type PriceStatusKey } from "@/lib/price-status";
 
 const STATUS_CLASS: Record<PriceStatusKey, string> = {
-  fixed: "bg-accent-soft text-accent",
+  fixed: "bg-good-soft text-good",
   until: "bg-[#e7f1fb] text-[#1f4f82]",
   promotion: "bg-[#fff4c2] text-[#6b5300]",
 };
@@ -22,7 +22,7 @@ export function PriceStatusBadge({
   const status = priceStatus({ kind, updatedAt, validTo });
   return (
     <span title={status.detail} className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-      <span className={`rounded px-1.5 py-0.5 text-xs whitespace-nowrap ${STATUS_CLASS[status.key]}`}>
+      <span className={`rounded-full px-1.5 py-0.5 text-xs whitespace-nowrap ${STATUS_CLASS[status.key]}`}>
         {status.label}
       </span>
       {status.updated && (
@@ -46,7 +46,7 @@ export function DealBadge({
     <span className="flex flex-col gap-0.5 text-xs">
       <span className="w-fit rounded bg-[#fde7d9] px-1.5 py-0.5 text-[#7a3410]">{dealLabel(deal, unitLabel)}</span>
       {deal.applied !== undefined && (
-        <span className={deal.applied ? "text-accent" : "text-muted"}>
+        <span className={deal.applied ? "text-good" : "text-muted"}>
           {dealStatus({ applied: deal.applied, missingPerOrder: deal.missingPerOrder ?? 0 }, unitLabel)}
         </span>
       )}

@@ -95,7 +95,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
         <p>לחישוב מדויק לפי הכמויות וההיקף החודשי שלכם, כולל מינימום הזמנה:</p>
         <Link
           href={`/customer/baskets/new?mode=supplier&supplier=${current.id}`}
-          className="mt-2 inline-block rounded-md bg-accent px-4 py-2 font-medium text-white"
+          className="mt-2 inline-block rounded-full bg-accent px-4 py-2 font-medium text-white"
         >
           בניית סל מהמוצרים של {current.companyName}
         </Link>
@@ -117,7 +117,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                   <p className="text-xs text-muted">{domains(s)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-0.5 text-sm">
-                  <span className={c.avgDiffPct < 0 ? "font-semibold text-accent" : "text-muted"}>
+                  <span className={c.avgDiffPct < 0 ? "font-semibold text-good" : "text-muted"}>
                     {pct(c.avgDiffPct)}
                   </span>
                   {avg ? (
@@ -157,7 +157,7 @@ export default async function Competitors({ searchParams }: { searchParams: Prom
                           <td className="py-1.5">
                             {shekels(l.competitorAgorot, 2)} / {unit}
                           </td>
-                          <td className={`py-1.5 ${diff < 0 ? "font-medium text-accent" : "text-muted"}`}>
+                          <td className={`py-1.5 ${diff < 0 ? "font-medium text-good" : "text-muted"}`}>
                             <bdi dir="ltr">
                               {diff === 0 ? "—" : `${diff < 0 ? "−" : "+"}${shekels(Math.abs(diff), 2)}`}
                             </bdi>

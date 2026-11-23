@@ -96,7 +96,7 @@ export function TiersForm({ initial }: { initial: { id: string; name: string; mi
       )}
       <FormError message={state.error} />
       {state.saved && !state.error && (
-        <p role="status" className="text-sm text-accent">
+        <p role="status" className="text-sm text-good">
           המדרגות נשמרו.
         </p>
       )}

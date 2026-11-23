@@ -70,14 +70,14 @@ export default async function AdminPrices() {
                   <button
                     name="decision"
                     value="approve"
-                    className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+                    className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
                   >
                     אישור: אותו מוצר
                   </button>
                   <button
                     name="decision"
                     value="reject"
-                    className="rounded-md border border-border bg-surface px-4 py-2 text-sm"
+                    className="rounded-full border border-border bg-surface px-4 py-2 text-sm"
                   >
                     דחייה
                   </button>
@@ -109,7 +109,7 @@ export default async function AdminPrices() {
                     מדרגה: {p.tier.name} · {before !== null ? `היום ${shekels(before, 2)} → ` : ""}
                     <strong className="text-foreground">{shekels(p.unitPriceAgorot, 2)}</strong> ל{unit}
                     {change !== null && (
-                      <span className={change > 0 ? "text-danger" : "text-accent"}>
+                      <span className={change > 0 ? "text-danger" : "text-good"}>
                         {" "}
                         ({change > 0 ? "עלייה" : "ירידה"} של {Math.abs(change)}%)
                       </span>
@@ -126,14 +126,14 @@ export default async function AdminPrices() {
                   <button
                     name="decision"
                     value="approve"
-                    className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white"
+                    className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
                   >
                     אישור
                   </button>
                   <button
                     name="decision"
                     value="reject"
-                    className="rounded-md border border-border bg-surface px-4 py-2 text-sm"
+                    className="rounded-full border border-border bg-surface px-4 py-2 text-sm"
                   >
                     דחייה
                   </button>

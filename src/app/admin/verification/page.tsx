@@ -68,7 +68,7 @@ export default async function AdminVerification({ searchParams }: { searchParams
                 <span className="text-muted">ח.פ. {d.supplier.companyNumber}</span>
                 <span className="text-muted">· {d.supplier.isManufacturer ? "מפעל" : "ספק / משווק"}</span>
                 {isVerified(d.supplier) && (
-                  <span className="rounded bg-accent-soft px-2 py-0.5 text-xs text-accent">מאומת</span>
+                  <span className="rounded bg-good-soft px-2 py-0.5 text-xs text-good">מאומת</span>
                 )}
               </p>
               <p>
@@ -112,11 +112,11 @@ export default async function AdminVerification({ searchParams }: { searchParams
                 <button
                   name="decision"
                   value="APPROVED"
-                  className="rounded-md bg-accent px-4 py-2 font-medium text-white"
+                  className="rounded-full bg-accent px-4 py-2 font-medium text-white"
                 >
                   אישור המסמך
                 </button>
-                <button name="decision" value="REJECTED" className="rounded-md border border-border px-4 py-2">
+                <button name="decision" value="REJECTED" className="rounded-full border border-border px-4 py-2">
                   דחייה
                 </button>
               </form>

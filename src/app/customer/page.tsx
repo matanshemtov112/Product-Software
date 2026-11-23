@@ -19,14 +19,38 @@ interface Alert {
   tone: "accent" | "warn" | "muted";
 }
 
-function Stat({ label, value, note, highlight }: { label: string; value: string; note?: string; highlight?: boolean }) {
+function Stat({
+  label,
+  value,
+  note,
+  highlight,
+  wide,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  highlight?: boolean;
+  /** בטלפון תופס את כל השורה */
+  wide?: boolean;
+}) {
   return (
-    <div className={`rounded-lg p-4 ${highlight ? "bg-accent-soft" : "border border-border bg-surface"}`}>
-      <p className="text-sm text-muted">{label}</p>
-      <p className={`text-2xl font-bold ${highlight ? "text-accent" : ""}`}>{value}</p>
-      {note && <p className="text-xs text-muted">{note}</p>}
+    <div
+      className={`flex flex-col gap-1 rounded-lg p-5 ${highlight ? "bg-ink text-ink-foreground" : "border border-border bg-surface"} ${highlight || wide ? "max-lg:col-span-2" : ""}`}
+    >
+      <p className={`text-sm ${highlight ? "text-ink-muted" : "text-muted"}`}>{label}</p>
+      <p className={`font-extrabold tabular-nums ${highlight ? "text-4xl text-highlight" : "text-3xl"}`}>{value}</p>
+      {note && <p className={`text-xs ${highlight ? "text-ink-muted" : "text-muted"}`}>{note}</p>}
     </div>
   );
+}
+
+/** ברכה לפי השעה בישראל */
+function greeting(now = new Date()) {
+  const hour = Number(now.toLocaleString("en-US", { timeZone: "Asia/Jerusalem", hour: "numeric", hourCycle: "h23" }));
+  if (hour >= 5 && hour < 12) return "בוקר טוב";
+  if (hour >= 12 && hour < 17) return "צהריים טובים";
+  if (hour >= 17 && hour < 22) return "ערב טוב";
+  return "לילה טוב";
 }
 
 export default async function CustomerHome() {
@@ -108,29 +132,31 @@ export default async function CustomerHome() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="text-2xl font-bold">שלום, {customer.businessName}</h1>
+        <h1 className="text-3xl font-bold">
+          {greeting()}, {customer.businessName}
+        </h1>
         <p className="text-sm text-muted">תמונת מצב של הרכש שלכם, לפי המחירים שמילאתם ומהחשבוניות. המחירים ללא מע״מ.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="מוצרים במעקב" value={String(products)} note="עם מחיר שאתם משלמים היום" />
-        <Stat label="הספקים שלי" value={String(suppliers.length)} />
-        <Stat label="הזדמנויות" value={String(opportunities)} note="מוצרים שמשתלם לקנות אצל ספק אחר" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <Stat
-          label="חיסכון אפשרי"
+          label="חיסכון אפשרי בחודש"
           value={shekels(saving)}
-          note={`בחודש, אחרי מינימום הזמנה · ${shekels(saving * 12)} בשנה`}
+          note={`${shekels(saving * 12)} בשנה, אחרי מינימום הזמנה`}
           highlight
         />
+        <Stat label="הזדמנויות" value={String(opportunities)} note="מוצרים שמשתלם לקנות אצל ספק אחר" />
+        <Stat label="מוצרים במעקב" value={String(products)} note="עם מחיר שאתם משלמים היום" />
+        <Stat label="הספקים שלי" value={String(suppliers.length)} wide />
       </div>
 
       <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-2 font-semibold">מה דורש תשומת לב</h2>
+        <section className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="mb-2 text-lg font-semibold">מה דורש תשומת לב</h2>
           {alerts.length === 0 ? (
             <p className="text-sm text-muted">אין כרגע משהו שמחכה לכם.</p>
           ) : (
-            <ul className="divide-y divide-border">
+            <ul className="divide-y divide-dashed divide-border">
               {alerts.map((a) => (
                 <li key={a.href + a.text}>
                   <Link
@@ -141,47 +167,53 @@ export default async function CustomerHome() {
                       <span
                         aria-hidden="true"
                         className={`size-2 shrink-0 rounded-full ${
-                          a.tone === "accent" ? "bg-accent" : a.tone === "warn" ? "bg-[#e0a800]" : "bg-border"
+                          a.tone === "accent" ? "bg-good" : a.tone === "warn" ? "bg-accent" : "bg-muted/40"
                         }`}
                       />
                       {a.text}
                     </span>
-                    <span className="shrink-0 text-accent">{a.action} ←</span>
+                    <span className="shrink-0 font-medium text-accent">{a.action} ←</span>
                   </Link>
                 </li>
               ))}
             </ul>
           )}
         </section>
-        <section className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-1 font-semibold">פעולות מהירות</h2>
+        <section className="flex flex-col gap-2 rounded-lg bg-sand p-5">
+          <h2 className="mb-1 text-lg font-semibold">פעולות מהירות</h2>
           <Link
             href="/customer/invoices/new"
             data-needs="buy"
-            className="rounded-md bg-accent px-4 py-2 text-center text-sm font-medium text-white"
+            className="rounded-full bg-accent px-4 py-2 text-center text-sm font-medium text-white"
           >
             העלאת חשבונית
           </Link>
           <Link
             href="/customer/baskets/new"
             data-needs="buy"
-            className="rounded-md border border-border px-4 py-2 text-center text-sm"
+            className="rounded-full border border-border bg-surface px-4 py-2 text-center text-sm hover:border-accent"
           >
             בדיקת מחירים חדשה
           </Link>
-          <Link href="/customer/suppliers" className="rounded-md border border-border px-4 py-2 text-center text-sm">
+          <Link
+            href="/customer/suppliers"
+            className="rounded-full border border-border bg-surface px-4 py-2 text-center text-sm hover:border-accent"
+          >
             הספקים שלי
           </Link>
-          <Link href="/customer/reports" className="rounded-md border border-border px-4 py-2 text-center text-sm">
+          <Link
+            href="/customer/reports"
+            className="rounded-full border border-border bg-surface px-4 py-2 text-center text-sm hover:border-accent"
+          >
             הדוח החודשי
           </Link>
         </section>
       </div>
 
       {suppliers.length > 0 && (
-        <section className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-2 font-semibold">הספקים שלי</h2>
-          <ul className="divide-y divide-border">
+        <section className="rounded-lg border border-border bg-surface p-5">
+          <h2 className="mb-2 text-lg font-semibold">הספקים שלי</h2>
+          <ul className="divide-y divide-dashed divide-border">
             {suppliers.map((s) => (
               <li key={s.key}>
                 <Link
@@ -214,12 +246,12 @@ export default async function CustomerHome() {
           <li key={b.id}>
             <Link
               href={`/customer/baskets/${b.id}`}
-              className="flex h-full flex-col gap-1 rounded-lg border border-border bg-surface p-4 hover:border-accent"
+              className="flex h-full flex-col gap-1 rounded-lg border border-border bg-surface p-5 transition hover:-translate-y-0.5 hover:border-accent"
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="font-medium">{b.name}</span>
                 <span
-                  className={`rounded px-2 py-0.5 text-xs ${b.savedAt ? "bg-accent-soft text-accent" : "bg-background text-muted"}`}
+                  className={`rounded-full px-2 py-0.5 text-xs ${b.savedAt ? "bg-good-soft text-good" : "bg-background text-muted"}`}
                 >
                   {b.savedAt ? "שמור" : "לא נשמר"}
                 </span>

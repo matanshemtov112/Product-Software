@@ -34,7 +34,7 @@ export function NotificationList({ items, empty }: { items: Notification[]; empt
               </span>
               {n.body && <span className="text-sm text-muted">{n.body}</span>}
               {n.savingsAgorot ? (
-                <span className="text-sm font-medium text-accent">חיסכון של עד {shekels(n.savingsAgorot)} בחודש</span>
+                <span className="text-sm font-medium text-good">חיסכון של עד {shekels(n.savingsAgorot)} בחודש</span>
               ) : null}
             </span>
           </Link>

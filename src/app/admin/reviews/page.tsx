@@ -61,7 +61,7 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
                   <button
                     name="status"
                     value="PUBLISHED"
-                    className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white"
+                    className="rounded-full bg-accent px-3 py-1.5 text-sm font-medium text-white"
                   >
                     פרסום
                   </button>
@@ -70,7 +70,7 @@ export default async function AdminReviews({ searchParams }: { searchParams: Pro
                   <button
                     name="status"
                     value="REJECTED"
-                    className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm"
+                    className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm"
                   >
                     {r.status === "PUBLISHED" ? "הסרה" : "דחייה"}
                   </button>

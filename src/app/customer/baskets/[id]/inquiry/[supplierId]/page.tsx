@@ -139,7 +139,7 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
         </div>
         <div className="rounded-lg bg-accent-soft p-4">
           <p className="text-sm">פער מחיר</p>
-          <p className="text-2xl font-bold text-accent">{gap ? shekels(gap) : "אין"}</p>
+          <p className="text-2xl font-bold text-good">{gap ? shekels(gap) : "אין"}</p>
           <p className="text-xs text-muted">
             {gap ? `${((gap / row.quote.bestAlternativeAgorot) * 100).toFixed(1)}% יותר בחודש` : "הספק כבר הזול ביותר"}
           </p>

@@ -26,7 +26,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-start">
-      <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:w-56 md:shrink-0">
+      <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:border-0 md:bg-transparent md:p-0 md:shadow-none md:w-56 md:shrink-0">
         <AdminSidebar pending={{ suppliers, prices, products, reviews, reports, violations, documents }} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col gap-4">{children}</div>

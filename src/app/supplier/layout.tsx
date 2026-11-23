@@ -73,7 +73,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
 
   return (
     <div data-lacks={lacking(teamRole)} className="flex flex-col gap-6 md:flex-row md:items-start">
-      <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:w-56 md:shrink-0">
+      <aside className="rounded-lg border border-border bg-surface p-2 md:sticky md:top-4 md:border-0 md:bg-transparent md:p-0 md:shadow-none md:w-56 md:shrink-0">
         <Suspense>
           <SupplierSidebar
             categories={categories}

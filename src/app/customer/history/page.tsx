@@ -174,7 +174,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                             <span>
                               הכי זול: <strong>{shekels(r.bestCostAgorot)}</strong>
                               {delta !== 0 && (
-                                <span className={`ms-1 text-xs ${delta < 0 ? "text-accent" : "text-danger"}`}>
+                                <span className={`ms-1 text-xs ${delta < 0 ? "text-good" : "text-danger"}`}>
                                   ({delta < 0 ? "ירד" : "עלה"} ב-{shekels(Math.abs(delta))})
                                 </span>
                               )}

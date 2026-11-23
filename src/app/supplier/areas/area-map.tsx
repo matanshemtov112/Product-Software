@@ -339,7 +339,7 @@ export function AreaMap({ initial, canEdit }: { initial: Area[]; canEdit: boolea
           <input type="hidden" name="areas" value={JSON.stringify(areas)} />
           <SubmitButton pending={pending}>שמירת האזורים</SubmitButton>
           {state.saved && !dirty && (
-            <span className="text-sm text-accent">נשמר. ההשוואות מתעדכנות לפי האזורים החדשים.</span>
+            <span className="text-sm text-good">נשמר. ההשוואות מתעדכנות לפי האזורים החדשים.</span>
           )}
           {dirty && <span className="text-sm text-muted">יש שינויים שלא נשמרו</span>}
         </form>

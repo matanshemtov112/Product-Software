@@ -5,8 +5,8 @@ import { supplierForUser } from "@/lib/supplier/catalog";
 import { demandForSupplier, MIN_BUSINESSES, WINDOW_DAYS, type DemandProduct, type Trend } from "@/lib/supplier/demand";
 
 const TREND: Record<Trend, { label: string; className: string } | null> = {
-  new: { label: "ביקוש חדש", className: "bg-accent-soft text-accent" },
-  rising: { label: "בעלייה", className: "bg-accent-soft text-accent" },
+  new: { label: "ביקוש חדש", className: "bg-accent-soft text-accent-strong" },
+  rising: { label: "בעלייה", className: "bg-accent-soft text-accent-strong" },
   steady: null,
 };
 
@@ -20,7 +20,7 @@ function Row({ r }: { r: DemandProduct }) {
         </p>
         <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
           <span className="rounded bg-background px-2 py-0.5">{r.level} עסקים בדקו</span>
-          {trend && <span className={`rounded px-2 py-0.5 ${trend.className}`}>{trend.label}</span>}
+          {trend && <span className={`rounded-full px-2 py-0.5 ${trend.className}`}>{trend.label}</span>}
           {r.fewAlternatives && (
             <span className="rounded bg-[#fff4c2] px-2 py-0.5 text-[#6b5500]">מעט ספקים מגיעים אליהם</span>
           )}
@@ -34,13 +34,13 @@ function Row({ r }: { r: DemandProduct }) {
           <>
             <Link
               href={`/supplier/products/${r.offerId}/edit?back=demand`}
-              className="rounded-md border border-border px-3 py-1.5 hover:bg-background"
+              className="rounded-full border border-border px-3 py-1.5 hover:bg-background"
             >
               עדכון מחיר
             </Link>
             <Link
               href={`/supplier/products/${r.offerId}/edit?deal=1&back=demand#deal`}
-              className="rounded-md border border-border px-3 py-1.5 hover:bg-background"
+              className="rounded-full border border-border px-3 py-1.5 hover:bg-background"
             >
               הצעת מבצע
             </Link>
@@ -48,7 +48,7 @@ function Row({ r }: { r: DemandProduct }) {
         ) : (
           <Link
             href={`/supplier/products/new?product=${r.productId}`}
-            className="rounded-md bg-accent px-3 py-1.5 font-medium text-white"
+            className="rounded-full bg-accent px-3 py-1.5 font-medium text-white"
           >
             הוספת המוצר למחירון
           </Link>

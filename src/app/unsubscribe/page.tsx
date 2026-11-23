@@ -52,7 +52,7 @@ export default async function UnsubscribePage({
             </p>
             <p className="text-sm text-muted">ההתראות ימשיכו להופיע בתוך המערכת. הודעות חשובות ימשיכו להישלח.</p>
             <div>
-              <button className="rounded-md bg-accent px-4 py-2 font-medium text-white">הסירו אותי</button>
+              <button className="rounded-full bg-accent px-4 py-2 font-medium text-white">הסירו אותי</button>
             </div>
           </form>
         )}

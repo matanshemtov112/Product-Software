@@ -1,7 +1,7 @@
 import { STATUS_LABEL, type SupplierStatus } from "@/lib/customer/supplier-score";
 
 const CLASS: Record<SupplierStatus, string> = {
-  competitive: "bg-accent-soft text-accent",
+  competitive: "bg-good-soft text-good",
   check: "bg-[#fff4c2] text-[#6b5300]",
   expensive: "bg-[#fbebeb] text-danger",
 };

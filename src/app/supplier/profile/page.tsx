@@ -90,7 +90,10 @@ export default async function SupplierProfile() {
           ) : (
             <p className="text-sm text-muted">עדיין לא הוגדרו אזורי חלוקה.</p>
           )}
-          <Link href="/supplier/areas" className="mt-3 inline-block rounded-md bg-accent px-4 py-2 text-sm text-white">
+          <Link
+            href="/supplier/areas"
+            className="mt-3 inline-block rounded-full bg-accent px-4 py-2 text-sm text-white"
+          >
             {supplier.deliveryAreas.length > 0 ? "עריכת האזורים על המפה" : "סימון האזורים על המפה"}
           </Link>
         </Card>

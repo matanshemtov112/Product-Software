@@ -44,7 +44,7 @@ const date = (d: Date) => d.toLocaleDateString("he-IL");
 function Delta({ agorot }: { agorot: number }) {
   if (agorot === 0) return <span className="text-muted">ללא שינוי</span>;
   return (
-    <span className={agorot < 0 ? "font-medium text-accent" : "font-medium text-danger"}>
+    <span className={agorot < 0 ? "font-medium text-good" : "font-medium text-danger"}>
       {agorot < 0 ? `ירד ב-${shekels(-agorot)}` : `עלה ב-${shekels(agorot)}`}
     </span>
   );
@@ -277,7 +277,7 @@ export default async function BasketPage({
             )}
             <div className="rounded-lg bg-accent-soft p-3">
               <p className="text-sm">חיסכון אפשרי</p>
-              <p className="text-3xl font-bold text-accent">{saving ? shekels(saving.agorot) : "אין"}</p>
+              <p className="text-3xl font-bold text-good">{saving ? shekels(saving.agorot) : "אין"}</p>
               <p className="text-xs text-muted">
                 {saving
                   ? `בחודש ${saving.against}, ${shekels(saving.agorot * 12)} בשנה`
@@ -394,7 +394,7 @@ export default async function BasketPage({
           </div>
           <form action={recordCheck} data-needs="buy">
             <input type="hidden" name="basketId" value={basket.id} />
-            <button className="whitespace-nowrap rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
+            <button className="whitespace-nowrap rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">
               שמירת הסל
             </button>
           </form>
@@ -422,7 +422,7 @@ export default async function BasketPage({
                   מצאנו מחיר טוב יותר ל-{paid.suppliers.reduce((n, s) => n + s.products.length, 0)} מתוך{" "}
                   {paid.lines.length} המוצרים שמילאתם להם מחיר{yourSupplier ? ` (מול ${yourSupplier})` : ""}
                 </p>
-                <p className="text-3xl font-bold text-accent">חיסכון של עד {shekels(paid.monthlySavingAgorot)} בחודש</p>
+                <p className="text-3xl font-bold text-good">חיסכון של עד {shekels(paid.monthlySavingAgorot)} בחודש</p>
                 <p className="text-sm text-muted">
                   {shekels(paid.monthlySavingAgorot * 12)} בשנה. כולל מינימום ההזמנה של כל ספק, לפי{" "}
                   {basket.deliveriesPerMonth} אספקות בחודש.

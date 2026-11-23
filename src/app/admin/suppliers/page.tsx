@@ -13,7 +13,7 @@ const LABEL: Record<SupplierStatus, string> = {
 };
 const STYLE: Record<SupplierStatus, string> = {
   PENDING: "bg-[#fff4c2] text-[#6b5500]",
-  APPROVED: "bg-accent-soft text-accent",
+  APPROVED: "bg-good-soft text-good",
   REJECTED: "bg-background text-danger",
   SUSPENDED: "bg-[#fde2e1] text-danger",
 };
@@ -117,7 +117,7 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
               <li key={s.id} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{s.companyName}</span>
-                  <span className={`rounded px-2 py-0.5 text-xs ${STYLE[s.status]}`}>{LABEL[s.status]}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${STYLE[s.status]}`}>{LABEL[s.status]}</span>
                 </div>
                 {warnings(s).length > 0 ? (
                   <ul className="flex flex-col gap-1 rounded-md bg-[#fbebeb] px-3 py-2 text-sm text-danger">
@@ -126,7 +126,7 @@ export default async function AdminSuppliers({ searchParams }: { searchParams: P
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-accent">✓ ח.פ. תקין, בלי טלפון כפול ובלי דיווחים</p>
+                  <p className="text-sm text-good">✓ ח.פ. תקין, בלי טלפון כפול ובלי דיווחים</p>
                 )}
                 <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
                   <div>

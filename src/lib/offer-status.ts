@@ -22,7 +22,7 @@ export const OFFER_STAGE_STYLE: Record<OfferStage, string> = {
   NEW: "bg-[#e0ecff] text-[#1d4ed8]",
   SENT: "bg-[#fff4c2] text-[#6b5500]",
   VIEWED: "bg-[#efe4ff] text-[#6b21a8]",
-  ACCEPTED: "bg-accent-soft text-accent",
+  ACCEPTED: "bg-good-soft text-good",
   REJECTED: "bg-[#fde2e1] text-danger",
   EXPIRED: "bg-background text-muted",
   CANCELLED: "bg-background text-muted",

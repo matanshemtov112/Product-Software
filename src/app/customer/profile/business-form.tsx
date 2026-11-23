@@ -32,7 +32,7 @@ export function BusinessForm({ city, address, totalVolume }: { city: string; add
       <div className="flex items-center gap-3 sm:col-span-2">
         <SubmitButton pending={pending}>שמירה</SubmitButton>
         {"saved" in state && state.saved && (
-          <span role="status" className="text-sm text-accent">
+          <span role="status" className="text-sm text-good">
             נשמר
           </span>
         )}

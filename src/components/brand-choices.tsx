@@ -49,7 +49,7 @@ export function BrandChoices({ choices }: { choices: BrandChoice[] }) {
                   <VerifiedBadge supplierId={c.similar.supplierId} compact />
                 </span>
                 {c.similarSavingAgorot !== null && c.similarSavingAgorot > 0 && (
-                  <span className="block font-medium text-accent">
+                  <span className="block font-medium text-good">
                     חיסכון של {shekels(c.similarSavingAgorot)} בחודש אם תעברו למותג אחר
                   </span>
                 )}

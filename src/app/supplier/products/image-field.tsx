@@ -128,7 +128,7 @@ export function ImageField({
               type="button"
               onClick={findImages}
               disabled={search.state === "loading"}
-              className="rounded-md border border-border bg-surface px-3 py-1.5 text-sm hover:bg-background"
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm hover:bg-background"
             >
               {search.state === "loading" ? "מחפש…" : "אין לכם תמונה? חיפוש במאגרים פתוחים ברשת"}
             </button>

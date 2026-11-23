@@ -21,7 +21,7 @@ export async function SupplierBlockControl({
     <button
       name="mode"
       value={value}
-      className={`rounded-md border border-border px-3 py-1.5 ${danger ? "hover:border-danger hover:text-danger" : "hover:bg-background"}`}
+      className={`rounded-full border border-border px-3 py-1.5 ${danger ? "hover:border-danger hover:text-danger" : "hover:bg-background"}`}
     >
       {label}
     </button>

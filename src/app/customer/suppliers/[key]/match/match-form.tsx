@@ -101,7 +101,7 @@ function CandidateList({
               <span className="text-sm sm:text-end">
                 <span className="block">
                   {shekels(c.currentPriceAgorot, 2)} ←{" "}
-                  <strong className="text-accent">{shekels(c.targetPriceAgorot, 2)}</strong> ל{unitLabel(c.unit)}
+                  <strong className="text-good">{shekels(c.targetPriceAgorot, 2)}</strong> ל{unitLabel(c.unit)}
                 </span>
                 <span className="block text-xs text-muted">חיסכון של {shekels(c.monthlySavingAgorot)} בחודש</span>
               </span>
@@ -211,8 +211,8 @@ export function MatchForm({
         setCeiling={setCeiling}
       />
       <p className="text-sm">
-        אם {supplierName} ישווה את כל המוצרים שסימנתם, תחסכו עד{" "}
-        <strong className="text-accent">{shekels(saving)}</strong> בחודש.
+        אם {supplierName} ישווה את כל המוצרים שסימנתם, תחסכו עד <strong className="text-good">{shekels(saving)}</strong>{" "}
+        בחודש.
       </p>
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted">הודעה לספק (לא חובה)</span>
@@ -283,8 +283,7 @@ export function MatchMessage({ businessName, candidates }: { businessName: strin
         setCeiling={setCeiling}
       />
       <p className="text-sm">
-        חיסכון של עד <strong className="text-accent">{shekels(saving)}</strong> בחודש אם הספק ישווה את כל המוצרים
-        שסימנתם.
+        חיסכון של עד <strong className="text-good">{shekels(saving)}</strong> בחודש אם הספק ישווה את כל המוצרים שסימנתם.
       </p>
       <label className="flex flex-col gap-1 text-sm">
         <span className="text-muted">ההודעה לספק</span>
@@ -309,7 +308,7 @@ export function MatchMessage({ businessName, candidates }: { businessName: strin
           type="button"
           onClick={copy}
           disabled={chosen.size === 0}
-          className="rounded-md border border-border bg-surface px-4 py-2 text-sm disabled:opacity-60"
+          className="rounded-full border border-border bg-surface px-4 py-2 text-sm disabled:opacity-60"
         >
           {copied ? "הועתק ✓" : "העתקת ההודעה"}
         </button>

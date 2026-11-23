@@ -377,7 +377,7 @@ export function ProductForm({
           ).map(([value, label]) => (
             <label
               key={value}
-              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${effectivePricePer === value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
+              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${effectivePricePer === value ? "border-accent bg-good-soft text-good" : "border-border"}`}
             >
               <input
                 type="radio"
@@ -403,7 +403,7 @@ export function ProductForm({
             {PRICE_TYPES.filter((t) => t.value !== "PROMOTION" || editing).map((t) => (
               <label
                 key={t.value}
-                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${priceType === t.value ? "border-accent bg-accent-soft text-accent" : "border-border"}`}
+                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 ${priceType === t.value ? "border-accent bg-good-soft text-good" : "border-border"}`}
               >
                 <input
                   type="radio"

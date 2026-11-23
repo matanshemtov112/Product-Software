@@ -50,7 +50,7 @@ export function AddMemberForm({ options }: { options: RoleOption[] }) {
       </fieldset>
       <FormError message={state.error} />
       {state.added && !state.error && (
-        <p role="status" className="text-sm text-accent">
+        <p role="status" className="text-sm text-good">
           המשתמש נוסף. מסרו לו את האימייל {state.added} ואת הסיסמה הראשונית, כדי שיתחבר.
         </p>
       )}

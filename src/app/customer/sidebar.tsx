@@ -35,7 +35,7 @@ export function CustomerSidebar({
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
   const item = (selected: boolean) =>
-    `flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm ${selected ? "bg-accent-soft font-medium text-accent" : "hover:bg-background"}`;
+    `flex items-center justify-between gap-2 rounded-2xl px-3 py-2 text-sm ${selected ? "bg-ink font-medium text-ink-foreground [&_.text-muted]:text-ink-muted" : "hover:bg-sand"}`;
 
   return (
     <nav aria-label="תפריט מסעדה" className="flex flex-col gap-4">
@@ -60,13 +60,13 @@ export function CustomerSidebar({
         <Needs p="buy">
           <Link
             href="/customer/baskets/new"
-            className="mx-1 rounded-md bg-accent px-3 py-2 text-center text-sm font-medium text-white"
+            className="mx-1 rounded-full bg-accent px-3 py-2 text-center text-sm font-medium text-white"
           >
             + בדיקת מחירים חדשה
           </Link>
           <Link
             href="/customer/invoices/new"
-            className={`mx-1 -mt-2 rounded-md border px-3 py-2 text-center text-sm font-medium ${pathname.startsWith("/customer/invoices") ? "border-accent bg-accent-soft text-accent" : "border-accent text-accent hover:bg-accent-soft"}`}
+            className={`mx-1 -mt-2 rounded-full border px-3 py-2 text-center text-sm font-medium ${pathname.startsWith("/customer/invoices") ? "border-accent bg-accent-soft text-accent-strong" : "border-accent text-accent hover:bg-accent-soft"}`}
           >
             העלאת חשבונית
           </Link>

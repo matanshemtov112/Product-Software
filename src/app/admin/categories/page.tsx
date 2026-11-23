@@ -90,7 +90,7 @@ export default async function AdminCategories({
               </option>
             ))}
           </select>
-          <button className="rounded-md bg-accent px-4 py-1.5 text-sm font-medium text-white">הוספה</button>
+          <button className="rounded-full bg-accent px-4 py-1.5 text-sm font-medium text-white">הוספה</button>
         </form>
       </Card>
 

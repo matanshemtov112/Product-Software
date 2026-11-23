@@ -155,7 +155,7 @@ export default async function SupplierInquiry({
             </div>
             <div className="rounded-lg bg-accent-soft p-4">
               <p className="text-sm">הפער מול ספק מתחרה</p>
-              <p className="text-2xl font-bold text-accent">{inquiry.gapAgorot ? shekels(inquiry.gapAgorot) : "אין"}</p>
+              <p className="text-2xl font-bold text-good">{inquiry.gapAgorot ? shekels(inquiry.gapAgorot) : "אין"}</p>
               <p className="text-xs text-muted">
                 {inquiry.gapAgorot ? `${gapPct.toFixed(1)}% בחודש. שם המתחרה לא נחשף.` : "אתם הזולים ביותר לסל הזה"}
               </p>
@@ -253,7 +253,7 @@ export default async function SupplierInquiry({
           איך היה לעבוד עם הלקוח? הביקורת מופיעה ללקוח באזור שלו, עם שם החברה שלכם. אפשר לעדכן אותה בכל זמן.
         </p>
         {reviewed && myReview && (
-          <p role="status" className="mb-3 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent">
+          <p role="status" className="mb-3 rounded-md bg-accent-soft px-3 py-2 text-sm text-good">
             הביקורת נשמרה ומופיעה ללקוח.
           </p>
         )}

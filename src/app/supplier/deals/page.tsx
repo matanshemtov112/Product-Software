@@ -72,12 +72,12 @@ export default async function SupplierDealsPage({
       </div>
 
       {saved && (
-        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-accent">
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-good">
           המבצע נשמר.
         </p>
       )}
       {ended && (
-        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-accent">
+        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-good">
           המבצע הסתיים. המחיר הרגיל נשאר כמו שהיה.
         </p>
       )}
@@ -109,7 +109,7 @@ export default async function SupplierDealsPage({
               ))}
             </select>
           </label>
-          <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">המשך להגדרת המבצע</button>
+          <button className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">המשך להגדרת המבצע</button>
         </form>
         <p className="mt-2 text-xs text-muted">
           המוצרים שהכי הרבה לקוחות באזור שלכם שמים בסל מופיעים ראשונים. לא מוצגים שמות של לקוחות.

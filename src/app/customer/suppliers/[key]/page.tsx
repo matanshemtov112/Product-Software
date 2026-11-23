@@ -80,7 +80,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
           </div>
           <Link
             href={`/customer/suppliers/${encodeURIComponent(supplier.key)}/match`}
-            className="shrink-0 rounded-md bg-accent px-4 py-2 text-center text-sm font-medium whitespace-nowrap text-white"
+            className="shrink-0 rounded-full bg-accent px-4 py-2 text-center text-sm font-medium whitespace-nowrap text-white"
           >
             בקשו מהספק להשוות
           </Link>
@@ -111,7 +111,7 @@ export default async function MySupplierPage({ params }: { params: Promise<{ key
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-sm">
-                חיסכון של עד <strong className="text-accent">{shekels(supplier.monthlySavingAgorot)}</strong> בחודש (
+                חיסכון של עד <strong className="text-good">{shekels(supplier.monthlySavingAgorot)}</strong> בחודש (
                 {shekels(supplier.monthlySavingAgorot * 12)} בשנה), כולל מינימום ההזמנה של כל ספק.
               </p>
               <ul className="flex flex-col gap-2">

@@ -6,7 +6,7 @@ import { MARKET_BAND_LABEL, MIN_SUPPLIERS, type MarketBand } from "@/lib/supplie
 import { supplierMarket } from "@/lib/supplier/market-load";
 
 const BAND_STYLE: Record<MarketBand, string> = {
-  CHEAPEST: "bg-accent-soft text-accent",
+  CHEAPEST: "bg-good-soft text-good",
   CLOSE: "bg-accent-soft text-foreground",
   MID: "bg-[#fff4c2] text-[#6b5500]",
   HIGH: "bg-background text-danger",
@@ -65,7 +65,7 @@ export default async function SupplierMarket() {
                 <div className="flex shrink-0 flex-wrap items-center gap-3 text-sm">
                   {r.position ? (
                     <>
-                      <span className={`rounded px-2 py-0.5 ${BAND_STYLE[r.position.band]}`}>
+                      <span className={`rounded-full px-2 py-0.5 ${BAND_STYLE[r.position.band]}`}>
                         {MARKET_BAND_LABEL[r.position.band]}
                       </span>
                       <span className="text-muted">

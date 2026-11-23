@@ -20,7 +20,7 @@ export function EndedOfferActions({
   const what = kind === "match" ? "בקשת ההשוואה" : "הפנייה";
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm">
-      <Link href={newHref} className="rounded-md bg-accent px-3 py-1.5 font-medium text-white">
+      <Link href={newHref} className="rounded-full bg-accent px-3 py-1.5 font-medium text-white">
         פנייה חדשה
       </Link>
       <ConfirmForm

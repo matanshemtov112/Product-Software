@@ -41,10 +41,10 @@ export default async function AdminProducts({
           className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent"
         />
         {pending && <input type="hidden" name="pending" value="1" />}
-        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">חיפוש</button>
+        <button className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white">חיפוש</button>
         <Link
           href={pending ? "/admin/products" : "/admin/products?pending=1"}
-          className="rounded-md border border-border bg-surface px-4 py-2 text-sm"
+          className="rounded-full border border-border bg-surface px-4 py-2 text-sm"
         >
           {pending ? "כל המוצרים" : `רק חדשים לבדיקה${waiting ? ` (${waiting})` : ""}`}
         </Link>

@@ -38,7 +38,7 @@ export function UploadForm({ kind, hasFile, askValidity }: { kind: string; hasFi
         )}
         <SubmitButton pending={pending}>{hasFile ? "העלאת מסמך מעודכן" : "העלאה"}</SubmitButton>
       </div>
-      {state.saved && <p className="text-sm text-accent">המסמך התקבל ועבר לבדיקה של צוות הפלטפורמה.</p>}
+      {state.saved && <p className="text-sm text-good">המסמך התקבל ועבר לבדיקה של צוות הפלטפורמה.</p>}
       <FormError message={state.error} />
     </ActionForm>
   );

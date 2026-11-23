@@ -55,7 +55,7 @@ export async function TeamPage({ orgName }: { orgName: string }) {
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   {m.name}
                   <span
-                    className={`rounded px-2 py-0.5 text-xs ${m.teamRole === "MANAGER" ? "bg-accent-soft text-accent" : "bg-background text-muted"}`}
+                    className={`rounded-full px-2 py-0.5 text-xs ${m.teamRole === "MANAGER" ? "bg-good-soft text-good" : "bg-background text-muted"}`}
                   >
                     {ROLE_LABEL[m.teamRole]}
                   </span>

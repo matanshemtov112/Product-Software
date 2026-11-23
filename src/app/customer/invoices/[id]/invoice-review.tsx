@@ -37,7 +37,7 @@ const QTY_INPUT =
   "min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-base outline-none focus:border-accent";
 
 const CONFIDENCE: Record<Confidence, { label: string; className: string }> = {
-  high: { label: "נקרא בבירור", className: "bg-accent-soft text-accent" },
+  high: { label: "נקרא בבירור", className: "bg-good-soft text-good" },
   medium: { label: "כדאי לבדוק", className: "bg-[#fff4c2] text-[#6b5300]" },
   low: { label: "צריך לבדוק", className: "bg-[#ffe0b3] text-[#7a3d00]" },
 };
@@ -316,7 +316,7 @@ export function InvoiceReview({
                     <span className="font-medium">{l.text}</span>
                   </span>
                 </label>
-                <span className={`rounded px-2 py-0.5 text-xs ${CONFIDENCE[l.confidence].className}`}>
+                <span className={`rounded-full px-2 py-0.5 text-xs ${CONFIDENCE[l.confidence].className}`}>
                   {CONFIDENCE[l.confidence].label}
                 </span>
               </div>

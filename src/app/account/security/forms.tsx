@@ -27,7 +27,10 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
       <p className="text-xs text-muted">
         שמרו אותם במקום בטוח (מודפסים, או במנהל סיסמאות). כל קוד עובד פעם אחת, אם הטלפון אבד.
       </p>
-      <a href="/account/security" className="self-start rounded-md bg-accent px-4 py-2 text-sm font-medium text-white">
+      <a
+        href="/account/security"
+        className="self-start rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
+      >
         שמרתי את הקודים
       </a>
     </div>
@@ -49,7 +52,7 @@ export function ChangePasswordForm() {
       </Field>
       <FormError message={state.error} />
       {state.done && (
-        <p role="status" className="text-sm text-accent">
+        <p role="status" className="text-sm text-good">
           הסיסמה שונתה. שאר המכשירים נותקו.
         </p>
       )}
@@ -107,7 +110,7 @@ export function TwoFactorPanel({
     return (
       <div className="flex flex-col gap-4">
         <p className="text-sm">
-          <span className="font-medium text-accent">פעיל ✓</span> מאז {enabledSince}. כל כניסה דורשת גם קוד מהאפליקציה.
+          <span className="font-medium text-good">פעיל ✓</span> מאז {enabledSince}. כל כניסה דורשת גם קוד מהאפליקציה.
           נשארו {recoveryLeft} קודי גיבוי.
         </p>
         <details>
@@ -157,7 +160,7 @@ export function TwoFactorPanel({
         גם אם מישהו ישיג את הסיסמה שלכם, הוא לא יוכל להיכנס בלי הקוד שמופיע בטלפון שלכם. מומלץ מאוד, במיוחד למנהלים.
       </p>
       <form action={startAction}>
-        <button className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           הפעלת אימות דו-שלבי
         </button>
       </form>

@@ -63,7 +63,7 @@ export function PrefsForm({ rows }: { rows: PrefRow[] }) {
       </ul>
       <FormError message={state.error} />
       {state.saved && !state.error && (
-        <p role="status" className="text-sm text-accent">
+        <p role="status" className="text-sm text-good">
           ההגדרות נשמרו.
         </p>
       )}

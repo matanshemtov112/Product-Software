@@ -44,8 +44,8 @@ export function AdminSidebar({ pending }: { pending: Pending }) {
               <Link
                 href={i.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex items-center justify-between rounded-md px-3 py-2 text-sm ${
-                  active ? "bg-accent-soft font-medium" : "hover:bg-background"
+                className={`flex items-center justify-between rounded-2xl px-3 py-2 text-sm ${
+                  active ? "bg-ink font-medium text-ink-foreground [&_.text-muted]:text-ink-muted" : "hover:bg-sand"
                 }`}
               >
                 <span>{i.label}</span>

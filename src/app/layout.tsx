@@ -15,29 +15,63 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="he" dir="rtl">
       <body className="min-h-screen antialiased">
-        <header className="border-b border-border bg-surface">
-          <nav className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/" className="font-semibold text-accent">
-              השוואת ספקים
+        <header className="border-b border-border">
+          <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+            <Link href={session ? HOME_BY_ROLE[session.role] : "/"} className="flex items-center gap-2.5">
+              <span className="flex size-9 items-center justify-center rounded-full bg-accent text-white">
+                <svg
+                  width="19"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M5 11h14l-1.5 8.5a2 2 0 0 1-2 1.5h-7a2 2 0 0 1-2-1.5z" />
+                  <path d="M8 11l4-7 4 7" />
+                </svg>
+              </span>
+              <span className="text-lg font-bold">השוואת ספקים</span>
             </Link>
             {session ? (
-              <div className="flex items-center gap-4 text-sm">
-                <Link href={HOME_BY_ROLE[session.role]}>{session.name}</Link>
+              <div className="flex items-center gap-2 text-sm">
+                <Link
+                  href={HOME_BY_ROLE[session.role]}
+                  className="flex items-center gap-2 text-muted hover:text-foreground"
+                >
+                  <span className="max-sm:hidden">{session.name}</span>
+                  <span
+                    className="flex size-9 items-center justify-center rounded-full bg-sand font-bold text-foreground"
+                    aria-hidden="true"
+                  >
+                    {session.name.trim().charAt(0)}
+                  </span>
+                </Link>
                 <form action={logout}>
-                  <button className="text-muted hover:text-foreground">יציאה</button>
+                  <button className="rounded-full px-3 py-1.5 text-muted hover:bg-sand hover:text-foreground">
+                    יציאה
+                  </button>
                 </form>
               </div>
             ) : (
-              <div className="flex items-center gap-4 text-sm">
-                <Link href="/login">כניסה</Link>
-                <Link href="/register" className="rounded-md bg-accent px-3 py-1.5 text-white">
+              <div className="flex items-center gap-2 text-sm">
+                <Link href="/login" className="rounded-full px-4 py-2 hover:bg-sand">
+                  כניסה
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-accent px-4 py-2 font-medium text-white hover:bg-accent-strong"
+                >
                   הרשמה
                 </Link>
               </div>
             )}
           </nav>
         </header>
-        <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );
