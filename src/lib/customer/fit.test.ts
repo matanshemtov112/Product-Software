@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { rankSuppliers, type FitInput } from "./fit";
 
-const row = (id: string, covered: number, total: number, best: number, extra: Partial<FitInput["supplier"]> = {}): FitInput => ({
+const row = (
+  id: string,
+  covered: number,
+  total: number,
+  best: number,
+  extra: Partial<FitInput["supplier"]> = {},
+): FitInput => ({
   supplierId: id,
   supplierName: id,
   supplier: {
@@ -44,7 +50,10 @@ describe("rankSuppliers", () => {
 
   it("lets rating and reliability count under 'service first'", () => {
     const ranked = rankSuppliers(
-      [row("cheap", 10, 6000, 6000, { rating: 2.5, reliability: 0.7 }), row("good", 10, 6200, 6000, { rating: 4.9, reliability: 0.98 })],
+      [
+        row("cheap", 10, 6000, 6000, { rating: 2.5, reliability: 0.7 }),
+        row("good", 10, 6200, 6000, { rating: 4.9, reliability: 0.98 }),
+      ],
       10,
       "SERVICE",
     );

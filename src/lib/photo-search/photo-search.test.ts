@@ -7,10 +7,19 @@ const catalog = ["פטריות שמפיניון", "כוסברה", "פטרוזי�
 describe("parseIdentification", () => {
   it("keeps only catalog names and removes duplicates between lists", () => {
     const result = parseIdentification(
-      JSON.stringify({ description: " פטריות לבנות ", exact: ["פטריות שמפיניון", "פטריות יער"], similar: ["פטריות שמפיניון", "כוסברה", 5] }),
+      JSON.stringify({
+        description: " פטריות לבנות ",
+        exact: ["פטריות שמפיניון", "פטריות יער"],
+        similar: ["פטריות שמפיניון", "כוסברה", 5],
+      }),
       catalog,
     );
-    expect(result).toEqual({ kind: "ok", description: "פטריות לבנות", exact: ["פטריות שמפיניון"], similar: ["כוסברה"] });
+    expect(result).toEqual({
+      kind: "ok",
+      description: "פטריות לבנות",
+      exact: ["פטריות שמפיניון"],
+      similar: ["כוסברה"],
+    });
   });
 
   it("reports an error for a reply that is not JSON", () => {

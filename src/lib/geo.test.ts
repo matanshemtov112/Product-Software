@@ -17,7 +17,15 @@ describe("insideAny", () => {
   it("a point is inside a circle when it is within its radius", () => {
     expect(insideAny([{ ...telAviv, radiusKm: 20 }], { lat: 32.0, lng: 34.8 })).toBe(true);
     expect(insideAny([{ ...telAviv, radiusKm: 20 }], jerusalem)).toBe(false);
-    expect(insideAny([{ ...telAviv, radiusKm: 20 }, { ...jerusalem, radiusKm: 5 }], jerusalem)).toBe(true);
+    expect(
+      insideAny(
+        [
+          { ...telAviv, radiusKm: 20 },
+          { ...jerusalem, radiusKm: 5 },
+        ],
+        jerusalem,
+      ),
+    ).toBe(true);
     expect(insideAny([], telAviv)).toBe(false);
   });
 });

@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { getSession } from "./current";
 import { dummyHash, hashPassword, verifyPassword } from "./password";
-import { startSession } from "./start-session";
+import { beginMfa, startSession } from "./start-session";
 import { HOME_BY_ROLE, SESSION_COOKIE } from "./session";
 
 export interface FormState {
@@ -54,6 +54,8 @@ export async function login(_: FormState, form: FormData): Promise<FormState> {
     return { error: "אימייל או סיסמה שגויים" };
   }
   await rateLimit.reset(key);
+  // עם אימות דו-שלבי: הסיסמה נכונה, אבל ההתחברות נוצרת רק אחרי הקוד מאפליקציית האימות
+  if (user.totpEnabledAt) await beginMfa(user);
   // הצד (מסעדה או ספק) נקבע לפי החשבון עצמו, ולא לפי הלשונית שנבחרה: כך כניסה עובדת גם אם הלשונית
   // נלחצה לפני שהדף סיים להיטען, וכל משתמש מגיע לאזור שלו
   await startSession(user);

@@ -45,7 +45,13 @@ export function compareChecks(before: CheckSnapshot, now: CheckSnapshot) {
   for (const [id, after] of Object.entries(now.suppliers)) {
     const prev = before.suppliers[id];
     if (!prev || prev.items !== after.items) {
-      changes.push({ supplierId: id, name: after.name, kind: "new", beforeAgorot: null, afterAgorot: after.totalAgorot });
+      changes.push({
+        supplierId: id,
+        name: after.name,
+        kind: "new",
+        beforeAgorot: null,
+        afterAgorot: after.totalAgorot,
+      });
     } else if (Math.abs(prev.totalAgorot - after.totalAgorot) >= MIN_CHANGE_AGOROT) {
       changes.push({
         supplierId: id,
@@ -58,7 +64,13 @@ export function compareChecks(before: CheckSnapshot, now: CheckSnapshot) {
   }
   for (const [id, prev] of Object.entries(before.suppliers)) {
     if (!now.suppliers[id]) {
-      changes.push({ supplierId: id, name: prev.name, kind: "gone", beforeAgorot: prev.totalAgorot, afterAgorot: null });
+      changes.push({
+        supplierId: id,
+        name: prev.name,
+        kind: "gone",
+        beforeAgorot: prev.totalAgorot,
+        afterAgorot: null,
+      });
     }
   }
   const delta = (a: number | null, b: number | null) => (a === null || b === null ? null : b - a);

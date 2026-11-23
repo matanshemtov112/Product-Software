@@ -28,8 +28,8 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
   { key: "Content-Security-Policy", value: contentSecurityPolicy() },
-  // בייצור: הדפדפן מתחבר לאתר רק ב-https, גם אם מקלידים http
-  ...(process.env.NODE_ENV === "production"
+  // באתר האמיתי (FORCE_HTTPS=1): הדפדפן מתחבר רק ב-https, גם אם מקלידים http
+  ...(process.env.FORCE_HTTPS === "1"
     ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" }]
     : []),
 ];

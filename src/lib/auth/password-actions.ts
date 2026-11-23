@@ -12,7 +12,8 @@ import { getSession } from "./current";
 import { hashPassword, verifyPassword } from "./password";
 import { passwordFingerprint, readResetToken, RESET_MINUTES, resetToken } from "./reset-token";
 import { HOME_BY_ROLE, SESSION_COOKIE } from "./session";
-import { startSession } from "./start-session";
+import { beginMfa, startSession } from "./start-session";
+import { notifyUserSecurity } from "./security-mail";
 
 export interface PasswordFormState {
   error?: string;
@@ -44,6 +45,7 @@ export async function changePassword(_: PasswordFormState, form: FormData): Prom
   });
   await startSession(updated);
   await audit({ action: "password.changed", userId: user.id, actor: user.name });
+  await notifyUserSecurity(updated, "הסיסמה שלכם שונתה", "הסיסמה לחשבון שלכם שונתה, וכל שאר המכשירים נותקו.");
   return { done: true };
 }
 
@@ -109,6 +111,9 @@ export async function resetPassword(_: PasswordFormState, form: FormData): Promi
     data: { passwordHash: await hashPassword(parsed.data), sessionVersion: { increment: 1 } },
   });
   await audit({ action: "password.reset", userId: user.id, actor: user.email });
+  await notifyUserSecurity(updated, "הסיסמה שלכם אופסה", "הסיסמה לחשבון שלכם אופסה עכשיו דרך קישור באימייל.");
+  // איפוס סיסמה לא עוקף את האימות הדו-שלבי
+  if (updated.totpEnabledAt) await beginMfa(updated);
   await startSession(updated);
   redirect(HOME_BY_ROLE[updated.role]);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { ActionForm } from "@/components/action-form";
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Field, FormError, Input, SubmitButton } from "@/components/form";
 import { type AccountKind, KindToggle } from "@/components/kind-toggle";
@@ -19,6 +20,9 @@ export function LoginForm({ initialKind }: { initialKind: AccountKind }) {
         <Input name="password" type="password" autoComplete="current-password" dir="ltr" required />
       </Field>
       <FormError message={state.error} />
+      <Link href="/forgot-password" className="text-sm text-accent hover:underline">
+        שכחתי סיסמה
+      </Link>
       <SubmitButton pending={pending}>{kind === "supplier" ? "כניסה לאזור הספק" : "כניסה לאזור המסעדה"}</SubmitButton>
     </ActionForm>
   );

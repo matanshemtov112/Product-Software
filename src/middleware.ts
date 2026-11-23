@@ -9,15 +9,17 @@ const AREAS: { prefix: string; role: Role }[] = [
 ];
 
 export async function middleware(request: NextRequest) {
-  // בייצור רק https: בקשה שהגיעה ב-http (לפי השרת המתווך) עוברת לכתובת המאובטחת
-  if (process.env.NODE_ENV === "production" && request.headers.get("x-forwarded-proto") === "http") {
+  // באתר האמיתי (FORCE_HTTPS=1) רק https: בקשה שהגיעה ב-http עוברת לכתובת המאובטחת.
+  // לא מופעל אוטומטית, כי במחשב מקומי (http://localhost) זה היה חוסם את האתר
+  if (process.env.FORCE_HTTPS === "1" && request.headers.get("x-forwarded-proto") === "http") {
     const secure = request.nextUrl.clone();
     secure.protocol = "https:";
     return NextResponse.redirect(secure, 308);
   }
   // הגבלה כללית לדקה לכל כתובת, נגד הצפה בבקשות (בנוסף למגבלות של כניסה, הרשמה ו-AI)
-  const ip = clientIpFrom(request.headers) ?? "unknown";
-  const flood = floodCheck(ip, request.method !== "GET" && request.method !== "HEAD");
+  // בלי כתובת (שרת מקומי בלי שרת מתווך) אין לפי מה להגביל, ולא מגבילים את כולם יחד
+  const ip = clientIpFrom(request.headers);
+  const flood = ip ? floodCheck(ip, request.method !== "GET" && request.method !== "HEAD") : 0;
   if (flood) {
     return new NextResponse("יותר מדי בקשות. נסו שוב בעוד דקה.", {
       status: 429,

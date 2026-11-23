@@ -4,7 +4,14 @@ vi.mock("@/lib/db", () => ({ db: {} }));
 const { expandCategoryIds, selectableCategories } = await import("./categories");
 
 const tree = [
-  { id: "veg", name: "פירות וירקות", children: [{ id: "root", name: "ירקות אדמה" }, { id: "greens", name: "ירוקים" }] },
+  {
+    id: "veg",
+    name: "פירות וירקות",
+    children: [
+      { id: "root", name: "ירקות אדמה" },
+      { id: "greens", name: "ירוקים" },
+    ],
+  },
   { id: "eggs", name: "ביצים", children: [] },
 ];
 
@@ -16,7 +23,13 @@ describe("categories", () => {
 
   it("offers subcategories, or the category itself when it has none, limited to the supplier's domains", () => {
     expect(selectableCategories(tree, null)).toEqual([
-      { group: "פירות וירקות", options: [{ id: "root", name: "ירקות אדמה" }, { id: "greens", name: "ירוקים" }] },
+      {
+        group: "פירות וירקות",
+        options: [
+          { id: "root", name: "ירקות אדמה" },
+          { id: "greens", name: "ירוקים" },
+        ],
+      },
       { group: "ביצים", options: [{ id: "eggs", name: "ביצים" }] },
     ]);
     expect(selectableCategories(tree, ["greens"])).toEqual([

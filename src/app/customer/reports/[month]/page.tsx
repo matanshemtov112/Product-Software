@@ -128,8 +128,8 @@ export default async function MonthlyReportPage({ params }: { params: Promise<{ 
       <Card title="איפה אפשר לחסוך">
         {r.opportunities.length === 0 ? (
           <p className="text-sm text-muted">
-            לא מצאנו ספק שיוצא זול ממה שאתם משלמים, כולל מינימום הזמנה. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם
-            משלמים היום לכל מוצר.
+            לא מצאנו ספק שיוצא זול ממה שאתם משלמים, כולל מינימום הזמנה. כדי שנוכל להשוות, מלאו בסל את המחיר שאתם משלמים
+            היום לכל מוצר.
           </p>
         ) : (
           <>

@@ -164,6 +164,11 @@ export function CustomerSidebar({
               </Link>
             </li>
             <li>
+              <Link href="/account/security" className={item(pathname === "/account/security")}>
+                אבטחת החשבון
+              </Link>
+            </li>
+            <li>
               <Link href="/customer/team" className={item(pathname === "/customer/team")}>
                 משתמשים
               </Link>

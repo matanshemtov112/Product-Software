@@ -156,6 +156,13 @@ model User {
   marketingConsentSource  String?
   /// גרסת ההתחברות: עולה ביציאה מכל המכשירים ובשינוי סיסמה, וכל עוגייה עם גרסה ישנה מפסיקה לעבוד
   sessionVersion          Int                      @default(0)
+  /// אימות דו-שלבי: הסוד של אפליקציית האימות, מוצפן. null = לא הופעל
+  totpSecret              String?
+  /// סוד שנוצר בהגדרה ועוד לא אושר בקוד (מוצפן)
+  totpPendingSecret       String?
+  totpEnabledAt           DateTime?
+  /// קודי גיבוי חד-פעמיים (גיבוב), למקרה שהטלפון אבד
+  recoveryCodes           String[]                 @default([])
 }
 
 /// ספירת ניסיונות להגבלת קצב (כניסה, הרשמה, קריאות AI). משותף לכל השרתים ושורד הפעלה מחדש

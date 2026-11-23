@@ -45,6 +45,23 @@ export async function suspicious(e: SecurityEvent): Promise<Alert | null> {
           }
         : null;
     }
+    case "login.mfa_failed": {
+      if (!e.userId) return null;
+      const failed = await count({ action: "login.mfa_failed", userId: e.userId }, 15);
+      return failed >= 3
+        ? {
+            key: `mfa-failed:${e.userId}`,
+            title: "סיסמה נכונה אבל קודי אימות שגויים",
+            body: `מישהו הזין סיסמה נכונה לחשבון ${e.actor ?? ""} אבל נכשל ${failed} פעמים בקוד האימות הדו-שלבי (כתובת ${e.ip ?? "לא ידועה"}). ייתכן שהסיסמה דלפה.`,
+          }
+        : null;
+    }
+    case "2fa.disabled":
+      return {
+        key: `2fa-off:${e.userId}`,
+        title: "אימות דו-שלבי כובה",
+        body: `${e.actor ?? "משתמש"} כיבה את האימות הדו-שלבי בחשבון שלו (כתובת ${e.ip ?? "לא ידועה"}).`,
+      };
     case "access.denied": {
       if (!e.userId) return null;
       const denied = await count({ action: "access.denied", userId: e.userId }, 10);

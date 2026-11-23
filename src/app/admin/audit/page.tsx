@@ -10,6 +10,11 @@ const GROUPS: { key: string; label: string; actions: string[] }[] = [
     label: "אבטחה",
     actions: [
       "security.alert",
+      "login.mfa_failed",
+      "2fa.enabled",
+      "2fa.disabled",
+      "2fa.disable_failed",
+      "2fa.codes_regenerated",
       "access.denied",
       "login.blocked",
       "password.changed",

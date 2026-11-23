@@ -8,7 +8,10 @@ export interface CategoryNode {
 
 /** תחומים ראשיים ותתי-התחומים שלהם, לפי שם */
 export async function categoryTree(): Promise<CategoryNode[]> {
-  const all = await db.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, parentId: true } });
+  const all = await db.category.findMany({
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, parentId: true },
+  });
   return all
     .filter((c) => !c.parentId)
     .map((c) => ({

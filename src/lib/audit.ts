@@ -26,6 +26,11 @@ export const AUDIT_LABEL: Record<string, string> = {
   "login.failed": "ניסיון כניסה שנכשל",
   "login.blocked": "כניסה נחסמה (יותר מדי ניסיונות)",
   "security.alert": "התראת אבטחה",
+  "login.mfa_failed": "קוד אימות דו-שלבי שגוי",
+  "2fa.enabled": "הפעלת אימות דו-שלבי",
+  "2fa.disabled": "כיבוי אימות דו-שלבי",
+  "2fa.disable_failed": "ניסיון כיבוי אימות דו-שלבי שנכשל",
+  "2fa.codes_regenerated": "קודי גיבוי חדשים",
   "access.denied": "ניסיון פעולה בלי הרשאה",
   "password.changed": "שינוי סיסמה",
   "password.change_failed": "ניסיון שינוי סיסמה שנכשל",
@@ -97,6 +102,9 @@ const SECURITY_ACTIONS = new Set([
   "login.success",
   "access.denied",
   "password.reset_requested",
+  "login.mfa_failed",
+  "2fa.disabled",
+  "2fa.disable_failed",
 ]);
 
 export async function audit(entry: AuditEntry) {

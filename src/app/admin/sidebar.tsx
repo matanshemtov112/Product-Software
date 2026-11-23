@@ -27,6 +27,7 @@ const ITEMS: { href: string; label: string; pending?: keyof Pending }[] = [
   { href: "/admin/users", label: "משתמשים" },
   { href: "/admin/emails", label: "אימיילים שנשלחו" },
   { href: "/admin/audit", label: "יומן פעולות" },
+  { href: "/account/security", label: "אבטחת החשבון" },
 ];
 
 export function AdminSidebar({ pending }: { pending: Pending }) {

@@ -23,8 +23,15 @@ describe("compareChecks", () => {
   });
 
   it("marks new suppliers, suppliers that left, and suppliers whose coverage changed", () => {
-    const { changes } = compareChecks(snap(1000, { a: [1000, 5], gone: [1100, 5] }), snap(1000, { a: [800, 4], n: [990, 5] }));
-    expect(Object.fromEntries(changes.map((c) => [c.supplierId, c.kind]))).toEqual({ a: "new", n: "new", gone: "gone" });
+    const { changes } = compareChecks(
+      snap(1000, { a: [1000, 5], gone: [1100, 5] }),
+      snap(1000, { a: [800, 4], n: [990, 5] }),
+    );
+    expect(Object.fromEntries(changes.map((c) => [c.supplierId, c.kind]))).toEqual({
+      a: "new",
+      n: "new",
+      gone: "gone",
+    });
   });
 
   it("ignores changes under one shekel", () => {
