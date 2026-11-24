@@ -55,3 +55,46 @@ export function areaTermsText(t: AreaTerms): string | null {
   if (t.deliveryNote) parts.push(t.deliveryNote);
   return parts.length ? parts.join(". ") + (t.deliveryNote?.match(/[.!?]$/) ? "" : ".") : null;
 }
+
+/** כמה פעמים בשבוע ספק מגיע ללקוח, ובאילו ימים אם הם קבועים */
+export interface DeliveryFrequency {
+  perWeek: number;
+  days: string[] | null;
+}
+
+export const MAX_DELIVERIES_PER_WEEK = WEEK_DAYS.length;
+
+/**
+ * לפי מה שהספק בחר: מספר פעמים בשבוע (PER_WEEK), או הימים הקבועים באזור של הלקוח (BY_AREA).
+ * ספק שעוד לא בחר מוצג לפי ימי האזור, אם מילא כאלה. null כשאין מה להציג.
+ */
+export function deliveryFrequency(
+  schedule: "BY_AREA" | "PER_WEEK" | null | undefined,
+  perWeek: number | null | undefined,
+  areaDays: string | null | undefined,
+): DeliveryFrequency | null {
+  if (schedule === "PER_WEEK") {
+    return perWeek && perWeek >= 1 && perWeek <= MAX_DELIVERIES_PER_WEEK ? { perWeek, days: null } : null;
+  }
+  const days = (areaDays ?? "")
+    .split(",")
+    .map((d) => d.trim())
+    .filter((d) => (WEEK_DAYS as readonly string[]).includes(d));
+  return days.length ? { perWeek: days.length, days } : null;
+}
+
+/** "פעם בשבוע", "פעמיים בשבוע", "3 פעמים בשבוע" */
+export function timesPerWeekText(n: number): string {
+  if (n === 1) return "פעם בשבוע";
+  if (n === 2) return "פעמיים בשבוע";
+  if (n >= MAX_DELIVERIES_PER_WEEK) return "כל יום, א׳ עד ו׳";
+  return `${n} פעמים בשבוע`;
+}
+
+/** המשפט שהלקוח רואה, למשל "3 פעמים בשבוע (א׳, ג׳, ה׳)" */
+export function deliveryFrequencyText(f: DeliveryFrequency | null): string | null {
+  if (!f) return null;
+  const base = timesPerWeekText(f.perWeek);
+  if (!f.days || f.perWeek >= MAX_DELIVERIES_PER_WEEK) return base;
+  return `${base} (${f.days.map((d) => `${d}׳`).join(", ")})`;
+}

@@ -4,6 +4,7 @@ import { isManager } from "@/lib/auth/team";
 import { db } from "@/lib/db";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { AreaMap } from "./area-map";
+import { timesPerWeekText } from "@/lib/terms";
 
 export default async function DeliveryAreasPage() {
   const session = await requireRole("SUPPLIER");
@@ -38,6 +39,15 @@ export default async function DeliveryAreasPage() {
           ימי אספקה ושעת סגירת הזמנות.
         </p>
       </div>
+      {supplier.deliverySchedule === "PER_WEEK" && supplier.deliveriesPerWeek && (
+        <p className="rounded-md bg-accent-soft px-4 py-2 text-sm">
+          בחרתם להציג &quot;{timesPerWeekText(supplier.deliveriesPerWeek)}&quot; לכל האזורים, ולכן ימי האספקה שבוחרים
+          כאן לא מוצגים ללקוחות.{" "}
+          <Link href="/supplier/profile#delivery-days" className="font-medium text-accent hover:underline">
+            שינוי ימי החלוקה
+          </Link>
+        </p>
+      )}
       <div className="rounded-lg border border-border bg-surface p-5">
         <AreaMap initial={areas} canEdit={manager} />
       </div>

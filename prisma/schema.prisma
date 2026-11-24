@@ -257,6 +257,10 @@ model Supplier {
   openingHours             String?
   /// תנאי אספקה, טקסט חופשי (למשל "הזמנה עד 14:00, אספקה למחרת")
   deliveryTerms            String?
+  /// איך הספק מציג ללקוחות כמה פעמים בשבוע הוא מגיע: לפי ימים קבועים בכל אזור, או מספר פעמים בשבוע. null = עוד לא בחר
+  deliverySchedule         DeliverySchedule?
+  /// כמה פעמים בשבוע הספק מגיע (1-6), כשבחר PER_WEEK
+  deliveriesPerWeek        Int?
   logo                     SupplierLogo?
   views                    SupplierView[]
   notifications            Notification[]
@@ -282,6 +286,13 @@ model Supplier {
   matchRequests            MatchRequest[]
   currentBaskets           Basket[]
   createdAt                DateTime               @default(now())
+}
+
+enum DeliverySchedule {
+  /// ימים קבועים לכל אזור חלוקה (נקבעים במפה)
+  BY_AREA
+  /// מספר פעמים בשבוע, בלי ימים קבועים
+  PER_WEEK
 }
 
 model DeliveryZone {

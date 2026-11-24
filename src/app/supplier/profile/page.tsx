@@ -10,6 +10,8 @@ import { supplierLogoUrl } from "@/lib/supplier/logo";
 import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
 import { TiersForm } from "./tiers-form";
+import { DeliveryScheduleForm } from "./delivery-schedule-form";
+import { deliveryFrequency, deliveryFrequencyText } from "@/lib/terms";
 
 const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה", SUSPENDED: "מושעה" } as const;
 
@@ -70,6 +72,22 @@ export default async function SupplierProfile() {
       <Card title="מדרגות מחיר">
         <TiersForm
           initial={supplier.priceTiers.map((t) => ({ id: t.id, name: t.name, min: t.minMonthlyAgorot / 100 }))}
+        />
+      </Card>
+      <Card title="ימי חלוקה" id="delivery-days">
+        <DeliveryScheduleForm
+          initial={{ schedule: supplier.deliverySchedule, perWeek: supplier.deliveriesPerWeek }}
+          areas={
+            supplier.deliveryAreas.length > 0
+              ? supplier.deliveryAreas.map((a) => ({
+                  label: a.label,
+                  text: deliveryFrequencyText(deliveryFrequency("BY_AREA", null, a.deliveryDays)),
+                }))
+              : supplier.deliveryZones.map((z) => ({
+                  label: z.region.name,
+                  text: deliveryFrequencyText(deliveryFrequency("BY_AREA", null, z.deliveryDays)),
+                }))
+          }
         />
       </Card>
       <div className="grid gap-4 md:grid-cols-2">

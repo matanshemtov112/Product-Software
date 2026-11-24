@@ -23,7 +23,7 @@ import { parseShekels, parseValidUntil, priceChangeStatus, type PriceType } from
 import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
 import { listUrl } from "@/lib/supplier/list-return";
 import { canCancel, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
-import { parsePaymentTerms } from "@/lib/terms";
+import { MAX_DELIVERIES_PER_WEEK, parsePaymentTerms } from "@/lib/terms";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
 
@@ -625,6 +625,33 @@ export async function updateProfile(_: FormState, form: FormData): Promise<FormS
       paymentTermsDays: d.paymentTermsDays,
       paymentTermsPerCustomer: form.get("paymentTermsMode") === "perCustomer",
     },
+  });
+  revalidatePath("/supplier", "layout");
+  return { saved: true };
+}
+
+/** ימי החלוקה: ימים קבועים לפי אזור (נקבעים במפה), או מספר פעמים בשבוע */
+export async function saveDeliverySchedule(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const { supplier, manager } = await managedSupplier();
+  if (!manager) return { error: MANAGER_ONLY };
+  const mode = form.get("schedule");
+  if (mode !== "BY_AREA" && mode !== "PER_WEEK") return { error: "נא לבחור איך להציג את ימי החלוקה" };
+  let perWeek: number | null = null;
+  if (mode === "PER_WEEK") {
+    perWeek = Number(form.get("perWeek"));
+    if (!Number.isInteger(perWeek) || perWeek < 1 || perWeek > MAX_DELIVERIES_PER_WEEK) {
+      return { error: "נא לבחור כמה פעמים בשבוע אתם מגיעים" };
+    }
+  }
+  await db.supplier.update({
+    where: { id: supplier.id },
+    data: { deliverySchedule: mode, deliveriesPerWeek: perWeek },
+  });
+  await audit({
+    action: "supplier.delivery_schedule",
+    targetType: "supplier",
+    targetId: supplier.id,
+    details: mode === "PER_WEEK" ? `${perWeek} פעמים בשבוע` : "לפי אזור",
   });
   revalidatePath("/supplier", "layout");
   return { saved: true };

@@ -15,14 +15,14 @@ export async function VerifiedBadge({
   const verified = (await verifiedSupplierIds()).has(supplierId);
   return verified ? (
     <span
-      className="ms-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded bg-accent-soft px-1.5 py-0.5 align-middle text-xs font-medium text-good"
+      className="ms-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded-full bg-good-soft px-1.5 py-0.5 align-middle text-xs font-medium text-good"
       title="המסמכים של הספק נבדקו ואושרו על ידי צוות הפלטפורמה"
     >
       ✓{compact ? "" : " ספק מאומת"}
     </span>
   ) : (
     <span
-      className="ms-1 inline-flex rounded bg-background px-1.5 py-0.5 align-middle text-xs text-muted"
+      className="ms-1 inline-flex rounded-full bg-sand px-1.5 py-0.5 align-middle text-xs text-muted"
       title="הספק עוד לא העביר מסמכים לבדיקה, או שהם עדיין בבדיקה"
     >
       טרם אומת

@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { distanceKm, servesCustomer, type Point } from "@/lib/geo";
-import { areaTermsText } from "@/lib/terms";
+import { cache } from "react";
+import { areaTermsText, deliveryFrequency, type DeliveryFrequency } from "@/lib/terms";
 import { geocodeCity } from "@/lib/geocode";
 
 export interface CoverageCustomer {
@@ -76,3 +77,37 @@ export async function deliveryTermsFor(
   }
   return general;
 }
+
+/**
+ * כמה פעמים בשבוע הספק מגיע ללקוח. ספק שבחר "מספר פעמים בשבוע" מוצג לפי המספר הזה;
+ * אחרת לפי הימים הקבועים באזור החלוקה שהלקוח נמצא בו (העיגול הקטן ביותר על המפה שיש לו ימים,
+ * ולספק בלי עיגולים, האזור הכללי של הלקוח).
+ */
+export const deliveryFrequencyFor = cache(
+  async (supplierId: string, customer: CoverageCustomer): Promise<DeliveryFrequency | null> => {
+    const s = await db.supplier.findUnique({
+      where: { id: supplierId },
+      select: {
+        deliverySchedule: true,
+        deliveriesPerWeek: true,
+        deliveryAreas: { select: { lat: true, lng: true, radiusKm: true, deliveryDays: true } },
+        deliveryZones: { where: { regionId: customer.regionId }, select: { deliveryDays: true } },
+      },
+    });
+    if (!s) return null;
+    if (s.deliverySchedule === "PER_WEEK") return deliveryFrequency("PER_WEEK", s.deliveriesPerWeek, null);
+    let areaDays: string | null = null;
+    if (s.deliveryAreas.length > 0) {
+      const point = await customerPoint(customer);
+      if (point) {
+        areaDays =
+          s.deliveryAreas
+            .filter((a) => a.deliveryDays && distanceKm(a, point) <= a.radiusKm)
+            .sort((a, b) => a.radiusKm - b.radiusKm)[0]?.deliveryDays ?? null;
+      }
+    } else {
+      areaDays = s.deliveryZones[0]?.deliveryDays ?? null;
+    }
+    return deliveryFrequency(s.deliverySchedule, s.deliveriesPerWeek, areaDays);
+  },
+);

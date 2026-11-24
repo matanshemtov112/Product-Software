@@ -38,6 +38,7 @@ export const AUDIT_LABEL: Record<string, string> = {
   "password.reset": "איפוס סיסמה",
   logout: "יציאה",
   "logout.everywhere": "יציאה מכל המכשירים",
+  "supplier.delivery_schedule": "עדכון ימי חלוקה",
   "side.switched": "מעבר בין צד הספק לצד הקנייה",
   "buying.opened": "פתיחת חשבון קנייה לספק",
   register: "הרשמה",
