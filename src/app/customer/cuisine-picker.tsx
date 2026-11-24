@@ -27,7 +27,7 @@ export function CuisinePicker({
             key={c}
             className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-3 text-sm ${
               value === c
-                ? "border-accent bg-accent-soft font-medium text-good"
+                ? "border-accent bg-accent-soft font-medium text-accent-strong"
                 : "border-border bg-surface hover:bg-background"
             }`}
           >

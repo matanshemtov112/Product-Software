@@ -72,12 +72,12 @@ export default async function SupplierDealsPage({
       </div>
 
       {saved && (
-        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-good">
+        <p role="status" className="rounded-md bg-good-soft px-4 py-3 text-sm text-good">
           המבצע נשמר.
         </p>
       )}
       {ended && (
-        <p role="status" className="rounded-md bg-accent-soft px-4 py-3 text-sm text-good">
+        <p role="status" className="rounded-md bg-good-soft px-4 py-3 text-sm text-good">
           המבצע הסתיים. המחיר הרגיל נשאר כמו שהיה.
         </p>
       )}
