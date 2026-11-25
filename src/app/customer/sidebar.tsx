@@ -22,7 +22,10 @@ export function CustomerSidebar({
   replies,
   reviewsAboutMe,
   unread,
+  agreements,
 }: {
+  /** עסקאות עם מחיר מובטח בתוקף */
+  agreements: number;
   businessName: string;
   cuisine: string;
   saved: { id: string; name: string; lastCheck: string | null }[];
@@ -145,6 +148,12 @@ export function CustomerSidebar({
               >
                 <span>פניות לספקים</span>
                 {replies > 0 && <span className="text-xs text-muted">{replies} תשובות</span>}
+              </Link>
+            </li>
+            <li>
+              <Link href="/customer/agreements" className={item(pathname.startsWith("/customer/agreements"))}>
+                <span>מחירים מובטחים</span>
+                {agreements > 0 && <span className="text-xs text-muted">{agreements} בתוקף</span>}
               </Link>
             </li>
             <li>

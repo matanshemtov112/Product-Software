@@ -20,6 +20,7 @@ import { canDecide, matchStage } from "@/lib/offer-status";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
 import { withLock } from "@/lib/locks";
 import { onlyChosen, quoteChanges, seenQuote } from "@/lib/quote-changes";
+import { guaranteeMatch } from "@/lib/guarantees";
 
 export interface MatchFormState {
   error?: string;
@@ -169,6 +170,7 @@ export async function decideMatchLine(form: FormData) {
       where: { id: line.requestId },
       data: { status: "CLOSED", outcome: accepted ? "ACCEPTED" : "REJECTED", outcomeAt: new Date() },
     });
+    if (accepted) await guaranteeMatch(line.requestId);
     await notify([
       {
         supplierId: line.request.supplierId,

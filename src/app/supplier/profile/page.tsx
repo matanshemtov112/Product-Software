@@ -12,6 +12,7 @@ import { ProfileForm } from "./profile-form";
 import { TiersForm } from "./tiers-form";
 import { DeliveryScheduleForm } from "./delivery-schedule-form";
 import { KosherDefaultForm } from "./kosher-form";
+import { WhatsappForm } from "./whatsapp-form";
 import { deliveryFrequency, deliveryFrequencyText } from "@/lib/terms";
 
 const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה", SUSPENDED: "מושעה" } as const;
@@ -76,6 +77,12 @@ export default async function SupplierProfile() {
       <Card title="מדרגות מחיר">
         <TiersForm
           initial={supplier.priceTiers.map((t) => ({ id: t.id, name: t.name, min: t.minMonthlyAgorot / 100 }))}
+        />
+      </Card>
+      <Card title="וואטסאפ" id="whatsapp">
+        <WhatsappForm
+          initial={{ enabled: supplier.whatsappEnabled, phone: supplier.whatsappPhone ?? "" }}
+          contactPhone={supplier.contactPhone}
         />
       </Card>
       <Card title="כשרות" id="kosher">

@@ -14,6 +14,7 @@ import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
 import { withdrawOffer } from "../../actions";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { RespondForm } from "./respond-form";
+import { GuaranteeBanner } from "@/components/guarantee-banner";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
 
@@ -55,6 +56,7 @@ export default async function SupplierMatch({
           {request.customer.businessType} · {request.customer.city} · {request.createdAt.toLocaleDateString("he-IL")}
         </p>
       </div>
+      <GuaranteeBanner side="SUPPLIER" matchRequestId={request.id} />
 
       <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", request)}>
         {canCancel(stage, "SUPPLIER") && (

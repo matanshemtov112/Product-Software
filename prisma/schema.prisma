@@ -217,6 +217,7 @@ model Customer {
   baskets              Basket[]
   demandSignals        DemandSignal[]
   cardHolds            CardHold[]
+  guarantees           PriceGuarantee[]
   reviews              Review[]
   reviewsBySuppliers   CustomerReview[]
   invoices             Invoice[]
@@ -267,6 +268,11 @@ model Supplier {
   kosherDefault            KosherLevel?
   /// גוף הכשרות (למשל "רבנות חיפה", "בד״ץ העדה החרדית")
   kosherAuthority          String?
+  /// לקוחות שקיבלו הצעה יכולים להמשיך איתנו בוואטסאפ; כבוי לעסקים בלי וואטסאפ
+  whatsappEnabled          Boolean                @default(true)
+  /// מספר הוואטסאפ להזמנות; ריק = הטלפון של איש הקשר
+  whatsappPhone            String?
+  guarantees               PriceGuarantee[]
   logo                     SupplierLogo?
   views                    SupplierView[]
   notifications            Notification[]
@@ -671,6 +677,7 @@ model NegotiationRequest {
   /// הסל שממנו נשלחה הפנייה, לפנייה חדשה לאותו ספק
   basketId          String?
   cardHolds         CardHold[]
+  guarantee         PriceGuarantee?
   createdAt         DateTime          @default(now())
 
   @@index([supplierId, createdAt])
@@ -738,6 +745,7 @@ model MatchRequest {
   customerDeletedAt DateTime?
   createdAt         DateTime           @default(now())
   lines             MatchRequestLine[]
+  guarantee         PriceGuarantee?
 
   @@index([supplierId, createdAt])
   @@index([customerId, createdAt])
@@ -823,6 +831,12 @@ enum NotificationKind {
   UPDATE_NEEDED
   /// מסעדה (שיווקי, רק למי שבחר): מבצע חדש על מוצר שהיא קונה
   NEW_DEAL
+  /// מסעדה: בחשבונית מהספק מחיר גבוה מהמחיר המובטח
+  GUARANTEE_BREACH
+  /// מסעדה: הספק מבקש לשנות מחיר מובטח
+  GUARANTEE_CHANGE_REQUESTED
+  /// ספק: הלקוח אישר או דחה בקשה לשינוי מחיר מובטח
+  GUARANTEE_CHANGE_DECIDED
 }
 
 /// קבוצת התראות: כל משתמש בוחר מה לקבל ואיך
@@ -1135,4 +1149,88 @@ model CardHold {
 
   @@index([inquiryId])
   @@index([status, createdAt])
+}
+
+/// מחיר מובטח: כשהלקוח מקבל הצעה של ספק, המחירים בה מחייבים את הספק מול הלקוח הזה 30 יום, בכל ההזמנות.
+/// הספק לא יכול לשנות אותם; שינוי נעשה רק בבקשה שהלקוח מאשר.
+model PriceGuarantee {
+  id              String              @id @default(cuid())
+  /// מספר העסקה שמוצג לשני הצדדים ובהודעת הוואטסאפ
+  number          Int                 @unique @default(autoincrement())
+  customerId      String
+  customer        Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String
+  supplier        Supplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inquiryId       String?             @unique
+  inquiry         NegotiationRequest? @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  matchRequestId  String?             @unique
+  matchRequest    MatchRequest?       @relation(fields: [matchRequestId], references: [id], onDelete: SetNull)
+  acceptedAt      DateTime
+  guaranteedUntil DateTime
+  /// פנייה על מבצע: תנאי המבצע כפי שהלקוח קיבל אותם
+  note            String?
+  lines           GuaranteeLine[]
+  changes         GuaranteeChange[]
+  breaches        GuaranteeBreach[]
+
+  @@index([customerId, supplierId, guaranteedUntil])
+  @@index([supplierId, guaranteedUntil])
+}
+
+model GuaranteeLine {
+  id              String            @id @default(cuid())
+  guaranteeId     String
+  guarantee       PriceGuarantee    @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  productId       String
+  productName     String
+  /// יחידת המידה לתצוגה (ק״ג, ליטר, יחידה)
+  unitLabel       String
+  packLabel       String?
+  monthlyQuantity Float?
+  /// המחיר המובטח ליחידה, ללא מע״מ
+  unitPriceAgorot Int
+  /// עולה בכל שינוי מחיר שהלקוח אישר
+  version         Int               @default(1)
+  changes         GuaranteeChange[]
+  breaches        GuaranteeBreach[]
+
+  @@unique([guaranteeId, productId])
+}
+
+enum GuaranteeChangeStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  WITHDRAWN
+}
+
+/// בקשה של הספק לשנות מחיר מובטח; נכנסת לתוקף רק אם הלקוח מאשר
+model GuaranteeChange {
+  id          String                @id @default(cuid())
+  guaranteeId String
+  guarantee   PriceGuarantee        @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  lineId      String
+  line        GuaranteeLine         @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  oldAgorot   Int
+  newAgorot   Int
+  reason      String?
+  status      GuaranteeChangeStatus @default(PENDING)
+  createdAt   DateTime              @default(now())
+  decidedAt   DateTime?
+}
+
+/// חשבונית מהספק בתקופת ההבטחה עם מחיר גבוה מהמחיר המובטח
+model GuaranteeBreach {
+  id               String         @id @default(cuid())
+  guaranteeId      String
+  guarantee        PriceGuarantee @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  lineId           String
+  line             GuaranteeLine  @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  invoiceId        String?
+  invoiceDate      String?
+  guaranteedAgorot Int
+  chargedAgorot    Int
+  createdAt        DateTime       @default(now())
+
+  @@unique([invoiceId, lineId])
 }

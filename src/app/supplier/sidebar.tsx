@@ -10,7 +10,10 @@ export function SupplierSidebar({
   newInquiries,
   rating,
   unread,
+  agreements,
 }: {
+  /** עסקאות עם מחיר מובטח בתוקף */
+  agreements: number;
   categories: { id: string; name: string; count: number }[];
   total: number;
   newInquiries: number;
@@ -87,6 +90,12 @@ export function SupplierSidebar({
                   {newInquiries}
                 </span>
               )}
+            </Link>
+          </li>
+          <li>
+            <Link href="/supplier/agreements" className={item(pathname.startsWith("/supplier/agreements"))}>
+              <span>עסקאות</span>
+              {agreements > 0 && <span className="text-xs text-muted">{agreements} בתוקף</span>}
             </Link>
           </li>
           <li>

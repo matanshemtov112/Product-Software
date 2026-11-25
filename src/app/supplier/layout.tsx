@@ -51,7 +51,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
     );
   }
 
-  const [categories, newInquiries, newMatches, unread, ratingAgg, areaCount] = await Promise.all([
+  const [categories, newInquiries, newMatches, unread, ratingAgg, areaCount, agreements] = await Promise.all([
     categoryCounts(supplier.id),
     db.negotiationRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
     db.matchRequest.count({ where: { supplierId: supplier.id, status: "SENT" } }),
@@ -64,6 +64,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
       _count: true,
     }),
     db.deliveryArea.count({ where: { supplierId: supplier.id } }),
+    db.priceGuarantee.count({ where: { supplierId: supplier.id, guaranteedUntil: { gt: new Date() } } }),
   ]);
   const rating = ratingAgg._count ? { average: ratingAgg._avg.overall ?? 0, count: ratingAgg._count } : null;
   const total = categories.reduce((s, c) => s + c.count, 0);
@@ -79,6 +80,7 @@ export default async function SupplierLayout({ children }: { children: React.Rea
             categories={categories}
             total={total}
             newInquiries={newInquiries + newMatches}
+            agreements={agreements}
             rating={rating}
             unread={unread}
           />

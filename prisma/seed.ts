@@ -430,6 +430,7 @@ async function main() {
         kosherDefault: DEMO_KOSHER[s.companyName]?.level ?? null,
         kosherAuthority: DEMO_KOSHER[s.companyName]?.authority ?? null,
         contactEmail: `supplier${i + 1}@demo.local`,
+        contactPhone: `04-81234${String(i + 10)}`,
         allCategories: s.categories === null,
         categoriesSetAt: new Date(),
         description: `ספק דמו בתחומי ${(s.categories ?? ["מזון"]).join(", ")}. משרתים מסעדות ובתי קפה.`,
@@ -605,7 +606,14 @@ async function main() {
   });
 
   await db.user.create({
-    data: { email: "customer@demo.local", name: "לקוח דמו", role: "CUSTOMER", passwordHash, customerId: customer.id },
+    data: {
+      email: "customer@demo.local",
+      name: "לקוח דמו",
+      phone: "050-7654321",
+      role: "CUSTOMER",
+      passwordHash,
+      customerId: customer.id,
+    },
   });
   await db.user.create({ data: { email: "admin@demo.local", name: "אדמין", role: "ADMIN", passwordHash } });
 

@@ -18,6 +18,7 @@ import { checkInvoiceFiles } from "@/lib/invoices/files";
 import { purgeOldInvoices } from "@/lib/invoices/retention";
 import { claudeInvoiceReader, parseInvoice, type ReadResult } from "@/lib/invoices/read";
 import { parseShekels } from "@/lib/supplier/pricing-rules";
+import { checkInvoiceGuarantees } from "@/lib/guarantees";
 
 export interface InvoiceFormState {
   error?: string;
@@ -192,6 +193,19 @@ export async function basketFromInvoice(_: InvoiceFormState, form: FormData): Pr
   });
   // התראה אחת על כל ההזדמנויות בחשבונית, ולא אחת לכל מוצר (אחרי שהלקוח כבר עבר לדף הסל)
   after(() => notifyInvoiceSavings(customer.id, basket.id, invoice.id, typedName));
+  // ספק שנתן ללקוח מחיר מובטח: בודקים שלא חייב יותר בחשבונית הזו
+  if (usePrices) {
+    after(() =>
+      checkInvoiceGuarantees({
+        customerId: customer.id,
+        invoiceId: invoice.id,
+        invoiceDate,
+        supplierId: registered?.id ?? null,
+        supplierName: typedName,
+        lines: lines.map((l) => ({ productId: l.productId, unitPriceAgorot: l.unitPriceAgorot })),
+      }),
+    );
+  }
   revalidatePath("/customer", "layout");
   redirect(`/customer/baskets/${basket.id}`);
 }

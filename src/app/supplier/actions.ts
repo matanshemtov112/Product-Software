@@ -25,6 +25,7 @@ import { listUrl } from "@/lib/supplier/list-return";
 import { canCancel, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
 import { MAX_DELIVERIES_PER_WEEK, parsePaymentTerms } from "@/lib/terms";
 import { isKosherLevel, KOSHER_LABELS, kosherText } from "@/lib/kosher";
+import { internationalPhone, validWhatsappPhone } from "@/lib/whatsapp";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
 
@@ -667,6 +668,30 @@ export async function saveDeliverySchedule(_: FormState, form: FormData): Promis
     targetType: "supplier",
     targetId: supplier.id,
     details: mode === "PER_WEEK" ? `${perWeek} פעמים בשבוע` : "לפי אזור",
+  });
+  revalidatePath("/supplier", "layout");
+  return { saved: true };
+}
+
+/** וואטסאפ: האם לקוחות שקיבלו הצעה יכולים להמשיך איתנו בוואטסאפ, ולאיזה מספר */
+export async function saveWhatsapp(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const { supplier, manager } = await managedSupplier();
+  if (!manager) return { error: MANAGER_ONLY };
+  const enabled = form.get("enabled") === "on";
+  const phone = String(form.get("phone") ?? "").trim();
+  if (phone && !validWhatsappPhone(phone)) return { error: "מספר הוואטסאפ לא תקין. למשל 050-1234567" };
+  if (enabled && !phone && !internationalPhone(supplier.contactPhone)) {
+    return { error: "כדי להפעיל וואטסאפ צריך מספר: מלאו אותו כאן, או טלפון בפרטי החברה" };
+  }
+  await db.supplier.update({
+    where: { id: supplier.id },
+    data: { whatsappEnabled: enabled, whatsappPhone: phone || null },
+  });
+  await audit({
+    action: "supplier.whatsapp",
+    targetType: "supplier",
+    targetId: supplier.id,
+    details: enabled ? "פעיל" : "כבוי",
   });
   revalidatePath("/supplier", "layout");
   return { saved: true };

@@ -22,6 +22,7 @@ import { notify } from "@/lib/notifications";
 import { canCancel, canDecide, inquiryStage, offerStageNote, ENDED_STAGES } from "@/lib/offer-status";
 import { paymentTermsLabel } from "@/lib/terms";
 import { cancelInquiry, decideInquiry } from "../../offers/actions";
+import { GuaranteeBanner } from "@/components/guarantee-banner";
 
 export default async function CustomerInquiry({
   params,
@@ -83,6 +84,7 @@ export default async function CustomerInquiry({
         </h1>
         <p className="text-sm text-muted">נשלחה {inquiry.createdAt.toLocaleDateString("he-IL")} · המחירים ללא מע״מ</p>
       </div>
+      <GuaranteeBanner side="CUSTOMER" inquiryId={inquiry.id} />
 
       {holdResult === "failed" && (
         <p role="alert" className="rounded-md border border-danger bg-[#fdecec] px-4 py-3 text-sm">

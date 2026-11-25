@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/auth/permission-check";
 import { lockedInquiriesWith } from "@/lib/inquiry-deadlines";
 import { dateTime } from "@/lib/quote-validity";
@@ -11,6 +12,8 @@ import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/su
 import { validUntilInput } from "@/lib/supplier/pricing-rules";
 import { ProductForm } from "../../product-form";
 import { effectiveKosher, kosherText } from "@/lib/kosher";
+import { activeGuaranteesFor } from "@/lib/guarantees";
+import { dayText } from "@/lib/guarantee-view";
 
 export default async function EditProductPage({
   params,
@@ -28,9 +31,10 @@ export default async function EditProductPage({
   if (!offer) notFound();
   // מוצר בארכיון לא נערך; מחזירים אותו מהארכיון קודם
   if (offer.archivedAt) redirect(`/supplier/products/${offer.id}`);
-  const [categories, locked] = await Promise.all([
+  const [categories, locked, guaranteed] = await Promise.all([
     categoryTree().then((t) => selectableCategories(t, null)),
     lockedInquiriesWith(supplier.id, offer.product.name),
+    activeGuaranteesFor(supplier.id, offer.productId),
   ]);
   const byTier = pricesByTier(offer);
   // ספק שמזין מחיר לאריזה רואה את המחיר לאריזה, כפי שהזין
@@ -49,6 +53,15 @@ export default async function EditProductPage({
         <p role="note" className="rounded-md border border-[#e0b400] bg-[#fff8db] px-4 py-3 text-sm text-black">
           {locked.count === 1 ? "יש פנייה פתוחה אחת" : `יש ${locked.count} פניות פתוחות`} עם המוצר הזה. המחיר שהלקוחות
           קיבלו בהן נעול עד {dateTime(locked.until)}, ושינוי המחיר כאן לא יחול עליהן. הוא יחול על השוואות חדשות.
+        </p>
+      )}
+      {guaranteed.customers > 0 && guaranteed.until && (
+        <p role="note" className="rounded-md border border-good bg-good-soft px-4 py-3 text-sm">
+          {guaranteed.customers === 1 ? "ללקוח אחד" : `ל-${guaranteed.customers} לקוחות`} יש מחיר מובטח על המוצר הזה, עד{" "}
+          {dayText(guaranteed.until)}. שינוי המחיר כאן לא משנה את המחיר שהבטחתם להם.{" "}
+          <Link href="/supplier/agreements" className="text-accent underline">
+            לעסקאות
+          </Link>
         </p>
       )}
       <div className="rounded-lg border border-border bg-surface p-5">

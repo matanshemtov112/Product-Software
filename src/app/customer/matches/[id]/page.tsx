@@ -16,6 +16,7 @@ import { canCancel, canDecide, matchStage, offerStageNote, ENDED_STAGES } from "
 import { OfferReasonAction, OfferStatus } from "@/components/offer-actions";
 import { cancelMatch, rejectMatch } from "../../offers/actions";
 import { decideMatchLine } from "../actions";
+import { GuaranteeBanner } from "@/components/guarantee-banner";
 
 const unitLabel = (u: string) => UNIT_LABEL[u as keyof typeof UNIT_LABEL] ?? u;
 
@@ -73,6 +74,7 @@ export default async function CustomerMatch({
         <h1 className="text-2xl font-bold">בקשת השוואה מ{request.supplier.companyName}</h1>
         <p className="text-sm text-muted">נשלחה {request.createdAt.toLocaleDateString("he-IL")} · המחירים ללא מע״מ</p>
       </div>
+      <GuaranteeBanner side="CUSTOMER" matchRequestId={request.id} />
 
       <OfferStatus stage={stage} note={offerStageNote(stage, "CUSTOMER", request)}>
         {open && summary.awaitingDecision > 0 && (

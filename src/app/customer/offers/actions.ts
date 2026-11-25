@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/auth/permission-check";
 import { customerForUser } from "@/lib/customer/quotes";
 import { db } from "@/lib/db";
 import { offeredPrice } from "@/lib/matches";
+import { guaranteeMatch } from "@/lib/guarantees";
 import { notify } from "@/lib/notifications";
 import { acceptInquiry, deliveriesFor } from "@/lib/customer/accept-inquiry";
 import { checkoutUrl, holdAmountAgorot, paymentsProvider } from "@/lib/payments/holds";
@@ -111,6 +112,7 @@ export async function rejectMatch(form: FormData) {
       data: { outcome: accepted ? "ACCEPTED" : "REJECTED", outcomeAt: now, outcomeNote: note, status: "CLOSED" },
     }),
   ]);
+  if (accepted) await guaranteeMatch(id);
   await notify([
     {
       supplierId: request.supplierId,

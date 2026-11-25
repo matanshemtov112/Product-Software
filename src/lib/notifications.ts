@@ -427,4 +427,7 @@ export const NOTIFICATION_ICON: Record<NotificationKind, string> = {
   VERIFICATION: "✅",
   REPLY_REMINDER: "⏰",
   NO_REPLY: "⌛",
+  GUARANTEE_BREACH: "⚠️",
+  GUARANTEE_CHANGE_REQUESTED: "🔒",
+  GUARANTEE_CHANGE_DECIDED: "🔒",
 };

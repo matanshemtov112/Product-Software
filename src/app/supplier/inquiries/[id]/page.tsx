@@ -20,6 +20,7 @@ import { HOLD_STATE_LABEL, holdState } from "@/lib/payments/holds";
 import { supplierForUser } from "@/lib/supplier/catalog";
 import { CustomerReviewForm } from "./customer-review-form";
 import { ReplyForm } from "./reply-form";
+import { GuaranteeBanner } from "@/components/guarantee-banner";
 
 export default async function SupplierInquiry({
   params,
@@ -89,6 +90,7 @@ export default async function SupplierInquiry({
           {inquiry.createdAt.toLocaleDateString("he-IL")}
         </p>
       </div>
+      <GuaranteeBanner side="SUPPLIER" inquiryId={inquiry.id} />
 
       <OfferStatus stage={stage} note={offerStageNote(stage, "SUPPLIER", inquiry)}>
         {canCancel(stage, "SUPPLIER") && (

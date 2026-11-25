@@ -12,6 +12,8 @@ import {
   windowStart,
 } from "@/lib/price-violations";
 import { reviewViolation } from "../actions";
+import { dealNumber } from "@/lib/guarantees";
+import { isoDayText } from "@/lib/guarantee-view";
 
 const FILTERS: { status: ViolationStatus; label: string }[] = [
   { status: "OPEN", label: "חדשים" },
@@ -39,7 +41,7 @@ export default async function AdminViolations({
   const filter = FILTERS.find((f) => f.status === status)?.status ?? "OPEN";
   const since = windowStart();
 
-  const [active, reports, suppliers] = await Promise.all([
+  const [active, reports, suppliers, breaches] = await Promise.all([
     db.priceViolationReport.groupBy({
       by: ["supplierId"],
       where: { status: { not: "DISMISSED" }, createdAt: { gte: since } },
@@ -54,6 +56,20 @@ export default async function AdminViolations({
     db.supplier.findMany({
       where: { OR: [{ violationStage: { gt: 0 } }, { priceViolations: { some: { createdAt: { gte: since } } } }] },
       select: { id: true, companyName: true, violationStage: true, status: true, reliability: true },
+    }),
+    db.guaranteeBreach.findMany({
+      include: {
+        line: { select: { productName: true, unitLabel: true } },
+        guarantee: {
+          select: {
+            number: true,
+            supplier: { select: { companyName: true } },
+            customer: { select: { businessName: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
     }),
   ]);
   const countOf = (id: string) => active.find((a) => a.supplierId === id)?._count ?? 0;
@@ -71,6 +87,30 @@ export default async function AdminViolations({
           המתאים, כולל הסרת השעיה.
         </p>
       </div>
+
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
+        <h2 className="border-b border-border px-4 py-3 font-semibold">חשבוניות מעל המחיר המובטח</h2>
+        <p className="px-4 pt-3 text-xs text-muted">
+          נמצאו אוטומטית כשלקוח העלה חשבונית מספק שנתן לו מחיר מובטח. הלקוח קיבל התראה; אין עונש אוטומטי לספק.
+        </p>
+        {breaches.length === 0 ? (
+          <p className="p-4 text-sm text-muted">לא נמצאו חריגות.</p>
+        ) : (
+          <ul className="divide-y divide-border text-sm">
+            {breaches.map((b) => (
+              <li key={b.id} className="px-4 py-2">
+                <b>{b.guarantee.supplier.companyName}</b> ← {b.guarantee.customer.businessName} · עסקה{" "}
+                {dealNumber(b.guarantee.number)} · {b.line.productName}: הובטח {shekels(b.guaranteedAgorot, 2)}, נגבה{" "}
+                {shekels(b.chargedAgorot, 2)} ל{b.line.unitLabel}
+                <span className="text-muted">
+                  {" "}
+                  · {b.invoiceDate ? isoDayText(b.invoiceDate) : b.createdAt.toLocaleDateString("he-IL")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <h2 className="border-b border-border px-4 py-3 font-semibold">ספקים עם דיווחים</h2>

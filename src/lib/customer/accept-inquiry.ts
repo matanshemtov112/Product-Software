@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { notify } from "@/lib/notifications";
 import { shekels } from "@/lib/format";
 import { isCustomerProfile } from "@/lib/inquiries";
+import { GUARANTEE_DAYS, guaranteeInquiry } from "@/lib/guarantees";
 
 /**
  * קבלת הצעה של ספק: הפנייה נסגרת כ"התקבלה", פרטי הקשר נפתחים לספק והוא מקבל התראה.
@@ -18,14 +19,16 @@ export async function acceptInquiry(
     where: { id: inquiry.id },
     data: { outcome: "ACCEPTED", outcomeAt: new Date(), outcomeNote: null, status: "CLOSED" },
   });
+  // המחירים בהצעה מחייבים את הספק מול הלקוח הזה מעכשיו, בכל ההזמנות בתקופת ההבטחה
+  await guaranteeInquiry(inquiry.id);
   await notify([
     {
       supplierId: inquiry.supplierId,
       kind: "OFFER_DECIDED",
       title: `${businessName} קיבלו את ההצעה שלכם`,
       body: hold
-        ? `הלקוח אישר את ההזמנה הראשונה עם מסגרת אשראי של ${shekels(hold.amountAgorot)}. פרטי הקשר פתוחים עכשיו בפנייה.`
-        : "פרטי הקשר של הלקוח פתוחים עכשיו בפנייה. צרו קשר כדי לסגור את ההזמנה.",
+        ? `הלקוח אישר את ההזמנה הראשונה עם מסגרת אשראי של ${shekels(hold.amountAgorot)}. פרטי הקשר פתוחים עכשיו בפנייה. המחירים בהצעה מובטחים ללקוח ${GUARANTEE_DAYS} יום.`
+        : `פרטי הקשר של הלקוח פתוחים עכשיו בפנייה. המחירים בהצעה מובטחים ללקוח ${GUARANTEE_DAYS} יום, בכל ההזמנות.`,
       href: `/supplier/inquiries/${inquiry.id}`,
       dedupeKey: `offer-decided:inquiry:${inquiry.id}`,
     },
