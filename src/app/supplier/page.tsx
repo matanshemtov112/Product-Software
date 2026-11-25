@@ -187,13 +187,22 @@ export default async function SupplierProducts({
             )}
           </p>
         </div>
-        <Link
-          href="/supplier/products/new"
-          data-needs="prices"
-          className="shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
-        >
-          + מוצר חדש
-        </Link>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <Link
+            href="/supplier/products/import"
+            data-needs="prices"
+            className="rounded-full border border-accent px-4 py-2 text-sm font-medium text-accent hover:bg-accent-soft"
+          >
+            עדכון מאקסל
+          </Link>
+          <Link
+            href="/supplier/products/new"
+            data-needs="prices"
+            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-white"
+          >
+            + מוצר חדש
+          </Link>
+        </div>
       </div>
 
       {stats && (

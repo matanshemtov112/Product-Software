@@ -129,6 +129,14 @@ const DEMO_PACKS: Record<
   "פחית שתייה קלה 330 מ״ל": { packType: "CARTON" },
 };
 
+/** כשרות לספקי הדמו (לפי השם); ספק שלא מופיע כאן לא סימן כשרות */
+const DEMO_KOSHER: Record<string, { level: "NONE" | "KOSHER" | "MEHADRIN"; authority?: string }> = {
+  "ספק דמו: בשרים הגליל": { level: "KOSHER", authority: "רבנות חיפה" },
+  "ספק דמו: מחלבות השרון": { level: "MEHADRIN", authority: "בד״ץ בית יוסף" },
+  "ספק דמו: מרכז המזון": { level: "KOSHER", authority: "רבנות תל אביב" },
+  "ספק דמו: הירקן הסיטונאי": { level: "KOSHER", authority: "רבנות ראשון לציון" },
+};
+
 const SUPPLIERS: DemoSupplier[] = [
   {
     companyName: "ספק דמו: בשרים הגליל",
@@ -419,6 +427,8 @@ async function main() {
         status: "APPROVED",
         minOrderAgorot: ils(s.minOrder),
         reliability: s.reliability,
+        kosherDefault: DEMO_KOSHER[s.companyName]?.level ?? null,
+        kosherAuthority: DEMO_KOSHER[s.companyName]?.authority ?? null,
         contactEmail: `supplier${i + 1}@demo.local`,
         allCategories: s.categories === null,
         categoriesSetAt: new Date(),

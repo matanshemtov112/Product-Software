@@ -222,6 +222,15 @@ export default async function BasketPage({
         </p>
       )}
 
+      {customer.kosherRequired !== "NONE" && (
+        <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">
+          מוצגים רק מוצרים ש{customer.kosherRequired === "MEHADRIN" ? "הספק סימן ככשרים למהדרין" : "הספק סימן ככשרים"}.{" "}
+          <Link href="/customer/profile#kosher" className="text-accent underline">
+            שינוי דרישת הכשרות
+          </Link>
+        </p>
+      )}
+
       {invoice && (
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted">

@@ -11,6 +11,7 @@ import { DomainPicker } from "../domain-picker";
 import { ProfileForm } from "./profile-form";
 import { TiersForm } from "./tiers-form";
 import { DeliveryScheduleForm } from "./delivery-schedule-form";
+import { KosherDefaultForm } from "./kosher-form";
 import { deliveryFrequency, deliveryFrequencyText } from "@/lib/terms";
 
 const STATUS_LABEL = { PENDING: "ממתין לאישור", APPROVED: "מאושר", REJECTED: "נדחה", SUSPENDED: "מושעה" } as const;
@@ -29,6 +30,9 @@ export default async function SupplierProfile() {
     },
   });
   const manager = await isManager(session.userId);
+  const ownKosher = await db.supplierOffer.count({
+    where: { supplierId: supplier.id, archivedAt: null, kosher: { not: null } },
+  });
   return (
     <div className="flex flex-col gap-4">
       {!manager && (
@@ -72,6 +76,12 @@ export default async function SupplierProfile() {
       <Card title="מדרגות מחיר">
         <TiersForm
           initial={supplier.priceTiers.map((t) => ({ id: t.id, name: t.name, min: t.minMonthlyAgorot / 100 }))}
+        />
+      </Card>
+      <Card title="כשרות" id="kosher">
+        <KosherDefaultForm
+          initial={{ level: supplier.kosherDefault, authority: supplier.kosherAuthority ?? "" }}
+          differentCount={ownKosher}
         />
       </Card>
       <Card title="ימי חלוקה" id="delivery-days">

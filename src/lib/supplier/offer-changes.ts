@@ -20,6 +20,7 @@ export const CHANGE_LABEL: Record<OfferChangeKind, string> = {
   REPLACED: "הוחלף במוצר חלופי",
   ARCHIVED: "הועבר לארכיון",
   RESTORED: "הוחזר מהארכיון",
+  KOSHER: "כשרות",
 };
 
 /** כמה ימים מסמנים ללקוח שהאריזה השתנתה או שהמוצר הוחלף */
@@ -32,6 +33,8 @@ export interface OfferIdentity {
   supplierProductName: string | null;
   /** תיאור האריזה, למשל "בקבוק 1 ל׳" */
   pack: string;
+  /** תיאור הכשרות שסומנה במוצר, למשל "כשר · רבנות חיפה"; null = כמו הכללית של הספק */
+  kosher?: string | null;
 }
 
 export interface ChangeEntry {
@@ -60,6 +63,7 @@ export function diffOffer(before: OfferIdentity, after: OfferIdentity): ChangeEn
   add("SKU", before.supplierSku, after.supplierSku);
   add("NAME", before.supplierProductName, after.supplierProductName);
   add("PACK", before.pack, after.pack);
+  if (before.kosher !== undefined && after.kosher !== undefined) add("KOSHER", before.kosher, after.kosher);
   if (!brandChangeNeedsDecision(before.brand, after.brand) && !sameBrand(before.brand, after.brand)) {
     add("BRAND", before.brand, after.brand);
   }

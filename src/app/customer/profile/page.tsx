@@ -6,6 +6,7 @@ import { CUISINES } from "@/lib/customer/templates";
 import { volumeRangeFor } from "@/lib/customer/volume";
 import { CuisinePicker } from "../cuisine-picker";
 import { BusinessForm } from "./business-form";
+import { KosherForm } from "./kosher-form";
 
 export default async function CustomerProfile() {
   const session = await requireRole("CUSTOMER");
@@ -30,6 +31,12 @@ export default async function CustomerProfile() {
           address={customer.address ?? ""}
           totalVolume={volumeRangeFor(customer.totalVolumeMinAgorot)?.key ?? ""}
         />
+      </Card>
+      <Card title="כשרות" id="kosher">
+        <p className="mb-3 text-sm text-muted">
+          באיזו כשרות העסק שלכם עובד? בהשוואות יוצגו רק מוצרים שעונים על הדרישה.
+        </p>
+        <KosherForm initial={customer.kosherRequired} />
       </Card>
       <Card title="סוג המסעדה">
         <p className="mb-3 text-sm text-muted">סוג המסעדה קובע את רשימת המוצרים הסטנדרטית שמוצעת בבדיקה חדשה.</p>

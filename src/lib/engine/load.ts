@@ -1,6 +1,7 @@
 import { restrictedProductIds } from "@/lib/buying-account";
 import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
+import { kosherOfferWhere } from "@/lib/kosher";
 import { minBaseQuantity, minOrderLabel, nominalPackSize, packLabel } from "@/lib/pack";
 import { volumeScale } from "./optimize";
 import { offerChangeNote } from "@/lib/supplier/offer-changes";
@@ -22,17 +23,19 @@ export async function loadEngineInput(basketId: string, now = new Date()) {
   const restricted = await restrictedProductIds(basket.customerId);
   const productIds = basket.items.map((i) => i.productId).filter((id) => !restricted.has(id));
   const serving = await servingSupplierIds(basket.customer);
+  // עסק שדורש כשרות: רק מוצרים שעונים על הדרישה (לפי המוצר, או ברירת המחדל של הספק)
+  const kosher = kosherOfferWhere(basket.customer.kosherRequired);
 
   const suppliers = await db.supplier.findMany({
     where: {
       id: { in: serving },
-      offers: { some: { productId: { in: productIds }, available: true } },
+      offers: { some: { productId: { in: productIds }, available: true, ...kosher } },
     },
     include: {
       deliveryZones: { where: { regionId: basket.customer.regionId } },
       priceTiers: true,
       offers: {
-        where: { productId: { in: productIds }, available: true },
+        where: { productId: { in: productIds }, available: true, ...kosher },
         include: {
           product: { select: { unit: true } },
           quantityDeal: true,

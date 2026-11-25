@@ -1,11 +1,16 @@
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { shekels } from "@/lib/format";
+import { effectiveKosher, kosherText } from "@/lib/kosher";
 
 /** מה הלקוח צריך לדעת על כל ספק בהצעה: מינימום הזמנה ואיפה הוא עובד */
 export interface SupplierFacts {
   minOrderAgorot: number;
   areaText: string;
+  /** הכשרות הכללית של הספק, למשל "כשר למהדרין · בד״ץ"; null = לא סימן */
+  kosherText: string | null;
+  /** יש מוצרים שסומנו בכשרות שונה מהכללית */
+  kosherMixed: boolean;
 }
 
 const km = (n: number) => n.toLocaleString("he-IL", { maximumFractionDigits: 0 });
@@ -28,6 +33,9 @@ export const supplierFacts = cache(async (supplierId: string): Promise<SupplierF
     where: { id: supplierId },
     select: {
       minOrderAgorot: true,
+      kosherDefault: true,
+      kosherAuthority: true,
+      _count: { select: { offers: { where: { archivedAt: null, kosher: { not: null } } } } },
       deliveryAreas: { select: { label: true, radiusKm: true } },
       deliveryZones: { select: { region: { select: { name: true } } } },
     },
@@ -35,6 +43,8 @@ export const supplierFacts = cache(async (supplierId: string): Promise<SupplierF
   if (!s) return null;
   return {
     minOrderAgorot: s.minOrderAgorot,
+    kosherText: kosherText(effectiveKosher({ kosher: null }, s)),
+    kosherMixed: s._count.offers > 0,
     areaText: areaText(
       s.deliveryAreas,
       s.deliveryZones.map((z) => z.region.name),

@@ -1,4 +1,5 @@
 import { restrictedProductIds } from "@/lib/buying-account";
+import { kosherOfferWhere } from "@/lib/kosher";
 import { servingSupplierIds } from "@/lib/coverage";
 import { db } from "@/lib/db";
 import { dealInput, dealLabel } from "@/lib/deal-label";
@@ -38,6 +39,7 @@ export async function customerDeals(customerId: string, now = new Date()): Promi
       city: true,
       lat: true,
       lng: true,
+      kosherRequired: true,
       baskets: { select: { items: { select: { productId: true } } } },
     },
   });
@@ -50,6 +52,7 @@ export async function customerDeals(customerId: string, now = new Date()): Promi
       product: { pendingReview: false },
       productId: { notIn: [...(await restrictedProductIds(customerId))] },
       supplierId: { in: serving },
+      ...kosherOfferWhere(customer.kosherRequired),
       OR: [
         { quantityDeal: { OR: [{ validTo: null }, { validTo: { gt: now } }] } },
         { prices: { some: { status: "LIVE", kind: "PROMOTION", ...valid } } },

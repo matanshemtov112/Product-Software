@@ -10,6 +10,7 @@ import { categoryTree, selectableCategories } from "@/lib/categories";
 import { getOffer, offerImageUrl, pricesByTier, supplierForUser } from "@/lib/supplier/catalog";
 import { validUntilInput } from "@/lib/supplier/pricing-rules";
 import { ProductForm } from "../../product-form";
+import { effectiveKosher, kosherText } from "@/lib/kosher";
 
 export default async function EditProductPage({
   params,
@@ -52,6 +53,7 @@ export default async function EditProductPage({
       )}
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
+          kosherDefault={kosherText(effectiveKosher({ kosher: null }, supplier))}
           back={back}
           imageSuggestions={!supplier.isManufacturer}
           openDeal={deal === "1"}
@@ -64,6 +66,8 @@ export default async function EditProductPage({
             pendingBrand: offer.pendingBrand,
             priceVersion: await priceVersion(db, offer.id),
             barcode: offer.barcode ?? "",
+            kosher: offer.kosher ?? "",
+            kosherAuthority: offer.kosherAuthority ?? "",
             supplierSku: offer.supplierSku ?? "",
             supplierProductName: offer.supplierProductName ?? "",
             packType: offer.packType ?? "",

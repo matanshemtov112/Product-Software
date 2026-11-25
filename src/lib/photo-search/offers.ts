@@ -1,15 +1,23 @@
+import type { KosherLevel } from "@prisma/client";
 import { db } from "@/lib/db";
+import { kosherOfferWhere } from "@/lib/kosher";
 import { pricedPerPack, packLabel, packPriceLabel } from "@/lib/pack";
 import type { OfferRow } from "./match";
 
 /** הצעות פעילות למוצרים שזוהו, אצל הספקים שמגיעים ללקוח, עם המחיר במדרגה הבסיסית */
-export async function offersForProducts(names: string[], supplierIds: string[], now = new Date()): Promise<OfferRow[]> {
+export async function offersForProducts(
+  names: string[],
+  supplierIds: string[],
+  kosherRequired: KosherLevel = "NONE",
+  now = new Date(),
+): Promise<OfferRow[]> {
   if (names.length === 0 || supplierIds.length === 0) return [];
   const offers = await db.supplierOffer.findMany({
     where: {
       available: true,
       product: { name: { in: names }, pendingReview: false },
       supplierId: { in: supplierIds },
+      ...kosherOfferWhere(kosherRequired),
     },
     include: {
       product: { include: { category: true } },

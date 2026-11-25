@@ -33,6 +33,8 @@ export const LIMITS = {
   imageSearch: { max: 60, windowMs: 60 * 60_000 },
   /** בקשות לאיפוס סיסמה, לכל אימייל ולכל כתובת */
   passwordReset: { max: 5, windowMs: 60 * 60_000 },
+  /** העלאות מחירון מקובץ, לכל ספק */
+  priceImports: { max: 30, windowMs: 60 * 60_000 },
 } satisfies Record<string, Limit>;
 
 /** איפה נשמרים הניסיונות: במסד, או בזיכרון (בבדיקות) */

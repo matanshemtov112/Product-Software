@@ -208,6 +208,8 @@ model Customer {
   preference           PricePreference        @default(BALANCED)
   /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
   cuisine              String?
+  /// כשרות שהעסק דורש: רק ספקים ומוצרים ברמה הזאת ומעלה מוצגים לו בהשוואות
+  kosherRequired       KosherLevel            @default(NONE)
   /// חשבון קנייה של ספק (מסחר בין ספקים): הספק שהעסק הזה שייך לו; null = עסק רגיל
   ownerSupplierId      String?                @unique
   ownerSupplier        Supplier?              @relation("BuyingAccount", fields: [ownerSupplierId], references: [id])
@@ -261,6 +263,10 @@ model Supplier {
   deliverySchedule         DeliverySchedule?
   /// כמה פעמים בשבוע הספק מגיע (1-6), כשבחר PER_WEEK
   deliveriesPerWeek        Int?
+  /// הכשרות של רוב המוצרים של הספק (ברירת מחדל לכל מוצר); null = לא סימן
+  kosherDefault            KosherLevel?
+  /// גוף הכשרות (למשל "רבנות חיפה", "בד״ץ העדה החרדית")
+  kosherAuthority          String?
   logo                     SupplierLogo?
   views                    SupplierView[]
   notifications            Notification[]
@@ -286,6 +292,13 @@ model Supplier {
   matchRequests            MatchRequest[]
   currentBaskets           Basket[]
   createdAt                DateTime               @default(now())
+}
+
+/// רמת כשרות. MEHADRIN עונה גם על דרישה ל-KOSHER
+enum KosherLevel {
+  NONE
+  KOSHER
+  MEHADRIN
 }
 
 enum DeliverySchedule {
@@ -389,6 +402,10 @@ model SupplierOffer {
   available           Boolean         @default(true)
   /// ברקוד נוכחי; ברקודים קודמים נשמרים ביומן השינויים
   barcode             String?
+  /// כשרות המוצר; null = כמו ברירת המחדל של הספק
+  kosher              KosherLevel?
+  /// גוף הכשרות של המוצר, כשהוא שונה מזה של הספק
+  kosherAuthority     String?
   /// מותג חדש שהספק אומר שהוא אותו מוצר; ממתין לאישור מנהל
   pendingBrand        String?
   /// מתי האריזה השתנתה, ואיך היא נראתה קודם (לסימון ללקוח)
@@ -421,6 +438,8 @@ enum OfferChangeKind {
   REPLACED
   ARCHIVED
   RESTORED
+  /// שינוי בכשרות המוצר
+  KOSHER
 }
 
 /// יומן השינויים של מוצר אצל ספק: כל שינוי בפרטים המזהים נשמר, שום דבר לא נמחק

@@ -16,7 +16,7 @@ async function frequencyFor(supplierId: string) {
 
 /**
  * הפרטים שמופיעים אחרי כל הצעה של המערכת: מחיר כולל, האם הספק מאומת, מינימום הזמנה,
- * עד מתי ההצעה בתוקף, כמה פעמים בשבוע הספק מגיע ובאיזה אזור הוא עובד.
+ * עד מתי ההצעה בתוקף, כמה פעמים בשבוע הספק מגיע, הכשרות ובאיזה אזור הוא עובד.
  */
 export async function OfferFacts({
   supplierId,
@@ -46,6 +46,11 @@ export async function OfferFacts({
         <dd>{validityText(lines)}</dd>
         <dt className="text-muted">מגיע אליכם</dt>
         <dd>{frequency ?? "הספק עוד לא ציין ימי חלוקה"}</dd>
+        <dt className="text-muted">כשרות</dt>
+        <dd>
+          {facts?.kosherText ?? "הספק לא סימן כשרות"}
+          {facts?.kosherMixed ? " (לחלק מהמוצרים כשרות אחרת)" : ""}
+        </dd>
         <dt className="text-muted">אזור עבודה</dt>
         <dd>{facts?.areaText ?? "—"}</dd>
       </dl>

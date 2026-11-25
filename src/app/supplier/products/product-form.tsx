@@ -10,6 +10,7 @@ import { nominalPackSize, PACK_LABEL, packContent, type PackTypeKey } from "@/li
 import { saveOffer } from "../actions";
 import { brandChangeNeedsDecision } from "@/lib/supplier/offer-changes";
 import { ImageField } from "./image-field";
+import { KOSHER_LABELS, KOSHER_LEVELS } from "@/lib/kosher";
 
 interface CatalogProduct {
   name: string;
@@ -30,6 +31,9 @@ export interface OfferFormValues {
   /** מותג חדש שממתין לאישור מנהל */
   pendingBrand?: string | null;
   barcode?: string;
+  /** כשרות המוצר; ריק = כמו הכשרות הכללית של הספק */
+  kosher?: "" | "NONE" | "KOSHER" | "MEHADRIN";
+  kosherAuthority?: string;
   supplierSku: string;
   supplierProductName: string;
   packType: PackTypeKey | "";
@@ -95,7 +99,10 @@ export function ProductForm({
   back,
   openDeal,
   imageSuggestions,
+  kosherDefault,
 }: {
+  /** הכשרות הכללית של הספק, כפי שתוצג ללקוח, למשל "כשר · רבנות חיפה"; null = לא סומנה */
+  kosherDefault?: string | null;
   /** להציע תמונות ממאגרים פתוחים (לא ליצרנים) */
   imageSuggestions?: boolean;
   initial: OfferFormValues;
@@ -111,6 +118,7 @@ export function ProductForm({
   const [state, action, pending] = useActionState(saveOffer, {});
   const editing = Boolean(initial.offerId);
   const [brand, setBrand] = useState(initial.brand);
+  const [kosher, setKosher] = useState(initial.kosher ?? "");
   // מותג אחר במוצר קיים: הספק צריך לבחור אם זה מוצר חלופי או אותו מוצר
   const brandChanged = editing && brandChangeNeedsDecision(initial.brand, brand);
   const productLocked = editing || Boolean(initial.addPack);
@@ -255,6 +263,28 @@ export function ProductForm({
           <Field label="ברקוד (לא חובה)">
             <Input name="barcode" defaultValue={initial.barcode ?? ""} dir="ltr" inputMode="numeric" maxLength={32} />
           </Field>
+          <Field label="כשרות">
+            <Select name="kosher" value={kosher} onChange={(e) => setKosher(e.target.value as typeof kosher)}>
+              <option value="">
+                {kosherDefault ? `כמו הכשרות הכללית שלכם (${kosherDefault})` : "כמו הכשרות הכללית (לא סומנה)"}
+              </option>
+              {KOSHER_LEVELS.map((l) => (
+                <option key={l} value={l}>
+                  {KOSHER_LABELS[l]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          {(kosher === "KOSHER" || kosher === "MEHADRIN") && (
+            <Field label="מי נותן את הכשרות (אם שונה מהכללית)">
+              <Input
+                name="kosherAuthority"
+                defaultValue={initial.kosherAuthority ?? ""}
+                maxLength={80}
+                placeholder="למשל בד״ץ בית יוסף"
+              />
+            </Field>
+          )}
           {initial.pendingBrand && (
             <p className="rounded-md bg-background px-3 py-2 text-sm text-muted sm:col-span-2">
               ביקשתם לשנות את המותג ל-{initial.pendingBrand}. הבקשה ממתינה לאישור צוות הפלטפורמה, ועד אז המותג הקודם

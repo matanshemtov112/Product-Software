@@ -24,6 +24,7 @@ import { NO_VALIDITY, offeredPrice, VALID_DAYS } from "@/lib/matches";
 import { listUrl } from "@/lib/supplier/list-return";
 import { canCancel, inquiryStage, matchStage, parseOutcomeNote } from "@/lib/offer-status";
 import { MAX_DELIVERIES_PER_WEEK, parsePaymentTerms } from "@/lib/terms";
+import { isKosherLevel, KOSHER_LABELS, kosherText } from "@/lib/kosher";
 import { parseTiers } from "@/lib/supplier/tiers";
 import { isManager } from "@/lib/auth/team";
 
@@ -48,6 +49,8 @@ const offerSchema = z.object({
     .regex(/^[0-9A-Za-z-]*$/, "ברקוד יכול להכיל רק ספרות ואותיות לועזיות")
     .optional(),
   brandChange: z.enum(["", "replacement", "same"]).default(""),
+  kosher: z.enum(["", "NONE", "KOSHER", "MEHADRIN"]).default(""),
+  kosherAuthority: z.string().trim().max(80, "שם גוף הכשרות ארוך מדי").optional(),
   supplierProductName: z.string().trim().max(80).optional(),
   packType: z.enum(["", "UNIT", "CARTON", "CRATE", "SACK", "TIN", "BOTTLE", "PACK", "TRAY", "BUCKET"]).default(""),
   packSize: z.coerce.number().positive("גודל אריזה חייב להיות חיובי"),
@@ -240,6 +243,9 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     brand: brandPending ? existing!.brand : data.brand || null,
     ...(brandPending ? { pendingBrand: data.brand } : {}),
     barcode: data.barcode || null,
+    // כשרות ריקה = כמו הכשרות הכללית של הספק
+    kosher: data.kosher || null,
+    kosherAuthority: data.kosher === "KOSHER" || data.kosher === "MEHADRIN" ? data.kosherAuthority || null : null,
     supplierSku: data.supplierSku || null,
     supplierProductName: data.supplierProductName || null,
     packType: data.packType || null,
@@ -257,8 +263,17 @@ export async function saveOffer(_: FormState, form: FormData): Promise<FormState
     packLabel({ ...o, unit });
   const changes = target
     ? diffOffer(
-        { ...target, pack: packOf(target) },
-        { ...offerData, brand: data.brand || null, pack: packOf(offerData) },
+        {
+          ...target,
+          pack: packOf(target),
+          kosher: kosherText({ level: target.kosher, authority: target.kosherAuthority }),
+        },
+        {
+          ...offerData,
+          brand: data.brand || null,
+          pack: packOf(offerData),
+          kosher: kosherText({ level: offerData.kosher, authority: offerData.kosherAuthority }),
+        },
       )
     : [];
   const packChange = changes.find((c) => c.kind === "PACK");
@@ -652,6 +667,30 @@ export async function saveDeliverySchedule(_: FormState, form: FormData): Promis
     targetType: "supplier",
     targetId: supplier.id,
     details: mode === "PER_WEEK" ? `${perWeek} פעמים בשבוע` : "לפי אזור",
+  });
+  revalidatePath("/supplier", "layout");
+  return { saved: true };
+}
+
+/** הכשרות הכללית של הספק: ברירת המחדל לכל מוצר שלא סימנו לו כשרות אחרת */
+export async function saveKosherDefault(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const { supplier, manager } = await managedSupplier();
+  if (!manager) return { error: MANAGER_ONLY };
+  const raw = form.get("kosherDefault");
+  const level = raw === "" ? null : raw;
+  if (level !== null && !isKosherLevel(level)) return { error: "נא לבחור כשרות" };
+  const authority = String(form.get("kosherAuthority") ?? "").trim();
+  if (authority.length > 80) return { error: "שם גוף הכשרות ארוך מדי" };
+  if ((level === "KOSHER" || level === "MEHADRIN") && !authority) return { error: "נא לכתוב מי נותן את הכשרות" };
+  await db.supplier.update({
+    where: { id: supplier.id },
+    data: { kosherDefault: level, kosherAuthority: level === "NONE" || level === null ? null : authority },
+  });
+  await audit({
+    action: "supplier.kosher",
+    targetType: "supplier",
+    targetId: supplier.id,
+    details: level ? `${KOSHER_LABELS[level]}${authority && level !== "NONE" ? ` · ${authority}` : ""}` : "לא סומן",
   });
   revalidatePath("/supplier", "layout");
   return { saved: true };

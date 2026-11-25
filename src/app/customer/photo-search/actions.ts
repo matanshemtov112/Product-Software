@@ -58,7 +58,11 @@ export async function searchByPhoto(_: PhotoSearchState, form: FormData): Promis
 
   const offers = await withoutRestricted(
     customer.id,
-    await offersForProducts([...result.exact, ...result.similar], await servingSupplierIds(customer)),
+    await offersForProducts(
+      [...result.exact, ...result.similar],
+      await servingSupplierIds(customer),
+      customer.kosherRequired,
+    ),
   );
   // אות ביקוש מצטבר: רק המוצר שזוהה בוודאות, בלי התמונה ובלי פרטי העסק
   const exact = await db.product.findMany({ where: { name: { in: result.exact } }, select: { id: true } });

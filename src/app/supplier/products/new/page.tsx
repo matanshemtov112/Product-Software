@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { categoryTree, selectableCategories } from "@/lib/categories";
 import { domainCategoryIds, supplierForUser } from "@/lib/supplier/catalog";
 import { ProductForm } from "../product-form";
+import { effectiveKosher, kosherText } from "@/lib/kosher";
 
 export default async function NewProductPage({
   searchParams,
@@ -56,6 +57,7 @@ export default async function NewProductPage({
       </div>
       <div className="rounded-lg border border-border bg-surface p-5">
         <ProductForm
+          kosherDefault={kosherText(effectiveKosher({ kosher: null }, supplier))}
           initial={{
             addPack: Boolean(base),
             productName: base?.product.name ?? wanted?.name ?? "",

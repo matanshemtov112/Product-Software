@@ -15,6 +15,7 @@ import { customerProfile } from "@/lib/customer/profile";
 import { analyzeBasket, customerForUser, getBasket } from "@/lib/customer/quotes";
 import { CUISINES } from "@/lib/customer/templates";
 import { VOLUME_RANGES } from "@/lib/customer/volume";
+import { isKosherLevel } from "@/lib/kosher";
 import { notify } from "@/lib/notifications";
 import { shekels } from "@/lib/format";
 import { db } from "@/lib/db";
@@ -78,6 +79,24 @@ export async function saveBusinessDetails(_: FormState, form: FormData): Promise
     },
   });
   await audit({ action: "business.updated", targetType: "customer", targetId: customer.id, details: parsed.data });
+  revalidatePath("/customer", "layout");
+  return { saved: true };
+}
+
+/** הכשרות שהעסק דורש: קובעת אילו מוצרים וספקים מוצגים בהשוואות */
+export async function saveKosherRequired(_: FormState, form: FormData): Promise<FormState & { saved?: boolean }> {
+  const session = await requireRole("CUSTOMER");
+  const customer = await customerForUser(session.userId);
+  if (!(await isManager(session.userId))) return { error: "רק מנהל יכול לשנות את דרישת הכשרות" };
+  const level = form.get("kosherRequired");
+  if (!isKosherLevel(level)) return { error: "נא לבחור דרישת כשרות" };
+  await db.customer.update({ where: { id: customer.id }, data: { kosherRequired: level } });
+  await audit({
+    action: "business.kosher",
+    targetType: "customer",
+    targetId: customer.id,
+    details: { from: customer.kosherRequired, to: level },
+  });
   revalidatePath("/customer", "layout");
   return { saved: true };
 }
