@@ -1,0 +1,1236 @@
+// מודל הנתונים של ה-MVP. כל הסכומים נשמרים באגורות (Int), ללא מע״מ.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  SUPPLIER
+  ADMIN
+}
+
+/// תפקיד העובד בתוך העסק או הספק. מסעדה: MANAGER / BUYER / VIEWER; ספק: MANAGER / PRICING / SALES / VIEWER
+enum TeamRole {
+  MANAGER
+  BUYER
+  PRICING
+  SALES
+  VIEWER
+}
+
+enum PricePreference {
+  PRICE
+  BALANCED
+  SERVICE
+}
+
+enum Unit {
+  KG
+  LITER
+  UNIT
+}
+
+/// איך המוצר מגיע כשמזמינים אותו
+enum PackType {
+  UNIT // יחידה בודדת
+  CARTON // קרטון
+  CRATE // ארגז
+  SACK // שק
+  TIN // פח
+  BOTTLE // בקבוק
+  PACK // חבילה
+  TRAY // מגש
+  BUCKET // דלי
+}
+
+enum SupplierStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  /// מושעה אוטומטית אחרי הרבה דיווחים על הפרת מחיר (או ידנית); לא מופיע ללקוחות
+  SUSPENDED
+}
+
+enum BasketSource {
+  MANUAL // הלקוח בחר מוצרים מהקטלוג
+  CURRENT_SUPPLIER // מוצרים מהקטלוג של הספק שהלקוח עובד איתו היום
+  TEMPLATE // רשימה סטנדרטית לפי סוג המסעדה
+  INVOICE // שורות שנקראו מחשבונית של הספק הנוכחי
+}
+
+enum PriceKind {
+  REGULAR
+  PROMOTION
+}
+
+enum PriceChangeStatus {
+  LIVE
+  PENDING_APPROVAL
+  REJECTED
+}
+
+/// בקשה מהספק הנוכחי של הלקוח להשוות מחירים
+enum MatchStatus {
+  SENT
+  READ
+  ANSWERED
+  CLOSED
+}
+
+/// תשובת הספק לשורה
+/// איך הלקוח בוחר להציג לספק את המחיר שמצא
+enum MatchReveal {
+  /// "הלקוח קיבל מחיר של ₪85": המחיר הזול שנמצא
+  EXACT
+  /// "כדי להיות תחרותי המחיר שלכם צריך להיות מתחת ל-₪88": סף שהלקוח קבע, לא נמוך מהמחיר שנמצא
+  CEILING
+}
+
+enum MatchResponse {
+  PENDING
+  MATCHED
+  COUNTER
+  DECLINED
+}
+
+/// החלטת הלקוח על תשובת הספק
+enum MatchDecision {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+/// מה קרה להצעה של הספק: הלקוח קיבל, דחה, או שאחד הצדדים ביטל
+enum OfferOutcome {
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  /// הספק לא ענה תוך 3 ימים, והפנייה נסגרה אוטומטית
+  NO_REPLY
+}
+
+enum NegotiationStatus {
+  SENT
+  READ
+  OFFERED
+  CLOSED
+}
+
+enum AlertKind {
+  PRICE_DROP
+  CHEAPER_SUPPLIER
+  PRICE_INCREASE
+}
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  email                   String                   @unique
+  name                    String
+  phone                   String?
+  passwordHash            String
+  role                    Role
+  /// מנהל העסק או הספק: עורך את פרטי העסק, המדרגות והצוות
+  isManager               Boolean                  @default(false)
+  /// התפקיד בצוות; isManager נשמר תואם (true רק כשהתפקיד MANAGER)
+  teamRole                TeamRole                 @default(VIEWER)
+  customerId              String?
+  customer                Customer?                @relation(fields: [customerId], references: [id])
+  supplierId              String?
+  supplier                Supplier?                @relation(fields: [supplierId], references: [id])
+  createdAt               DateTime                 @default(now())
+  notificationPreferences NotificationPreference[]
+  /// הסכמה מפורשת לקבל דברי פרסומת (חוק התקשורת, סעיף 30א): מתי ואיפה. null = אין הסכמה
+  marketingConsentAt      DateTime?
+  marketingConsentSource  String?
+  /// גרסת ההתחברות: עולה ביציאה מכל המכשירים ובשינוי סיסמה, וכל עוגייה עם גרסה ישנה מפסיקה לעבוד
+  sessionVersion          Int                      @default(0)
+  /// אימות דו-שלבי: הסוד של אפליקציית האימות, מוצפן. null = לא הופעל
+  totpSecret              String?
+  /// סוד שנוצר בהגדרה ועוד לא אושר בקוד (מוצפן)
+  totpPendingSecret       String?
+  totpEnabledAt           DateTime?
+  /// קודי גיבוי חד-פעמיים (גיבוב), למקרה שהטלפון אבד
+  recoveryCodes           String[]                 @default([])
+}
+
+/// ספירת ניסיונות להגבלת קצב (כניסה, הרשמה, קריאות AI). משותף לכל השרתים ושורד הפעלה מחדש
+/// עוגיות התחברות שבוטלו ביציאה רגילה (מזוהות לפי גיבוב, לא שומרים את העוגייה עצמה). נמחקות אחרי שפגו ממילא
+model RevokedSession {
+  tokenHash String   @id
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model RateLimitHit {
+  id  String   @id @default(cuid())
+  key String
+  at  DateTime @default(now())
+
+  @@index([key, at])
+}
+
+model Region {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  customers     Customer[]
+  deliveryZones DeliveryZone[]
+}
+
+model Customer {
+  id                   String                 @id @default(cuid())
+  businessName         String
+  businessType         String
+  city                 String
+  /// כתובת העסק (רחוב ומספר)
+  address              String?
+  regionId             String
+  region               Region                 @relation(fields: [regionId], references: [id])
+  /// מיקום העסק על המפה (לפי העיר), לבדיקה אילו ספקים מגיעים אליו; null עד שאותר
+  lat                  Float?
+  lng                  Float?
+  /// היקף הרכש החודשי הכולל מכל הספקים, כפי שהוצהר בהרשמה (מידע לספקים; המדרגה אצל כל ספק נקבעת לפי הסל)
+  totalVolumeMinAgorot Int?
+  totalVolumeMaxAgorot Int?
+  monthlyBudgetAgorot  Int?
+  preference           PricePreference        @default(BALANCED)
+  /// סוג המסעדה (פיצריה, בית קפה...), נבחר בהגדרה הראשונה; קובע את הרשימה הסטנדרטית
+  cuisine              String?
+  /// כשרות שהעסק דורש: רק ספקים ומוצרים ברמה הזאת ומעלה מוצגים לו בהשוואות
+  kosherRequired       KosherLevel            @default(NONE)
+  /// חשבון קנייה של ספק (מסחר בין ספקים): הספק שהעסק הזה שייך לו; null = עסק רגיל
+  ownerSupplierId      String?                @unique
+  ownerSupplier        Supplier?              @relation("BuyingAccount", fields: [ownerSupplierId], references: [id])
+  users                User[]
+  baskets              Basket[]
+  demandSignals        DemandSignal[]
+  cardHolds            CardHold[]
+  guarantees           PriceGuarantee[]
+  reviews              Review[]
+  reviewsBySuppliers   CustomerReview[]
+  invoices             Invoice[]
+  negotiations         NegotiationRequest[]
+  matchRequests        MatchRequest[]
+  priceViolations      PriceViolationReport[]
+  alerts               PriceAlert[]
+  notifications        Notification[]
+  supplierBlocks       SupplierBlock[]
+  createdAt            DateTime               @default(now())
+}
+
+model Supplier {
+  id                       String                 @id @default(cuid())
+  companyName              String
+  companyNumber            String                 @unique // ח.פ.
+  status                   SupplierStatus         @default(PENDING)
+  minOrderAgorot           Int                    @default(0)
+  paymentTermsDays         Int                    @default(30) // שוטף + X
+  /// תנאי התשלום נקבעים מול כל לקוח: הלקוחות לא רואים את paymentTermsDays אלא "נקבעים מול כל לקוח"
+  paymentTermsPerCustomer  Boolean                @default(false)
+  reliability              Float                  @default(0.9) // 0 עד 1
+  /// השלב שהספק הגיע אליו בדיווחי הפרת מחיר (0 עד 4), לפי הדיווחים הפעילים
+  violationStage           Int                    @default(0)
+  /// האמינות לפני ההורדה בשלב 3, כדי להחזיר אותה כשהשלב יורד
+  reliabilityBeforePenalty Float?
+  priceViolations          PriceViolationReport[]
+  /// מפעל שמייצר בעצמו: נדרשים גם רישיון יצרן ואישור משרד הבריאות
+  isManufacturer           Boolean                @default(false)
+  /// מתי כל המסמכים הנדרשים אושרו; null = טרם אומת
+  verifiedAt               DateTime?
+  /// עד מתי האימות בתוקף (התוקף הקרוב של המסמכים); null = בלי תוקף
+  verifiedUntil            DateTime?
+  documents                SupplierDocument[]
+  contactPhone             String?
+  contactEmail             String?
+  /// תיאור קצר של הספק, מוצג ללקוחות
+  description              String?
+  /// שעות פעילות, טקסט חופשי (למשל "א-ה 06:00-14:00")
+  openingHours             String?
+  /// תנאי אספקה, טקסט חופשי (למשל "הזמנה עד 14:00, אספקה למחרת")
+  deliveryTerms            String?
+  /// איך הספק מציג ללקוחות כמה פעמים בשבוע הוא מגיע: לפי ימים קבועים בכל אזור, או מספר פעמים בשבוע. null = עוד לא בחר
+  deliverySchedule         DeliverySchedule?
+  /// כמה פעמים בשבוע הספק מגיע (1-6), כשבחר PER_WEEK
+  deliveriesPerWeek        Int?
+  /// הכשרות של רוב המוצרים של הספק (ברירת מחדל לכל מוצר); null = לא סימן
+  kosherDefault            KosherLevel?
+  /// גוף הכשרות (למשל "רבנות חיפה", "בד״ץ העדה החרדית")
+  kosherAuthority          String?
+  /// לקוחות שקיבלו הצעה יכולים להמשיך איתנו בוואטסאפ; כבוי לעסקים בלי וואטסאפ
+  whatsappEnabled          Boolean                @default(true)
+  /// מספר הוואטסאפ להזמנות; ריק = הטלפון של איש הקשר
+  whatsappPhone            String?
+  guarantees               PriceGuarantee[]
+  logo                     SupplierLogo?
+  views                    SupplierView[]
+  notifications            Notification[]
+  blockedBy                SupplierBlock[]
+  /// מתי האדמין קיבל דיווח שהספק נחסם ע״י כמה עסקים (פעם אחת לכל גל)
+  blockFlaggedAt           DateTime?
+  /// הספק בחר "כל התחומים"; אחרת התחומים שלו הם categories
+  allCategories            Boolean                @default(false)
+  /// מתי הספק בחר תחומים בהגדרה הראשונה; null עד שבחר
+  categoriesSetAt          DateTime?
+  /// חשבון הקנייה של הספק, לקנייה מספקים אחרים במערכת
+  buyingAccount            Customer?              @relation("BuyingAccount")
+  users                    User[]
+  categories               SupplierCategory[]
+  deliveryZones            DeliveryZone[]
+  /// אזורי החלוקה שהספק סימן על המפה; כשיש כאלה הם קובעים לאן הוא מגיע (במקום האזורים הכלליים)
+  deliveryAreas            DeliveryArea[]
+  priceTiers               PriceTier[]
+  offers                   SupplierOffer[]
+  reviews                  Review[]
+  customerReviews          CustomerReview[]
+  negotiations             NegotiationRequest[]
+  matchRequests            MatchRequest[]
+  currentBaskets           Basket[]
+  createdAt                DateTime               @default(now())
+}
+
+/// רמת כשרות. MEHADRIN עונה גם על דרישה ל-KOSHER
+enum KosherLevel {
+  NONE
+  KOSHER
+  MEHADRIN
+}
+
+enum DeliverySchedule {
+  /// ימים קבועים לכל אזור חלוקה (נקבעים במפה)
+  BY_AREA
+  /// מספר פעמים בשבוע, בלי ימים קבועים
+  PER_WEEK
+}
+
+model DeliveryZone {
+  id              String   @id @default(cuid())
+  supplierId      String
+  supplier        Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  regionId        String
+  region          Region   @relation(fields: [regionId], references: [id])
+  // אין דמי משלוח: המשלוח תמיד חינם, ויש רק מינימום הזמנה. השדות נשארים לתאימות ותמיד 0 / ריק
+  feeAgorot       Int      @default(0)
+  freeAboveAgorot Int?
+  deliveryDays    String // למשל "א,ג,ה"
+
+  @@unique([supplierId, regionId])
+}
+
+/// אזור חלוקה שהספק סימן על המפה: עיגול סביב נקודה, ברדיוס בק״מ
+model DeliveryArea {
+  id           String   @id @default(cuid())
+  supplierId   String
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// שם לתצוגה, למשל העיר שבמרכז העיגול
+  label        String
+  lat          Float
+  lng          Float
+  radiusKm     Float
+  /// תנאי האספקה באזור הזה: ימי אספקה ("א,ג,ה"), שעת סגירת הזמנות ("14:00") והערה
+  deliveryDays String?
+  orderCutoff  String?
+  deliveryNote String?
+  createdAt    DateTime @default(now())
+
+  @@index([supplierId])
+}
+
+model Category {
+  id        String             @id @default(cuid())
+  name      String             @unique
+  parentId  String?
+  parent    Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[]         @relation("CategoryTree")
+  products  Product[]
+  suppliers SupplierCategory[]
+}
+
+model SupplierCategory {
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@id([supplierId, categoryId])
+}
+
+// מוצר קנוני: מה שהלקוח מחפש ושם בסל. הצעות הספקים ממופות אליו.
+model Product {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  categoryId    String
+  category      Category        @relation(fields: [categoryId], references: [id])
+  unit          Unit
+  spec          String?
+  /// שמות נוספים לאותו מוצר, לחיפוש (למשל "שמן לפתית" ל"שמן קנולה")
+  aliases       String[]        @default([])
+  /// מוצר שספק הוסיף ועדיין לא נבדק מול הקטלוג (כפילויות, שם, יחידה)
+  pendingReview Boolean         @default(false)
+  demandSignals DemandSignal[]
+  offers        SupplierOffer[]
+  basketItems   BasketItem[]
+  alerts        PriceAlert[]
+}
+
+model SupplierOffer {
+  id                  String          @id @default(cuid())
+  supplierId          String
+  supplier            Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  productId           String
+  product             Product         @relation(fields: [productId], references: [id])
+  supplierSku         String?
+  /// השם שהספק נותן למוצר (כמו בחשבונית שלו); הלקוחות מוצאים את המוצר גם בשם הזה
+  supplierProductName String?
+  brand               String?
+  /// סוג האריזה שבה המוצר מגיע; null = אריזה כללית
+  packType            PackType?
+  packSize            Float // ביחידות בסיס, למשל 10 ק״ג; במשקל משתנה: המשקל הנמוך
+  /// במשקל משתנה (למשל קרטון אנטריקוט 15–20 ק״ג): המשקל הגבוה
+  packSizeMax         Float?
+  /// כמות מינימלית להזמנה ביחידות בסיס
+  minQuantity         Float           @default(0)
+  /// כמות מינימלית להזמנה באריזות (למשל 2 קרטונים); גובר על minQuantity כשמוגדר
+  minPacks            Int?
+  /// הספק מזין מחיר לאריזה (למשל לפח 4 ליטר); נשמר תמיד כמחיר ליחידת בסיס
+  pricePerPack        Boolean         @default(false)
+  available           Boolean         @default(true)
+  /// ברקוד נוכחי; ברקודים קודמים נשמרים ביומן השינויים
+  barcode             String?
+  /// כשרות המוצר; null = כמו ברירת המחדל של הספק
+  kosher              KosherLevel?
+  /// גוף הכשרות של המוצר, כשהוא שונה מזה של הספק
+  kosherAuthority     String?
+  /// מותג חדש שהספק אומר שהוא אותו מוצר; ממתין לאישור מנהל
+  pendingBrand        String?
+  /// מתי האריזה השתנתה, ואיך היא נראתה קודם (לסימון ללקוח)
+  packChangedAt       DateTime?
+  previousPackLabel   String?
+  /// במקום מחיקה: המוצר עובר לארכיון וההיסטוריה שלו נשמרת
+  archivedAt          DateTime?
+  /// מוצר חלופי (מותג אחר) שהחליף את המוצר הזה
+  replacedById        String?
+  replacedBy          SupplierOffer?  @relation("OfferReplacement", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces            SupplierOffer[] @relation("OfferReplacement")
+  changes             OfferChange[]
+  prices              OfferPrice[]
+  image               OfferImage?
+  quantityDeal        QuantityDeal?
+
+  // ספק יכול למכור את אותו מוצר בכמה אריזות (למשל אורז בשק 5 ק״ג ובשק 25 ק״ג): כל אריזה היא הצעה נפרדת
+  @@index([supplierId, productId])
+}
+
+enum OfferChangeKind {
+  BARCODE
+  SKU
+  NAME
+  PACK
+  BRAND
+  BRAND_REQUESTED
+  BRAND_APPROVED
+  BRAND_REJECTED
+  REPLACED
+  ARCHIVED
+  RESTORED
+  /// שינוי בכשרות המוצר
+  KOSHER
+}
+
+/// יומן השינויים של מוצר אצל ספק: כל שינוי בפרטים המזהים נשמר, שום דבר לא נמחק
+model OfferChange {
+  id        String          @id @default(cuid())
+  offerId   String
+  offer     SupplierOffer   @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  kind      OfferChangeKind
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime        @default(now())
+
+  @@index([offerId, createdAt])
+}
+
+// תמונת מוצר של ספק. נשמרת במסד בגודל מוקטן, בטבלה נפרדת כדי שהרשימות לא יטענו את הקובץ.
+model OfferImage {
+  offerId     String        @id
+  offer       SupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  data        Bytes
+  contentType String
+  // תמונה שנבחרה ממאגר פתוח ברשת: הדף שלה במאגר והקרדיט שהרישיון דורש
+  sourceUrl   String?
+  credit      String?
+  updatedAt   DateTime      @updatedAt
+}
+
+// מדרגת מחיר לפי היקף חודשי אצל אותו ספק.
+model PriceTier {
+  id               String       @id @default(cuid())
+  supplierId       String
+  supplier         Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name             String
+  minMonthlyAgorot Int
+  prices           OfferPrice[]
+
+  @@unique([supplierId, minMonthlyAgorot])
+}
+
+// כל שינוי מחיר הוא שורה חדשה; ההיסטוריה נשמרת במלואה.
+/// מבצע כמות: מכמות מסוימת בהזמנה בודדת המחיר יורד באחוז או למחיר קבוע ליחידה
+model QuantityDeal {
+  id          String        @id @default(cuid())
+  offerId     String        @unique
+  offer       SupplierOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  /// הכמות המינימלית בהזמנה, ביחידות בסיס (ק״ג/ליטר/יחידה)
+  minPerOrder Float
+  /// כשהספק הגדיר את הסף באריזות, לתצוגה
+  minPacks    Int?
+  /// אחוז הנחה מהמחיר במדרגה של הלקוח; או priceAgorot
+  discountPct Float?
+  /// מחיר ליחידת בסיס במבצע, ללא מע״מ
+  priceAgorot Int?
+  /// סוף המבצע (תחילת היום שאחרי היום האחרון); null בלי תאריך סיום
+  validTo     DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model OfferPrice {
+  id              String            @id @default(cuid())
+  offerId         String
+  offer           SupplierOffer     @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  tierId          String
+  tier            PriceTier         @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  unitPriceAgorot Int // ליחידת בסיס, ללא מע״מ
+  kind            PriceKind         @default(REGULAR)
+  status          PriceChangeStatus @default(LIVE)
+  validFrom       DateTime          @default(now())
+  validTo         DateTime?
+  /// תאריך הסיום שהספק בחר (מחיר עם תוקף או מבצע); null למחיר קבוע. validTo יכול להיות מוקדם יותר כשהמחיר הוחלף
+  termEndsAt      DateTime?
+  createdAt       DateTime          @default(now())
+
+  @@index([offerId, tierId, validFrom])
+}
+
+model Basket {
+  id                     String            @id @default(cuid())
+  customerId             String
+  customer               Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name                   String
+  deliveriesPerMonth     Int               @default(4)
+  source                 BasketSource      @default(MANUAL)
+  /// הספק שהלקוח עובד איתו היום, כשהסל נבנה מהקטלוג שלו
+  currentSupplierId      String?
+  currentSupplier        Supplier?         @relation(fields: [currentSupplierId], references: [id], onDelete: SetNull)
+  /// שם הספק הנוכחי כפי שהלקוח כתב אותו (גם ספק שלא רשום במערכת); לא נחשף לספקים אחרים
+  currentSupplierName    String?
+  /// טווח היקף הרכש החודשי של הלקוח (₪, ללא מע״מ); קובע מדרגות מחיר כשהוא גדול מהסל
+  monthlyVolumeMinAgorot Int?
+  monthlyVolumeMaxAgorot Int?
+  /// מתי הלקוח שמר את הסל לבדיקה חודשית; null לסל שלא נשמר
+  savedAt                DateTime?
+  items                  BasketItem[]
+  runs                   OptimizationRun[]
+  createdAt              DateTime          @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+/// חשבונית שהלקוח העלה: מה נקרא ממנה. הקובץ עצמו לא נשמר.
+model Invoice {
+  id           String   @id @default(cuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  /// שם הספק כפי שמופיע בחשבונית; לא נחשף לספקים אחרים
+  supplierName String?
+  invoiceDate  String?
+  /// הנחה כללית על החשבונית באחוזים, שלא כלולה במחירי השורות
+  discountPct  Float    @default(0)
+  fileCount    Int
+  /// השורות שנקראו (InvoiceLine[]), מחירים ללא מע״מ באגורות
+  lines        Json
+  /// הסל שנוצר מהחשבונית אחרי אישור הלקוח
+  basketId     String?
+  createdAt    DateTime @default(now())
+
+  @@index([customerId, createdAt])
+}
+
+model BasketItem {
+  id                     String   @id @default(cuid())
+  basketId               String
+  basket                 Basket   @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  productId              String
+  product                Product  @relation(fields: [productId], references: [id])
+  monthlyQuantity        Float
+  currentSupplierName    String?
+  currentUnitPriceAgorot Int?
+  excludedSupplierIds    String[] @default([])
+  /// מותג שהלקוח רוצה דווקא; null = כל מותג
+  preferredBrand         String?
+
+  @@unique([basketId, productId])
+}
+
+model OptimizationRun {
+  id             String               @id @default(cuid())
+  basketId       String
+  basket         Basket               @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  preference     PricePreference
+  result         Json
+  bestCostAgorot Int
+  savingsAgorot  Int?
+  negotiations   NegotiationRequest[]
+  createdAt      DateTime             @default(now())
+}
+
+model Review {
+  id             String       @id @default(cuid())
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId     String
+  supplier       Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  overall        Int
+  quality        Int
+  price          Int
+  reliability    Int
+  service        Int
+  responsiveness Int
+  accuracy       Int
+  resolution     Int
+  text           String?
+  status         ReviewStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+
+  @@index([supplierId, status])
+}
+
+/// ביקורת של ספק על לקוח. ספק יכול לכתוב רק על לקוח שפנה אליו, ביקורת אחת לכל לקוח (אפשר לעדכן)
+model CustomerReview {
+  id            String   @id @default(cuid())
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  overall       Int
+  payment       Int // עמידה בתנאי תשלום
+  communication Int // תקשורת והתנהלות
+  text          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([supplierId, customerId])
+  @@index([customerId, updatedAt])
+}
+
+model NegotiationRequest {
+  id                String            @id @default(cuid())
+  customerId        String
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  runId             String?
+  run               OptimizationRun?  @relation(fields: [runId], references: [id])
+  gapAgorot         Int // פער מול החלופה הזולה; בלי שם המתחרה
+  /// ההצעה שהלקוח קיבל מהמערכת לספק הזה, כפי שהייתה ברגע הפנייה (SupplierShare)
+  quote             Json?
+  /// פרטי הלקוח והסל ברגע הפנייה (CustomerProfileSnapshot): עסק, איש קשר, היקף רכש, אספקות
+  customerProfile   Json?
+  /// פנייה בעקבות מבצע (DealInquirySnapshot): המוצר, המבצע והכמות שהלקוח רוצה
+  deal              Json?
+  /// סה"כ ההצעה של הספק, כולל משלוח
+  totalAgorot       Int               @default(0)
+  message           String
+  status            NegotiationStatus @default(SENT)
+  reply             String?
+  /// תנאי תשלום שהספק הציע ללקוח הזה בתשובה (שוטף + ימים, 0 = מזומן); null = לא צוין
+  paymentTermsDays  Int?
+  /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
+  validUntil        DateTime?
+  /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
+  offerSeenAt       DateTime?
+  /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
+  outcome           OfferOutcome?
+  outcomeAt         DateTime?
+  /// סיבת דחייה או ביטול, לא חובה
+  outcomeNote       String?
+  /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
+  cancelledBy       Role?
+  repliedAt         DateTime?
+  /// כמה פעמים הספק שלח או עדכן תשובה (מוגבל, כדי שלא יציף את הלקוח)
+  replyCount        Int               @default(0)
+  /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
+  customerHiddenAt  DateTime?
+  /// הלקוח מחק את הפנייה מהרשימה שלו לצמיתות (אי אפשר להחזיר); אצל הספק היא נשארת
+  customerDeletedAt DateTime?
+  /// הסל שממנו נשלחה הפנייה, לפנייה חדשה לאותו ספק
+  basketId          String?
+  cardHolds         CardHold[]
+  guarantee         PriceGuarantee?
+  createdAt         DateTime          @default(now())
+
+  @@index([supplierId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model PriceAlert {
+  id            String    @id @default(cuid())
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  kind          AlertKind
+  productId     String?
+  product       Product?  @relation(fields: [productId], references: [id])
+  message       String
+  savingsAgorot Int?
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+}
+
+model Subscription {
+  id          String    @id @default(cuid())
+  customerId  String?
+  supplierId  String?
+  plan        String // Basic / Pro / Enterprise
+  priceAgorot Int       @default(0) // הפיילוט חינמי
+  renewsAt    DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+/// "בקש מהספק שלי להשוות": הלקוח מבקש מהספק הנוכחי שלו להשוות מחירים למחיר הזול במערכת.
+/// שם הספק המתחרה לא נשמר ולא מוצג לספק.
+model MatchRequest {
+  id                String             @id @default(cuid())
+  customerId        String
+  customer          Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId        String
+  supplier          Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  /// הסל שממנו נלקחו הכמויות והמחירים; אישור מחיר מעדכן בו את "המחיר היום"
+  basketId          String?
+  message           String?
+  /// פרטי הלקוח ברגע הבקשה (CustomerProfileSnapshot)
+  customerProfile   Json?
+  status            MatchStatus        @default(SENT)
+  /// מה הספק רואה: המחיר שנמצא, או רק סף שצריך לרדת ממנו
+  reveal            MatchReveal        @default(EXACT)
+  supplierNote      String?
+  /// תנאי תשלום שהספק הציע ללקוח הזה (שוטף + ימים, 0 = מזומן); null = לא צוין
+  paymentTermsDays  Int?
+  /// עד מתי ההצעה של הספק בתוקף; null כשהספק לא קבע תוקף
+  validUntil        DateTime?
+  /// מתי הלקוח פתח את ההצעה של הספק (מתאפס כשהספק שולח הצעה מעודכנת)
+  offerSeenAt       DateTime?
+  /// התוצאה: התקבלה, נדחתה או בוטלה; null כל עוד פתוחה
+  outcome           OfferOutcome?
+  outcomeAt         DateTime?
+  /// סיבת דחייה או ביטול, לא חובה
+  outcomeNote       String?
+  /// מי ביטל (ספק או לקוח), כשהתוצאה היא ביטול
+  cancelledBy       Role?
+  answeredAt        DateTime?
+  answerCount       Int                @default(0)
+  /// הלקוח הסתיר את הפנייה מהרשימה שלו (ההיסטוריה); אצל הספק היא נשארת
+  customerHiddenAt  DateTime?
+  /// הלקוח מחק את הבקשה מהרשימה שלו לצמיתות; אצל הספק היא נשארת
+  customerDeletedAt DateTime?
+  createdAt         DateTime           @default(now())
+  lines             MatchRequestLine[]
+  guarantee         PriceGuarantee?
+
+  @@index([supplierId, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model MatchRequestLine {
+  id                 String        @id @default(cuid())
+  requestId          String
+  request            MatchRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  productId          String
+  productName        String
+  unit               String
+  monthlyQuantity    Float
+  /// מה הלקוח משלם היום לספק, ליחידה, ללא מע״מ
+  currentPriceAgorot Int
+  /// המחיר הזול שנמצא במערכת, ליחידה
+  targetPriceAgorot  Int
+  /// ב-CEILING: הסף שהספק רואה ("מתחת ל-"); לא נמוך מ-targetPriceAgorot. המחיר האמיתי לא נחשף לספק
+  shownPriceAgorot   Int?
+  response           MatchResponse @default(PENDING)
+  counterPriceAgorot Int?
+  decision           MatchDecision @default(PENDING)
+  /// מתי הלקוח אישר או דחה את ההצעה
+  decidedAt          DateTime?
+}
+
+model SupplierLogo {
+  supplierId  String   @id
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  data        Bytes
+  contentType String
+  updatedAt   DateTime @updatedAt
+}
+
+/// הספק הופיע בהשוואה שלקוח פתח: שורה אחת לכל ספק, סל ויום
+model SupplierView {
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  basketId   String
+  customerId String
+  day        DateTime @db.Date
+
+  @@id([supplierId, basketId, day])
+  @@index([supplierId, day])
+}
+
+enum NotificationKind {
+  PRICE_INCREASE
+  PRICE_DROP
+  CHEAPER_SUPPLIER
+  SUPPLIER_REPLIED
+  MATCH_ANSWERED
+  NEW_INQUIRY
+  NEW_MATCH_REQUEST
+  MATCH_DECIDED
+  OFFER_VIEWED
+  OFFER_DECIDED
+  OFFER_CANCELLED
+  MONTHLY_REPORT
+  PRICE_APPROVED
+  PRICE_REJECTED
+  ACCOUNT_STATUS
+  PRICE_VIOLATION
+  VERIFICATION
+  /// תזכורת לספק: פנייה מחכה לתשובה
+  REPLY_REMINDER
+  /// הפנייה נסגרה כי הספק לא ענה בזמן
+  NO_REPLY
+  /// מסעדה: נמצאו הזדמנויות לחיסכון בחשבונית שהועלתה
+  INVOICE_SAVINGS
+  /// מסעדה: ספק שלה לא עדכן מחירים הרבה זמן
+  STALE_SUPPLIER_PRICES
+  /// מסעדה: הצעה של ספק עומדת לפוג
+  OFFER_EXPIRING
+  /// ספק: ההצעה שלו פגה בלי שהלקוח החליט
+  OFFER_EXPIRED
+  /// ספק: עסקים חדשים ראו אותו בהשוואות
+  NEW_INTEREST
+  /// ספק: מוצרים שלו יקרים ביחס לשוק
+  EXPENSIVE_PRODUCTS
+  DEMAND_RISING
+  /// ספק: צריך לעדכן מחירים או אזורי חלוקה
+  UPDATE_NEEDED
+  /// מסעדה (שיווקי, רק למי שבחר): מבצע חדש על מוצר שהיא קונה
+  NEW_DEAL
+  /// מסעדה: בחשבונית מהספק מחיר גבוה מהמחיר המובטח
+  GUARANTEE_BREACH
+  /// מסעדה: הספק מבקש לשנות מחיר מובטח
+  GUARANTEE_CHANGE_REQUESTED
+  /// ספק: הלקוח אישר או דחה בקשה לשינוי מחיר מובטח
+  GUARANTEE_CHANGE_DECIDED
+}
+
+/// קבוצת התראות: כל משתמש בוחר מה לקבל ואיך
+enum NotificationCategory {
+  CRITICAL
+  SAVINGS
+  OFFERS
+  PRICES
+  MARKETING
+}
+
+/// איך לקבל התראות באימייל
+enum NotificationFrequency {
+  OFF
+  INSTANT
+  DAILY
+  WEEKLY
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+  /// לא הוגדר שירות אימייל, ההודעה רק נרשמה
+  SKIPPED
+}
+
+/// MUTE: בלי התראות מהספק. BLOCK: הספק לא מופיע בהשוואות ולא יכול לפנות
+enum BlockMode {
+  MUTE
+  BLOCK
+}
+
+/// בחירות ההתראות של משתמש לכל קבוצה (בלי שורה: ברירת המחדל של הקבוצה)
+model NotificationPreference {
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     NotificationCategory
+  inApp        Boolean               @default(true)
+  email        NotificationFrequency @default(OFF)
+  /// מתי נשלח הסיכום האחרון באימייל
+  lastDigestAt DateTime?
+  updatedAt    DateTime              @updatedAt
+
+  @@id([userId, category])
+}
+
+/// אירוע שכבר נספר בהתראה מרוכזת, כדי לא לספור אותו פעמיים
+model NotificationEvent {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
+
+/// כל אימייל שהמערכת שלחה (או ניסתה לשלוח)
+model EmailMessage {
+  id             String      @id @default(cuid())
+  userId         String?
+  to             String
+  subject        String
+  text           String
+  status         EmailStatus @default(QUEUED)
+  error          String?
+  /// INSTANT / DAILY / WEEKLY
+  kind           String
+  /// קישור הסרה בלחיצה אחת (נשלח גם בכותרת List-Unsubscribe)
+  unsubscribeUrl String?
+  createdAt      DateTime    @default(now())
+  sentAt         DateTime?
+
+  @@index([createdAt])
+}
+
+/// עסק שחסם או השתיק ספק
+model SupplierBlock {
+  customerId String
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  mode       BlockMode
+  createdAt  DateTime  @default(now())
+
+  @@id([customerId, supplierId])
+  @@index([supplierId, createdAt])
+}
+
+/// התראה במערכת ללקוח או לספק
+model Notification {
+  id              String               @id @default(cuid())
+  customerId      String?
+  customer        Customer?            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String?
+  supplier        Supplier?            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  kind            NotificationKind
+  title           String
+  body            String?
+  href            String
+  savingsAgorot   Int?
+  category        NotificationCategory @default(CRITICAL)
+  /// הספק שההתראה עליו, כדי לסנן ספק שהעסק השתיק או חסם
+  aboutSupplierId String?
+  /// התראה מרוכזת (למשל כל ההזדמנויות לחיסכון של היום): אירועים חדשים מתווספים אליה
+  groupKey        String?              @unique
+  groupCount      Int                  @default(1)
+  emailedAt       DateTime?
+  read            Boolean              @default(false)
+  /// מונע התראה כפולה על אותו אירוע
+  dedupeKey       String?              @unique
+  createdAt       DateTime             @default(now())
+
+  @@index([customerId, read, createdAt])
+  @@index([supplierId, read, createdAt])
+}
+
+/// יומן פעולות: מי עשה מה ומתי. לא נמחק מהממשק.
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  /// שם או אימייל ברגע הפעולה, כדי שהרשומה תישאר ברורה גם אם המשתמש נמחק
+  actor      String?
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+}
+
+enum ReportTarget {
+  SUPPLIER
+  CUSTOMER
+}
+
+enum ReportReason {
+  WRONG_PRICE
+  /// הספק לא כיבד מחיר שהופיע או שסוכם
+  PRICE_NOT_HONORED
+  /// המוצר שסופק לא תואם לתיאור
+  PRODUCT_MISMATCH
+  FAKE_REVIEW
+  /// ספק או עסק מתחזה
+  FAKE_BUSINESS
+  WRONG_INFO
+  ABUSIVE
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+/// דיווח של משתמש על ספק או על לקוח, לטיפול צוות הפלטפורמה
+model AbuseReport {
+  id             String       @id @default(cuid())
+  reporterUserId String
+  reporterName   String
+  targetType     ReportTarget
+  targetId       String
+  targetName     String
+  reason         ReportReason
+  text           String?
+  /// הדף שממנו דווח
+  path           String?
+  status         ReportStatus @default(OPEN)
+  resolution     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
+
+enum ViolationStatus {
+  OPEN
+  /// מנהל בדק ואישר שהדיווח נראה מוצדק (נספר)
+  CONFIRMED
+  /// מנהל ביטל: לא נספר
+  DISMISSED
+}
+
+/// דיווח של לקוח שהספק גבה מחיר שונה מהמחיר שהופיע במערכת או שסוכם
+model PriceViolationReport {
+  id                 String          @id @default(cuid())
+  supplierId         String
+  supplier           Supplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  customerId         String
+  customer           Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId          String?
+  productName        String
+  unit               String
+  /// המחיר ליחידה שהופיע במערכת או שסוכם, ללא מע״מ
+  shownPriceAgorot   Int
+  /// המחיר ליחידה שנגבה בפועל, ללא מע״מ
+  chargedPriceAgorot Int
+  /// תאריך האספקה או החשבונית
+  occurredOn         DateTime
+  text               String?
+  status             ViolationStatus @default(OPEN)
+  adminNote          String?
+  reviewedAt         DateTime?
+  createdAt          DateTime        @default(now())
+
+  @@index([supplierId, createdAt])
+  @@index([status, createdAt])
+  @@index([customerId, supplierId, productId, createdAt])
+}
+
+enum DocumentKind {
+  /// תעודת עוסק מורשה / תעודת התאגדות
+  BUSINESS_LICENSE
+  /// רישיון יצרן (רק למפעלים)
+  MANUFACTURER_LICENSE
+  /// אישור משרד הבריאות (רק למפעלים)
+  HEALTH_LICENSE
+}
+
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// מסמך שהספק העלה לאימות. מסמך אחד מכל סוג; העלאה חדשה מחליפה את הקודם וחוזרת לבדיקה
+model SupplierDocument {
+  id           String         @id @default(cuid())
+  supplierId   String
+  supplier     Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  kind         DocumentKind
+  fileName     String
+  data         Bytes
+  contentType  String
+  size         Int
+  /// תוקף המסמך כפי שהספק מסר (ואפשר לתקן בבדיקה); null = בלי תוקף
+  validUntil   DateTime?
+  status       DocumentStatus @default(PENDING)
+  rejectReason String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([supplierId, kind])
+  @@index([status, updatedAt])
+}
+
+enum DemandKind {
+  /// הלקוח פתח השוואת מחירים לסל עם המוצר
+  PRICE_CHECK
+  /// סל שנבנה מחשבונית
+  INVOICE
+  /// המוצר זוהה בחיפוש בצילום
+  PHOTO_SEARCH
+}
+
+/// אות ביקוש: עסק התעניין במוצר. משמש רק לסיכום מצטבר לספקים (לפחות 3 עסקים, בטווחים),
+/// בלי שם העסק, בלי כמויות ובלי פרטי חשבונית. אחד לכל עסק, מוצר, סוג ויום.
+model DemandSignal {
+  id          String     @id @default(cuid())
+  customerId  String
+  customer    Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind        DemandKind
+  /// לעסק כבר יש ספק למוצר והוא בודק חלופות
+  hasSupplier Boolean    @default(false)
+  day         DateTime   @db.Date
+
+  @@unique([customerId, productId, kind, day])
+  @@index([day])
+}
+
+enum CardHoldStatus {
+  PENDING
+  AUTHORIZED
+  FAILED
+  RELEASED
+  CAPTURED
+}
+
+/// תפיסת מסגרת באשראי כשעסק מקבל הצעה של ספק: סימן רצינות לפני שהספק מקבל את פרטי הקשר.
+/// הכסף לא יורד; המסגרת משתחררת כשהספק מאשר שההזמנה הראשונה סופקה, או פגה מעצמה.
+/// פרטי הכרטיס לא נשמרים כאן (רק 4 ספרות אחרונות); הכרטיס מוזן בדף התשלום של חברת הסליקה.
+model CardHold {
+  id             String             @id @default(cuid())
+  customerId     String
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId     String
+  inquiryId      String
+  inquiry        NegotiationRequest @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  /// גובה המסגרת: ההזמנה הראשונה, כולל מע״מ
+  amountAgorot   Int
+  status         CardHoldStatus     @default(PENDING)
+  /// "demo" או שם חברת הסליקה
+  provider       String
+  providerRef    String?
+  cardLast4      String?
+  failureReason  String?
+  authorizedAt   DateTime?
+  /// עד מתי המסגרת תפוסה; אחרי זה היא פגה מעצמה
+  expiresAt      DateTime?
+  releasedAt     DateTime?
+  /// דמי אי-הזמנה שנגבו (על ידי צוות הפלטפורמה)
+  capturedAgorot Int?
+  capturedAt     DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([inquiryId])
+  @@index([status, createdAt])
+}
+
+/// מחיר מובטח: כשהלקוח מקבל הצעה של ספק, המחירים בה מחייבים את הספק מול הלקוח הזה 30 יום, בכל ההזמנות.
+/// הספק לא יכול לשנות אותם; שינוי נעשה רק בבקשה שהלקוח מאשר.
+model PriceGuarantee {
+  id              String              @id @default(cuid())
+  /// מספר העסקה שמוצג לשני הצדדים ובהודעת הוואטסאפ
+  number          Int                 @unique @default(autoincrement())
+  customerId      String
+  customer        Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  supplierId      String
+  supplier        Supplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  inquiryId       String?             @unique
+  inquiry         NegotiationRequest? @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  matchRequestId  String?             @unique
+  matchRequest    MatchRequest?       @relation(fields: [matchRequestId], references: [id], onDelete: SetNull)
+  acceptedAt      DateTime
+  guaranteedUntil DateTime
+  /// פנייה על מבצע: תנאי המבצע כפי שהלקוח קיבל אותם
+  note            String?
+  lines           GuaranteeLine[]
+  changes         GuaranteeChange[]
+  breaches        GuaranteeBreach[]
+
+  @@index([customerId, supplierId, guaranteedUntil])
+  @@index([supplierId, guaranteedUntil])
+}
+
+model GuaranteeLine {
+  id              String            @id @default(cuid())
+  guaranteeId     String
+  guarantee       PriceGuarantee    @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  productId       String
+  productName     String
+  /// יחידת המידה לתצוגה (ק״ג, ליטר, יחידה)
+  unitLabel       String
+  packLabel       String?
+  monthlyQuantity Float?
+  /// המחיר המובטח ליחידה, ללא מע״מ
+  unitPriceAgorot Int
+  /// עולה בכל שינוי מחיר שהלקוח אישר
+  version         Int               @default(1)
+  changes         GuaranteeChange[]
+  breaches        GuaranteeBreach[]
+
+  @@unique([guaranteeId, productId])
+}
+
+enum GuaranteeChangeStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  WITHDRAWN
+}
+
+/// בקשה של הספק לשנות מחיר מובטח; נכנסת לתוקף רק אם הלקוח מאשר
+model GuaranteeChange {
+  id          String                @id @default(cuid())
+  guaranteeId String
+  guarantee   PriceGuarantee        @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  lineId      String
+  line        GuaranteeLine         @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  oldAgorot   Int
+  newAgorot   Int
+  reason      String?
+  status      GuaranteeChangeStatus @default(PENDING)
+  createdAt   DateTime              @default(now())
+  decidedAt   DateTime?
+}
+
+/// חשבונית מהספק בתקופת ההבטחה עם מחיר גבוה מהמחיר המובטח
+model GuaranteeBreach {
+  id               String         @id @default(cuid())
+  guaranteeId      String
+  guarantee        PriceGuarantee @relation(fields: [guaranteeId], references: [id], onDelete: Cascade)
+  lineId           String
+  line             GuaranteeLine  @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  invoiceId        String?
+  invoiceDate      String?
+  guaranteedAgorot Int
+  chargedAgorot    Int
+  createdAt        DateTime       @default(now())
+
+  @@unique([invoiceId, lineId])
+}

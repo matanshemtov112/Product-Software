@@ -1,0 +1,121 @@
+@import "tailwindcss";
+@import "@fontsource-variable/rubik";
+
+/*
+ * ערכת העיצוב "שוק טרי וחם": קרם, חום כהה וטרקוטה, עם ירוק זית לחיסכון ולהצלחה.
+ * accent = מותג, כפתורים וקישורים. good = חיסכון, ירידת מחיר, פעולה שהצליחה. danger = יקר, שגיאה.
+ * ink = כרטיס כהה בולט (למשל החיסכון החודשי), highlight = המספר הבולט עליו.
+ */
+:root {
+  --background: #faf6ef;
+  --surface: #ffffff;
+  --foreground: #2b2118;
+  --muted: #6b5a49;
+  --border: #ece2d3;
+  --sand: #f3eadc;
+  --accent: #c2410c;
+  --accent-strong: #9a3412;
+  --accent-soft: #fde8d7;
+  --good: #3f6212;
+  --good-soft: #e6efd9;
+  --danger: #b42318;
+  --ink: #2b2118;
+  --ink-foreground: #faf6ef;
+  --ink-muted: #e9d8bd;
+  --highlight: #fbbf24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #17110d;
+    --surface: #221a14;
+    --foreground: #f3ebe0;
+    --muted: #b8a793;
+    --border: #3a2e24;
+    --sand: #2c221a;
+    --accent: #e0662a;
+    --accent-strong: #f59e6b;
+    --accent-soft: #3d2416;
+    --good: #a3c76b;
+    --good-soft: #26301a;
+    --danger: #f97066;
+    --ink: #33261b;
+    --ink-foreground: #faf6ef;
+    --ink-muted: #e9d8bd;
+    --highlight: #fbbf24;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-sand: var(--sand);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-danger: var(--danger);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+  --color-highlight: var(--highlight);
+  --font-sans: "Rubik Variable", "Rubik", "Heebo", "Segoe UI", Arial, sans-serif;
+  /* פינות רכות יותר בכל האפליקציה: שדות 12px, כרטיסים 20px */
+  --radius-md: 0.75rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+a {
+  transition: color 0.15s;
+}
+
+/* כרטיס לבן בסגנון האפליקציה: בלי מסגרת חדה, עם צל עדין */
+.bg-surface.border-border:not(aside) {
+  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: 0 1px 2px rgb(43 33 24 / 0.04);
+}
+
+/* מוצר שנשמר עכשיו ברשימה של הספק */
+.saved-flash {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background-color: var(--accent-soft);
+  transition:
+    background-color 0.6s,
+    box-shadow 0.6s;
+}
+
+/* הרשאות לפי תפקיד: מסתירים מה שהעובד לא יכול להשתמש בו, ומציגים במקומו הסבר (רכיב Needs) */
+[data-lacks~="manage"] [data-needs="manage"],
+[data-lacks~="buy"] [data-needs="buy"],
+[data-lacks~="prices"] [data-needs="prices"],
+[data-lacks~="reply"] [data-needs="reply"],
+[data-lacks~="report"] [data-needs="report"] {
+  display: none !important;
+}
+[data-needs-note] {
+  display: none;
+}
+[data-lacks~="manage"] [data-needs-note="manage"],
+[data-lacks~="buy"] [data-needs-note="buy"],
+[data-lacks~="prices"] [data-needs-note="prices"],
+[data-lacks~="reply"] [data-needs-note="reply"],
+[data-lacks~="report"] [data-needs-note="report"] {
+  display: block;
+}
+
+/* כפתור ראשי: כהה יותר במעבר עכבר */
+a.bg-accent:hover,
+button.bg-accent:hover:not(:disabled) {
+  background-color: var(--accent-strong);
+}
