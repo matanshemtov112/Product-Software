@@ -39,6 +39,10 @@ export function SupplierSidebar({
   return (
     <nav aria-label="תפריט ספק" className="flex flex-col gap-4">
       <BellLink href="/supplier/notifications" unread={unread} />
+      <Link href="/supplier/assistant" className={item(pathname === "/supplier/assistant")}>
+        <span>עוזר AI</span>
+        <span aria-hidden="true">✨</span>
+      </Link>
       <div>
         <p className="px-3 pb-1 text-xs font-medium text-muted">המוצרים שלי</p>
         <ul className="flex flex-col gap-0.5">
