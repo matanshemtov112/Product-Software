@@ -19,8 +19,16 @@ import { publicPaymentTerms } from "@/lib/terms";
 import { InquiryForm } from "./inquiry-form";
 import { seenQuote } from "@/lib/quote-changes";
 
-export default async function InquiryPage({ params }: { params: Promise<{ id: string; supplierId: string }> }) {
+export default async function InquiryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string; supplierId: string }>;
+  searchParams: Promise<{ message?: string }>;
+}) {
   const { id, supplierId } = await params;
+  // טיוטה שהעוזר החכם הכין; הלקוח עדיין קורא, עורך ושולח בעצמו
+  const draft = (await searchParams).message?.trim().slice(0, 1000) || null;
   const session = await requireRole("CUSTOMER");
   await requirePermission("buy", session.userId);
   const customer = await customerForUser(session.userId);
@@ -187,8 +195,8 @@ export default async function InquiryPage({ params }: { params: Promise<{ id: st
           <InquiryForm
             basketId={basket.id}
             supplierId={supplierId}
-            defaultMessage={baseMessage}
-            sharedMessage={sharedMessage}
+            defaultMessage={draft ?? baseMessage}
+            sharedMessage={draft ?? sharedMessage}
             paidCount={paidLines.length}
             seen={seenQuote(row.snapshot.lines, row.snapshot.totalAgorot)}
             loadedAt={Date.now()}
